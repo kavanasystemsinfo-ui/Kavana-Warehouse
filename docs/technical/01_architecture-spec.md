@@ -1,4 +1,4 @@
-# Architecture Specification — Kavana CleanStock
+# Architecture Specification — KAVANA WAREHOUSE
 
 > **Document Type:** Technical Architecture Specification (estado real, 2026-07-16)
 > **Audience:** IT Consultants, Senior Developers, Technical Stakeholders
@@ -13,7 +13,7 @@
 
 ## 1. Visión de negocio (actual)
 
-CleanStock es un **SaaS B2B de trazabilidad de consumo** para empresas de limpieza con
+KAVANA WAREHOUSE es un **SaaS B2B de trazabilidad de consumo** para empresas de limpieza con
 centros descentralizados (colegios, ayuntamientos, oficinas). Permite al **encargado/supervisor**
 saber qué producto se consumió, en qué centro y cuándo, comparado con lo presupuestado,
 para **detectar mermas y sobrecostes por centro**.
@@ -49,7 +49,7 @@ para **detectar mermas y sobrecostes por centro**.
 
 ### Diagrama de despliegue real
 ```
-          cleanstock.kavanasystems.com
+          warehouse.kavanasystems.com
                      │
                 ┌────┴────┐
                 │  nginx   │  ← SSL (Let's Encrypt)
@@ -75,7 +75,7 @@ para **detectar mermas y sobrecostes por centro**.
 
 ### Estructura real del proyecto
 ```
-clean-stock/
+kavana-warehouse/
 ├── src/
 │   ├── app.js              # API Express (monolítico, 38 endpoints)
 │   ├── server.js           # Entry point (carga app.js + dotenv)

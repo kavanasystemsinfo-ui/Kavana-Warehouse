@@ -1,4 +1,4 @@
-# Auditoría de Seguridad CleanStock — Estado Final
+# Auditoría de Seguridad KAVANA WAREHOUSE — Estado Final
 
 > **Fecha:** 2026-07-16
 > **Alcance:** Backend (Node/Express + Prisma + PostgreSQL) y Frontend (React/Vite dashboard)
@@ -116,7 +116,7 @@
 | `NODE_ENV` | `production` (contenedor) | M1 exige `JWT_SECRET` |
 | `JWT_SECRET` | desde env (no hardcodeado) | Fallback dev solo en test |
 | `JWT_EXPIRES_IN` | `2h` | M2: reducido de 12h |
-| `CORS_ORIGIN` | whitelist (cleanstock + localhost:4001/4000) | M3: eliminado `*` |
+| `CORS_ORIGIN` | whitelist (kavanawarehouse + localhost:4001/4000) | M3: eliminado `*` |
 | `Centro.id_cliente` | `NOT NULL` | M9 |
 | FKs movimientos/inventario | `ON DELETE CASCADE` | M10 |
 
@@ -155,7 +155,7 @@ node -e "const {PrismaClient}=require('@prisma/client');const p=new PrismaClient
 
 ## 10. Conclusión
 
-CleanStock está **validado y blindado de punta a punta** contra los hallazgos de la auditoría ECC:
+KAVANA WAREHOUSE está **validado y blindado de punta a punta** contra los hallazgos de la auditoría ECC:
 - ✅ 0 fugas cross-tenant (C1–C4, A6 residual, consumo/alerts)
 - ✅ 0 mass-assignment (A1)
 - ✅ Integridad referencial garantizada (M9, M10)

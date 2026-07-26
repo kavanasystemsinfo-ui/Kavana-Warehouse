@@ -31,7 +31,7 @@ export function Responsables() {
 
   const handleCreate = async () => {
     try {
-      await createResponsable({ ...form, password: form.password || 'cleanstock' })
+      await createResponsable({ ...form, password: form.password || 'kavanawarehouse' })
       setShowForm(false)
       setMsg('Responsable creado')
       setForm({ nombre: '', email: '', password: '', telefono: '' })
@@ -96,7 +96,7 @@ export function Responsables() {
             </div>
             <div className="form-group">
               <label className="form-label">Contraseña</label>
-              <input className="form-input" type="password" placeholder="cleanstock" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
+              <input className="form-input" type="password" placeholder="kavanawarehouse" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
             </div>
             <div className="form-group">
               <label className="form-label">Teléfono</label>

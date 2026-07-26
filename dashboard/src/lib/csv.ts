@@ -1,4 +1,4 @@
-// Kavana CleanStock Dashboard — CSV Export Utility
+// KAVANA WAREHOUSE Dashboard — CSV Export Utility
 
 export function exportToCsv(filename: string, rows: Record<string, string | number | null | undefined>[]) {
   if (rows.length === 0) return

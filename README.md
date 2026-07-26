@@ -1,4 +1,4 @@
-# CleanStock — Trazabilidad de Stock para Limpieza Profesional
+# KAVANA WAREHOUSE — Trazabilidad de Stock para Limpieza Profesional
 
 [![Tests](https://img.shields.io/badge/tests-26%20passing-brightgreen)](docs/METRICS.md)
 [![Node](https://img.shields.io/badge/Node-20-339933?logo=nodedotjs)](https://nodejs.org)
@@ -83,7 +83,7 @@ docker compose up -d    # Stack completo
 npm test                # 26 tests
 ```
 
-**Live demo:** [`https://cleanstock.kavanasystems.com`](https://cleanstock.kavanasystems.com)
+**Live demo:** [`https://warehouse.kavanasystems.com`](https://warehouse.kavanasystems.com)
 
 ---
 

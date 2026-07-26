@@ -1,4 +1,4 @@
-# 📊 Métricas del Proyecto — CleanStock
+# 📊 Métricas del Proyecto — KAVANA WAREHOUSE
 
 *Datos reales del repositorio, generados el 2026-07-23.*
 

@@ -1,4 +1,4 @@
-// Kavana CleanStock — Coste Controller (Fase 2: control de costes por centro)
+// KAVANA WAREHOUSE — Coste Controller (Fase 2: control de costes por centro)
 // Calcula el coste de material por centro comparándolo con el presupuesto mensual
 // que fija la empresa (campo presupuesto_mensual en Centro).
 //

@@ -1,12 +1,12 @@
 #!/bin/bash
 # ==============================
-# CleanStock → Supabase Migration
+# KAVANA WAREHOUSE → Supabase Migration
 # ==============================
 # Requisito: tener supabase CLI instalada
 # Ejecutar: bash supabase-migrate.sh
 set -e
 
-echo "=== CleanStock → Supabase Migration ==="
+echo "=== KAVANA WAREHOUSE → Supabase Migration ==="
 echo ""
 echo "PASO 1: Registra las credenciales de Supabase"
 echo "----------------------------------------------"
@@ -52,7 +52,7 @@ echo "----------------------------------------------"
 echo "Si quieres usar Supabase Auth en lugar del JWT propio:"
 echo "1. Dashboard Supabase → Authentication → Users → Add User"
 echo "2. Añade: empleado@kavana.com / supervisor@kavana.com / admin@kavana.com"
-echo "3. La contraseña por defecto es: cleanstock"
+echo "3. La contraseña por defecto es: kavanawarehouse"
 echo ""
 echo ""
 echo "PASO 4: Anota las variables de entorno"
@@ -60,6 +60,6 @@ echo "----------------------------------------------"
 echo "Las necesitarás en Vercel (PASO 5):"
 echo ""
 echo "DATABASE_URL=postgresql://postgres:XXX@db.XXX.supabase.co:5432/postgres"
-echo "JWT_SECRET=cleanstock-jwt-secret"
+echo "JWT_SECRET=kavanawarehouse-jwt-secret"
 echo "CORS_ORIGIN=*"
 echo ""

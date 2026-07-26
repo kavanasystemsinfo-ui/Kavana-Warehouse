@@ -1,4 +1,4 @@
-// Kavana CleanStock — Purchase Controller
+// KAVANA WAREHOUSE — Purchase Controller
 // Genera una propuesta de compras basada en stock mínimo por centro.
 // Para cada inventario donde cantidad_actual < stock_minimo, propone pedir
 // hasta llevarlo a 2x el mínimo (lote de reabastecimiento estándar).

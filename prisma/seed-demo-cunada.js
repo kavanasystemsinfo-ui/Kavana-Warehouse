@@ -15,7 +15,7 @@ const prisma = new PrismaClient();
 const EMPRESA_DEMO = 'Limpiezas Valencia Centro, S.L.';
 
 async function main() {
-  console.log('→ Seed demo CleanStock (mermas de inventario — caso cuñada)...');
+  console.log('→ Seed demo KAVANA WAREHOUSE (mermas de inventario — caso cuñada)...');
 
   // 1. Cliente demo (idempotente por nombre) — marcado es_demo para borrado limpio
   let cliente = await prisma.cliente.findFirst({ where: { nombre_empresa: EMPRESA_DEMO } });
@@ -154,10 +154,10 @@ async function main() {
 
   // 5. Usuarios (supervisor + operarios)
   const pw = await bcrypt.hash('demo1234', 10);
-  let supervisor = await prisma.usuario.findFirst({ where: { email: 'supervisor.demo@cleanstock.com' } });
+  let supervisor = await prisma.usuario.findFirst({ where: { email: 'supervisor.demo@kavanawarehouse.com' } });
   if (!supervisor) {
     supervisor = await prisma.usuario.create({
-      data: { nombre: 'Zaira García', email: 'supervisor.demo@cleanstock.com', username: 'zaira', password_hash: pw, rol: 'supervisor', id_cliente: idCliente },
+      data: { nombre: 'Zaira García', email: 'supervisor.demo@kavanawarehouse.com', username: 'zaira', password_hash: pw, rol: 'supervisor', id_cliente: idCliente },
     });
     console.log('  ✓ Supervisor creado (Zaira García)');
   }
@@ -215,7 +215,7 @@ async function main() {
   }
   console.log('  ✓ Empleados generados (5-10 por centro)');
 
-  console.log('\n✅ Demo lista. Login encargada: supervisor.demo@cleanstock.com / demo1234');
+  console.log('\n✅ Demo lista. Login encargada: supervisor.demo@kavanawarehouse.com / demo1234');
   console.log('   Centros: Diputación, Beneficencia, Plaza de Toros, Museo Bellas Artes');
   console.log('   Merma esperada: Plaza de Toros papel registrado 50 / físico 30 → FALTAN 20 rollos');
   console.log('   Beneficencia: pendiente de contar (sin stock_fisico)');

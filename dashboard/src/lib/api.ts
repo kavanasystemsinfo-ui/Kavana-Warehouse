@@ -1,4 +1,4 @@
-// Kavana CleanStock Dashboard — API Client
+// KAVANA WAREHOUSE Dashboard — API Client
 // Handles JWT auth, refresh token rotation
 
 const BASE_URL = '/api/v1'

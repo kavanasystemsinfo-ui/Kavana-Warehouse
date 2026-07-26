@@ -1,4 +1,4 @@
-# Deployment Guide — Kavana CleanStock
+# Deployment Guide — KAVANA WAREHOUSE
 
 > **Target:** DevOps, IT Operations
 > **Version:** 4.2.0 (actualizado 2026-07-20, modelo de responsables de centro)
@@ -9,7 +9,7 @@
 ## Arquitectura Actual
 
 ```
-                    cleanstock.kavanasystems.com
+                    warehouse.kavanasystems.com
                             │
                        ┌────┴────┐
                        │  nginx  │  ← SSL (Let's Encrypt)
@@ -58,15 +58,15 @@
 
 ## Configuración nginx
 
-El virtual host para `cleanstock.kavanasystems.com` está en `/etc/nginx/sites-available/cleanstock`:
+El virtual host para `warehouse.kavanasystems.com` está en `/etc/nginx/sites-available/kavanawarehouse`:
 
 ```nginx
 server {
     listen 443 ssl;
-    server_name cleanstock.kavanasystems.com;
+    server_name warehouse.kavanasystems.com;
 
-    ssl_certificate /etc/letsencrypt/live/cleanstock.kavanasystems.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/cleanstock.kavanasystems.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/warehouse.kavanasystems.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/warehouse.kavanasystems.com/privkey.pem;
 
     location /api/ {
         proxy_pass http://127.0.0.1:3000;
@@ -81,9 +81,9 @@ server {
 
 | Ruta | Servicio interno | Puerto |
 |---|---|---|
-| `https://cleanstock.kavanasystems.com/` | Dashboard supervisor (web, responsive) | :4001 |
-| `https://cleanstock.kavanasystems.com/mobile/` | App responsable de centro (PWA) | :4000 |
-| `https://cleanstock.kavanasystems.com/api/v1/*` | API REST | :3000 |
+| `https://warehouse.kavanasystems.com/` | Dashboard supervisor (web, responsive) | :4001 |
+| `https://warehouse.kavanasystems.com/mobile/` | App responsable de centro (PWA) | :4000 |
+| `https://warehouse.kavanasystems.com/api/v1/*` | API REST | :3000 |
 
 > No hay ruta `/empleado/` en producción. El registro de consumos se hace desde el dashboard.
 
@@ -99,7 +99,7 @@ certbot renew --dry-run
 ### Actualizar la aplicación
 
 ```bash
-cd /root/clean-stock
+cd /root/kavana-warehouse
 git pull
 docker compose up -d --build
 ```
@@ -117,9 +117,9 @@ docker builder prune -f
 
 | Email | Rol | Contraseña |
 |---|---|---|
-| `supervisor.demo@cleanstock.com` | Supervisor demo (Zaira García) | `demo1234` |
-| `admin@kavana.com` | Admin | `CleanStock2026!` |
-| `supervisor@kavana.com` | Supervisor | `CleanStock2026!` |
+| `supervisor.demo@kavanawarehouse.com` | Supervisor demo (Zaira García) | `demo1234` |
+| `admin@kavana.com` | Admin | `KAVANA WAREHOUSE2026!` |
+| `supervisor@kavana.com` | Supervisor | `KAVANA WAREHOUSE2026!` |
 
 > El rol `limpiador` existe en el modelo de datos (`Usuario.rol`) para trazabilidad de
 > asignación a centros, **pero no tiene credenciales de acceso a ninguna app**.

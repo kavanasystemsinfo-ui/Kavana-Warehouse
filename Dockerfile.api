@@ -1,5 +1,5 @@
 # =============================================================================
-# Kavana CleanStock — API Dockerfile (Node.js + Express + Prisma)
+# KAVANA WAREHOUSE — API Dockerfile (Node.js + Express + Prisma)
 # Multi-stage build: install → generate → run
 # =============================================================================
 
