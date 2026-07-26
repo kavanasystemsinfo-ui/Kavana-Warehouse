@@ -1,4 +1,4 @@
-// Kavana CleanStock Mobile — API Client
+// KAVANA WAREHOUSE Mobile — API Client
 const BASE_URL = '/api/v1'
 
 export interface ProductoInventario {

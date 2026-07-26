@@ -1,5 +1,5 @@
 // ============================
-// CleanStock v2 — Vercel Serverless Entry
+// KAVANA WAREHOUSE v2 — Vercel Serverless Entry
 // ============================
 const app = require('../src/app');
 const serverless = require('serverless-http');

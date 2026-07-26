@@ -8,7 +8,7 @@
 
 ## Contexto
 
-CleanStock es un SaaS B2B de trazabilidad de stock para empresas de limpieza con centros descentralizados. Cada cliente (empresa de limpieza) tiene múltiples centros (colegios, oficinas, hospitales) y necesita:
+KAVANA WAREHOUSE es un SaaS B2B de trazabilidad de stock para empresas de limpieza con centros descentralizados. Cada cliente (empresa de limpieza) tiene múltiples centros (colegios, oficinas, hospitales) y necesita:
 
 1. Que sus datos estén **aislados** de otros clientes
 2. Activar/desactivar funcionalidades según su plan (recuento físico, alertas, informes)

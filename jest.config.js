@@ -1,4 +1,4 @@
-// CleanStock — Jest Configuration
+// KAVANA WAREHOUSE — Jest Configuration
 module.exports = {
   testEnvironment: 'node',
   testMatch: ['**/src/__tests__/**/*.test.js'],

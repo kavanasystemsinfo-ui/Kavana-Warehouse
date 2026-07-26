@@ -1,4 +1,4 @@
-# Plan de Implementación: Mejoras Enterprise — CleanStock
+# Plan de Implementación: Mejoras Enterprise — KAVANA WAREHOUSE
 
 > **Estado:** Parcialmente implementado (actualizado 2026-07-16 con datos reales del código en producción)
 > **⚠️ Versión anterior marcaba todo como ✅ IMPLEMENTADO. Esta versión refleja lo que realmente existe.**

@@ -1,4 +1,4 @@
-# Decisiones Estratégicas - Kavana CleanStock
+# Decisiones Estratégicas - KAVANA WAREHOUSE
 
 Este documento registra el "por qué" de las decisiones arquitectónicas y de diseño técnico tomadas durante la fase de preparación para el entorno de producción.
 

@@ -1,5 +1,5 @@
 {
-  "name": "kavana-cleanstock",
+  "name": "kavana-warehouse",
   "version": "1.0.0",
   "description": "SaaS de Control de Stock para el sector limpieza",
   "main": "src/server.js",

@@ -1,5 +1,5 @@
 // ============================
-// CleanStock v2 API — Express App
+// KAVANA WAREHOUSE v2 API — Express App
 // Exportable: Docker (listen) + Vercel (serverless-http)
 // ============================
 require('dotenv').config();
@@ -33,7 +33,7 @@ if (process.env.NODE_ENV === 'production' && !jwtSecretRaw) {
   console.error('[FATAL] JWT_SECRET no definido en producción. Abortando arranque.');
   process.exit(1);
 }
-const JWT_SECRET = jwtSecretRaw || 'cleanstock-jwt-secret-dev';
+const JWT_SECRET = jwtSecretRaw || 'kavanawarehouse-jwt-secret-dev';
 
 // ----- Auth middleware -----
 // Resuelve id_cliente desde BD y lo popula en req.user para que los handlers
@@ -797,14 +797,14 @@ app.post('/api/v1/auth/register-empresa', async (req, res) => {
       });
       
       await transporter.sendMail({
-        from: `CleanStock <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+        from: `KAVANA WAREHOUSE <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
         to: email,
-        subject: '✅ Bienvenido a CleanStock - Credenciales de acceso',
+        subject: '✅ Bienvenido a KAVANA WAREHOUSE - Credenciales de acceso',
         html: `
-          <h2>¡Bienvenido a CleanStock!</h2>
+          <h2>¡Bienvenido a KAVANA WAREHOUSE!</h2>
           <p>Tu cuenta está activa con <strong>30 días de prueba gratuita</strong>.</p>
           <h3>Credenciales de acceso</h3>
-          <p><strong>URL:</strong> https://cleanstock.kavanasystems.com/login</p>
+          <p><strong>URL:</strong> https://warehouse.kavanasystems.com/login</p>
           <p><strong>Email:</strong> ${email}</p>
           <p><strong>Contraseña:</strong> ${password}</p>
           <p>Accede ahora y empieza a gestionar tu inventario.</p>

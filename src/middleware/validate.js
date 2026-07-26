@@ -1,5 +1,5 @@
 // =============================================================================
-// CleanStock API — Input Validation Middleware (Zod)
+// KAVANA WAREHOUSE API — Input Validation Middleware (Zod)
 // =============================================================================
 // Centraliza la validación de schemas en endpoints críticos (POST/PUT).
 // Uso: router.post('/ruta', validate(loginSchema), handler)

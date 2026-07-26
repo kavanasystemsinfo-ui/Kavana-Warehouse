@@ -1,4 +1,4 @@
-package com.kavanasystems.cleanstock;
+package com.kavanasystems.warehouse;
 
 import com.getcapacitor.BridgeActivity;
 

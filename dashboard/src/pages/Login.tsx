@@ -52,8 +52,8 @@ export function Login({ onLogin }: LoginProps) {
     <div className="login-page">
       <div className="login-card">
         <div className="login-logo" style={{ textAlign: 'center' }}>
-          <img src="/logo.png" alt="Kavana CleanStock" style={{ width: '80px', height: '80px', borderRadius: '12px', marginBottom: '0.75rem' }} />
-          <h1>Kavana CleanStock</h1>
+          <img src="/logo.png" alt="KAVANA WAREHOUSE" style={{ width: '80px', height: '80px', borderRadius: '12px', marginBottom: '0.75rem' }} />
+          <h1>KAVANA WAREHOUSE</h1>
           <p>Panel de Control del Supervisor</p>
         </div>
 

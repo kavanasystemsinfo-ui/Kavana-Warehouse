@@ -1,7 +1,7 @@
-name: kavana-cleanstock
+name: kavana-warehouse
 
 # =============================================================================
-# Kavana CleanStock — Full Stack Deployment
+# KAVANA WAREHOUSE — Full Stack Deployment
 # Services: API + PostgreSQL + Dashboard
 # =============================================================================
 
@@ -16,13 +16,13 @@ services:
     environment:
       POSTGRES_USER: kavana
       POSTGRES_PASSWORD: ${DB_PASSWORD:-kavana_pass}
-      POSTGRES_DB: kavana_cleanstock
+      POSTGRES_DB: kavana_warehouse
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kavana -d kavana_cleanstock"]
+      test: ["CMD-SHELL", "pg_isready -U kavana -d kavana_warehouse"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -43,16 +43,16 @@ services:
         condition: service_healthy
     environment:
       # Database — uses Docker service name 'db' instead of localhost
-      DATABASE_URL: "postgresql://kavana:***@db:5432/kavana_cleanstock"
+      DATABASE_URL: "postgresql://kavana:***@db:5432/kavana_warehouse"
       # JWT
-      JWT_SECRET: ${JWT_SECRET:-kavana-cleanstock-jwt-secret-prod-2026}
+      JWT_SECRET: ${JWT_SECRET:-kavana-warehouse-jwt-secret-prod-2026}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
       # Refresh Tokens
       REFRESH_TOKEN_EXPIRY_DAYS: ${REFRESH_TOKEN_EXPIRY_DAYS:-30}
       # Server
       PORT: 3000
       NODE_ENV: production
-      CORS_ORIGIN: "https://cleanstock.kavanasystems.com,https://cleanstock.kavanasystems.com:4001,https://cleanstock.kavanasystems.com:4000,http://localhost:4001,http://localhost:4000"
+      CORS_ORIGIN: "https://warehouse.kavanasystems.com,https://warehouse.kavanasystems.com:4001,https://warehouse.kavanasystems.com:4000,http://localhost:4001,http://localhost:4000"
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       # SMTP (for registration emails)
@@ -60,7 +60,7 @@ services:
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER}
       SMTP_PASS: ${SMTP_PASS}
-      SMTP_FROM: ${SMTP_FROM:-noreply@cleanstock.com}
+      SMTP_FROM: ${SMTP_FROM:-noreply@kavanawarehouse.com}
     ports:
       - "3000:3000"
     networks:

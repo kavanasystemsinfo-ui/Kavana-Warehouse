@@ -1,4 +1,4 @@
-# Kavana CleanStock — .gitignore
+# KAVANA WAREHOUSE — .gitignore
 node_modules/
 dist/
 .env

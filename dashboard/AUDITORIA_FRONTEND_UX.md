@@ -1,4 +1,4 @@
-# Auditoría Frontend/UX — CleanStock Dashboard
+# Auditoría Frontend/UX — KAVANA WAREHOUSE Dashboard
 
 **Alcance:** `/root/clean_ops/dashboard/src` (React 18 + TS + Vite)
 **Skills aplicadas:** ai-first-engineering, frontend-a11y, accessibility (WCAG 2.2 AA), frontend-patterns, frontend-design-direction, react-patterns, react-performance, error-handling
@@ -32,7 +32,7 @@ El bug reportado `b.map is not a function` venía de asumir array cuando la API 
 ### MEDIOS
 
 **6. `pages/Empleados.tsx:25-33` — Crear empleado sin validación cliente**
-`handleCreate` envía el form tal cual: `nombre`, `email`, `password` (default `'cleanstock'`), `numero_empleado`, `id_centro`. Los inputs NO tienen `required` ni validación de email/longitud (líneas 75,79,83,87,91,95). Se puede crear un empleado con nombre vacío o email inválido; el error solo aparece si el backend lo rechaza, y el mensaje de `msg` dice "Error..." genérico.
+`handleCreate` envía el form tal cual: `nombre`, `email`, `password` (default `'kavanawarehouse'`), `numero_empleado`, `id_centro`. Los inputs NO tienen `required` ni validación de email/longitud (líneas 75,79,83,87,91,95). Se puede crear un empleado con nombre vacío o email inválido; el error solo aparece si el backend lo rechaza, y el mensaje de `msg` dice "Error..." genérico.
 **Fix:** validar `nombre.trim()`, `email` con regex, longitud mínima de password y `id_centro>0` antes de llamar a `createEmpleado`, mostrando el error en rojo como en Inventario.
 
 **7. `pages/Centros.tsx:38-46` — Crear centro sin validación**
