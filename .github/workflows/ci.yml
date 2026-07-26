@@ -47,6 +47,13 @@ jobs:
         env:
           DATABASE_URL: postgresql://kavana:kavana_test@localhost:5432/kavana_cleanstock_test
 
+      - name: Seed database
+        run: npx prisma db seed
+        env:
+          DATABASE_URL: postgresql://kavana:kavana_test@localhost:5432/kavana_cleanstock_test
+          JWT_SECRET: ci-test-secret
+          NODE_ENV: test
+
       - name: Run tests
         run: npm test
         env:
