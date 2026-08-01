@@ -5,7 +5,6 @@ import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
 import { Inventario } from './pages/Inventario'
 import { Incidents } from './pages/Incidents'
-import { Empleados } from './pages/Empleados'
 import { Centros } from './pages/Centros'
 import { Responsables } from './pages/Responsables'
 import { Supervisores } from './pages/Supervisores'
@@ -67,7 +66,6 @@ export default function App() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="inventario" element={<Inventario />} />
         <Route path="incidents" element={<Incidents />} />
-        <Route path="empleados" element={<Empleados />} />
         <Route path="centros" element={<Centros />} />
         <Route path="responsables" element={<Responsables />} />
         <Route path="supervisores" element={<Supervisores />} />

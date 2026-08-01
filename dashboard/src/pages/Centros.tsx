@@ -134,10 +134,10 @@ export function Centros() {
             <ul>
               <li><strong>Nombre y dirección:</strong> el centro y dónde está.</li>
               <li><strong>Presupuesto/mes:</strong> lo que quieres gastar al mes en ese centro.</li>
-              <li><strong>Empleados y Productos:</strong> cuánta gente y qué material hay asignado.</li>
+              <li><strong>Productos:</strong> cuánto material hay asignado.</li>
             </ul>
             <h3>¿Cómo ver el detalle de un centro?</h3>
-            <p><strong>Clica en cualquier fila</strong> (en el nombre). Se despliega la lista de empleados y los productos que tiene ese centro, con su stock.</p>
+            <p><strong>Clica en cualquier fila</strong> (en el nombre). Se despliega la lista de productos que tiene ese centro, con su stock.</p>
             <h3>¿Cómo cambiar datos de un centro?</h3>
             <p>Pulsa <strong>"Editar"</strong> en la fila. Puedes cambiar el nombre, la dirección y el presupuesto mensual.</p>
             <h3>¿Cómo añadir productos a un centro?</h3>
@@ -176,19 +176,17 @@ export function Centros() {
                 <th>Nombre</th>
                 <th>Dirección</th>
                 <th>Presupuesto/mes</th>
-                <th>Empleados</th>
                 <th>Productos</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {centros.length === 0 ? (
-                <tr><td colSpan={6} style={{ color: '#6b7280' }}>No hay centros registrados</td></tr>
+                <tr><td colSpan={5} style={{ color: '#6b7280' }}>No hay centros registrados</td></tr>
               ) : (
                 centros.map(c => {
                   const id = c.id_centro;
                   const abierto = centroAbierto === id;
-                  const emps = c.asignaciones || [];
                   const prods = c.inventarioCentros || [];
                   return (
                     <Fragment key={id}>
@@ -203,7 +201,6 @@ export function Centros() {
                         </td>
                         <td>{c.direccion || '—'}</td>
                         <td>{c.presupuesto_mensual ? `${c.presupuesto_mensual} €` : '—'}</td>
-                        <td>{c._count?.asignaciones ?? '—'}</td>
                         <td>{c._count?.inventarioCentros ?? '—'}</td>
                         <td>
                           <button className="btn btn-sm btn-outline" onClick={(e) => { e.stopPropagation(); abrirEditar(c); }} aria-label={`Editar centro ${c.nombre_centro}`}>Editar</button>
@@ -211,26 +208,8 @@ export function Centros() {
                       </tr>
                       {abierto && (
                         <tr className="detalle-fila">
-                          <td colSpan={6}>
+                          <td colSpan={5}>
                             <div className="detalle-grid">
-                              <div>
-                                <h4>👷 Empleados ({emps.length})</h4>
-                                {emps.length === 0 ? (
-                                  <p className="detalle-vacio">Sin personal asignado</p>
-                                ) : (
-                                  <ul className="detalle-lista">
-                                    {emps.map((a: any, i: number) => (
-                                      <li key={i}>
-                                        {a.usuario.nombre}
-                                        <span className="detalle-rol">{a.usuario.rol}</span>
-                                        {a.usuario.numero_empleado && <span className="detalle-extra"> · Nº {a.usuario.numero_empleado}</span>}
-                                        {a.usuario.telefono && <span className="detalle-extra"> · 📞 {a.usuario.telefono}</span>}
-                                        {a.usuario.email && <span className="detalle-extra"> · ✉️ {a.usuario.email}</span>}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
                               <div>
                                 <h4>📦 Productos ({prods.length})</h4>
                                 <button className="btn btn-sm btn-primary" style={{ marginBottom: '0.75rem' }} onClick={(e) => { e.stopPropagation(); abrirAddProd(id); }} aria-label={`Añadir producto al centro ${c.nombre_centro}`}>➕ Añadir producto</button>

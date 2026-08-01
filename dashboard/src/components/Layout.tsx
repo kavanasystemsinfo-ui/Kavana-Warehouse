@@ -65,10 +65,6 @@ export function Layout() {
             <span className="sidebar-link-icon">📊</span>
             Dashboard
           </NavLink>
-          <NavLink to="/empleados" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`} onClick={closeOnNav}>
-            <span className="sidebar-link-icon">👥</span>
-            Empleados
-          </NavLink>
           <NavLink to="/centros" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`} onClick={closeOnNav}>
             <span className="sidebar-link-icon">🏢</span>
             Centros

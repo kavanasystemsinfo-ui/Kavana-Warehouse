@@ -54,22 +54,6 @@ export interface Centro {
   }>
 }
 
-export interface Empleado {
-  id_usuario: number
-  nombre: string
-  apellidos?: string
-  email: string
-  numero_empleado?: string
-  estado: string
-  centro?: Centro
-  asignaciones?: Array<{
-    id_asignacion: number
-    fecha_inicio: string
-    fecha_fin: string | null
-    centro: { id_centro: number; nombre_centro: string }
-  }>
-}
-
 export interface Producto {
   id_producto: number
   nombre_producto: string
@@ -411,18 +395,6 @@ export async function createCentro(data: { nombre: string; direccion?: string; t
 export async function getCategorias(): Promise<Categoria[]> {
   const res = await apiFetch<{ categorias: Categoria[] }>('/categorias')
   return res.categorias
-}
-
-export async function getEmpleados(): Promise<Empleado[]> {
-  const res = await apiFetch<{ empleados: Empleado[] }>('/empleados')
-  return res.empleados
-}
-
-export async function createEmpleado(data: {
-  nombre: string; apellidos?: string; email: string; password: string
-  numero_empleado?: string; id_centro: number
-}): Promise<{ empleado: Empleado }> {
-  return apiFetch('/empleados', { method: 'POST', body: JSON.stringify(data) })
 }
 
 export async function getConsumos(centroId?: number): Promise<any[]> {
