@@ -48,9 +48,9 @@ export function Centros() {
   const abrirEditar = (c: Centro) => {
     setEditando(c)
     setEditForm({
-      nombre_centro: (c as any).nombre_centro || '',
+      nombre_centro: c.nombre_centro || '',
       direccion: c.direccion || '',
-      presupuesto_mensual: String((c as any).presupuesto_mensual ?? ''),
+      presupuesto_mensual: String(c.presupuesto_mensual ?? ''),
     })
     setMsg('')
   }
@@ -106,7 +106,7 @@ export function Centros() {
     setGuardando(true)
     setMsg('')
     try {
-      await updateCentro((editando as any).id_centro, {
+      await updateCentro(editando.id_centro, {
         nombre_centro: editForm.nombre_centro,
         direccion: editForm.direccion,
         presupuesto_mensual: v,
@@ -183,13 +183,13 @@ export function Centros() {
             </thead>
             <tbody>
               {centros.length === 0 ? (
-                <tr><td colSpan={6} style={{ color: '#9ca3af' }}>No hay centros registrados</td></tr>
+                <tr><td colSpan={6} style={{ color: '#6b7280' }}>No hay centros registrados</td></tr>
               ) : (
                 centros.map(c => {
-                  const id = (c as any).id_centro;
+                  const id = c.id_centro;
                   const abierto = centroAbierto === id;
-                  const emps = (c as any).asignaciones || [];
-                  const prods = (c as any).inventarioCentros || [];
+                  const emps = c.asignaciones || [];
+                  const prods = c.inventarioCentros || [];
                   return (
                     <Fragment key={id}>
                       <tr
@@ -199,14 +199,14 @@ export function Centros() {
                       >
                         <td>
                           <span className="centro-flecha">{abierto ? '▾' : '▸'}</span>
-                          <strong>{(c as any).nombre_centro || '—'}</strong>
+                          <strong>{c.nombre_centro || '—'}</strong>
                         </td>
                         <td>{c.direccion || '—'}</td>
-                        <td>{(c as any).presupuesto_mensual ? `${(c as any).presupuesto_mensual} €` : '—'}</td>
-                        <td>{(c as any)._count?.asignaciones ?? '—'}</td>
-                        <td>{(c as any)._count?.inventarioCentros ?? '—'}</td>
+                        <td>{c.presupuesto_mensual ? `${c.presupuesto_mensual} €` : '—'}</td>
+                        <td>{c._count?.asignaciones ?? '—'}</td>
+                        <td>{c._count?.inventarioCentros ?? '—'}</td>
                         <td>
-                          <button className="btn btn-sm btn-outline" onClick={(e) => { e.stopPropagation(); abrirEditar(c); }}>Editar</button>
+                          <button className="btn btn-sm btn-outline" onClick={(e) => { e.stopPropagation(); abrirEditar(c); }} aria-label={`Editar centro ${c.nombre_centro}`}>Editar</button>
                         </td>
                       </tr>
                       {abierto && (
@@ -233,7 +233,7 @@ export function Centros() {
                               </div>
                               <div>
                                 <h4>📦 Productos ({prods.length})</h4>
-                                <button className="btn btn-sm btn-primary" style={{ marginBottom: '0.75rem' }} onClick={(e) => { e.stopPropagation(); abrirAddProd(id); }}>➕ Añadir producto</button>
+                                <button className="btn btn-sm btn-primary" style={{ marginBottom: '0.75rem' }} onClick={(e) => { e.stopPropagation(); abrirAddProd(id); }} aria-label={`Añadir producto al centro ${c.nombre_centro}`}>➕ Añadir producto</button>
                                 {prods.length === 0 ? (
                                   <p className="detalle-vacio">Sin inventario</p>
                                 ) : (
@@ -267,8 +267,8 @@ export function Centros() {
 
       {editando && (
         <div className="modal-overlay" onClick={cerrarEditar}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Editar Centro</h3>
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="modal-editar-titulo">
+            <h3 id="modal-editar-titulo">Editar Centro</h3>
             <div className="form-group">
               <label className="form-label">Nombre</label>
               <input className="form-input" value={editForm.nombre_centro} onChange={e => setEditForm({ ...editForm, nombre_centro: e.target.value })} />
@@ -294,10 +294,10 @@ export function Centros() {
       {/* Modal: Añadir producto al centro */}
       {showAddProd && (
         <div className="modal-overlay" onClick={() => setShowAddProd(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }} role="dialog" aria-modal="true" aria-labelledby="modal-addprod-titulo">
             <div className="modal-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>➕ Añadir producto al centro</span>
-              <button type="button" className="btn btn-outline" style={{ padding: '0.25rem 0.6rem' }} onClick={() => setShowAddProd(false)}>✕</button>
+              <span id="modal-addprod-titulo">➕ Añadir producto al centro</span>
+              <button type="button" className="btn btn-outline" style={{ padding: '0.25rem 0.6rem' }} onClick={() => setShowAddProd(false)} aria-label="Cerrar modal">✕</button>
             </div>
             {addSuccess && <div className="alert alert-success">{addSuccess}</div>}
             {addError && <div className="alert alert-danger">{addError}</div>}

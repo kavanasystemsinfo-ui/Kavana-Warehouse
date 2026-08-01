@@ -232,7 +232,154 @@ describe('POST /api/v1/auth/register-empresa', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Categorias
+// SECURITY — Multi-tenant isolation (TDD: must fail before scoping, pass after)
+// ---------------------------------------------------------------------------
+describe('SECURITY: multi-tenant isolation', () => {
+  let tokenA = '';
+  let tokenB = '';
+  let centroAId = null;
+  let centroBId = null;
+  const emailA = `sec-a-${Date.now()}@yagni.com`;
+  const emailB = `sec-b-${Date.now()}@yagni.com`;
+
+  beforeAll(async () => {
+    jest.setTimeout(45000);
+    // Empresa A (nueva, con id_cliente real)
+    await request(app).post('/api/v1/auth/register-empresa')
+      .send({ nombre_empresa: 'Empresa A Seg', email: emailA, password: 'test123', nombre_responsable: 'A' });
+    const loginA = await request(app).post('/api/v1/auth/login')
+      .send({ email: emailA, password: 'test123' });
+    tokenA = loginA.body.token;
+    const centrosA = await request(app).get('/api/v1/centros').set('Authorization', `Bearer ${tokenA}`);
+    centroAId = centrosA.body.centros[0].id_centro;
+
+    // Empresa B (nueva, con id_cliente real)
+    await request(app).post('/api/v1/auth/register-empresa')
+      .send({ nombre_empresa: 'Empresa B Seg', email: emailB, password: 'test123', nombre_responsable: 'B' });
+    const loginB = await request(app).post('/api/v1/auth/login')
+      .send({ email: emailB, password: 'test123' });
+    tokenB = loginB.body.token;
+    const centrosB = await request(app).get('/api/v1/centros').set('Authorization', `Bearer ${tokenB}`);
+    centroBId = centrosB.body.centros[0].id_centro;
+  }, 30000);
+
+  it('Empresa A cannot read Empresa B inventory by centro id', async () => {
+    const res = await request(app)
+      .get(`/api/v1/inventario?centro=${centroBId}`)
+      .set('Authorization', `Bearer ${tokenA}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('Empresa A cannot write inventory in Empresa B centro', async () => {
+    const res = await request(app)
+      .post('/api/v1/inventario')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ id_centro: centroBId, id_producto: 1, cantidad_actual: 5, stock_minimo: 1 });
+    expect(res.status).toBe(403);
+  });
+
+  it('Empresa A cannot read Empresa B incidencias (global leak blocked)', async () => {
+    const res = await request(app)
+      .get('/api/v1/incidencias')
+      .set('Authorization', `Bearer ${tokenA}`);
+    // No debe devolver incidencias de empresa B; comprobamos que no hay fugas por id de centro ajeno
+    const incs = res.body.incidencias || [];
+    const fugadas = incs.filter(i => i.id_centro === centroBId);
+    expect(fugadas.length).toBe(0);
+  });
+
+  it('Empresa A cannot POST incidencia in Empresa B centro', async () => {
+    const res = await request(app)
+      .post('/api/v1/incidencias')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ id_centro: centroBId, categoria: 'limpieza', titulo: 'x', descripcion: 'x' });
+    expect(res.status).toBe(403);
+  });
+
+  it('Empresa A dashboard/consumption does not leak Empresa B centros', async () => {
+    const res = await request(app)
+      .get('/api/v1/dashboard/consumption')
+      .set('Authorization', `Bearer ${tokenA}`);
+    expect(res.status).toBe(200);
+    const movs = res.body.movimientos || [];
+    const fugados = movs.filter(m => m.centro && m.centro.id_centro === centroBId);
+    expect(fugados.length).toBe(0);
+  });
+
+  it('Empresa A dashboard/alerts returns 200 and own-scoped data', async () => {
+    const res = await request(app)
+      .get('/api/v1/dashboard/alerts')
+      .set('Authorization', `Bearer ${tokenA}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.criticas)).toBe(true);
+    expect(Array.isArray(res.body.advertencias)).toBe(true);
+  });
+
+  afterAll(async () => {
+    for (const email of [emailA, emailB]) {
+      const cliente = await prisma.cliente.findFirst({ where: { email_contacto: email } });
+      if (cliente) {
+        await prisma.asignacionPersonal.deleteMany({ where: { centro: { id_cliente: cliente.id_cliente } } });
+        await prisma.usuario.deleteMany({ where: { id_cliente: cliente.id_cliente } });
+        await prisma.inventarioCentro.deleteMany({ where: { centro: { id_cliente: cliente.id_cliente } } });
+        await prisma.centro.deleteMany({ where: { id_cliente: cliente.id_cliente } });
+        await prisma.cliente.delete({ where: { id_cliente: cliente.id_cliente } });
+      }
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M7 — Cobertura de escritura (happy-path + mass-assignment denegado)
+// ---------------------------------------------------------------------------
+describe('Escritura: centros / productos / stock', () => {
+  let centroId = null;
+  beforeAll(async () => {
+    const r = await request(app).get('/api/v1/centros').set('Authorization', `Bearer ${token}`);
+    centroId = r.body.centros?.[0]?.id_centro ?? null;
+  });
+
+  it('PUT /centros/:id actualiza nombre (happy path)', async () => {
+    if (!centroId) return;
+    const res = await request(app)
+      .put(`/api/v1/centros/${centroId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre_centro: 'Centro Test Edit' });
+    expect(res.status).toBe(200);
+    expect(res.body.centro.nombre_centro).toBe('Centro Test Edit');
+    // revertir
+    await request(app).put(`/api/v1/centros/${centroId}`).set('Authorization', `Bearer ${token}`).send({ nombre_centro: 'Beneficencia' });
+  });
+
+  it('POST /productos rechaza id_cliente inyectado (mass-assignment)', async () => {
+    const res = await request(app)
+      .post('/api/v1/productos')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre_producto: 'Prod Test MA', unidad_medida: 'ud', coste_unitario: 1, id_cliente: 99999 });
+    expect(res.status).toBe(200);
+    expect(res.body.producto.id_cliente).toBeUndefined();
+    // limpiar
+    if (res.body.producto?.id_producto) {
+      await request(app).delete(`/api/v1/productos/${res.body.producto.id_producto}`).set('Authorization', `Bearer ${token}`);
+    }
+  });
+
+  it('DELETE /productos/:id borra (happy path)', async () => {
+    const c = await request(app).post('/api/v1/productos').set('Authorization', `Bearer ${token}`)
+      .send({ nombre_producto: 'Prod Test Del', unidad_medida: 'ud', coste_unitario: 1 });
+    const id = c.body.producto?.id_producto;
+    expect(id).toBeTruthy();
+    const del = await request(app).delete(`/api/v1/productos/${id}`).set('Authorization', `Bearer ${token}`);
+    expect(del.status).toBe(200);
+  });
+});
+
+afterAll(async () => {
+  await prisma.$disconnect();
+});
+
+// ---------------------------------------------------------------------------
+// Categorias (tabla global, sin scoping por cliente)
 // ---------------------------------------------------------------------------
 describe('GET /api/v1/categorias', () => {
   it('returns categorias list', async () => {
@@ -242,8 +389,4 @@ describe('GET /api/v1/categorias', () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.categorias)).toBe(true);
   });
-});
-
-afterAll(async () => {
-  await prisma.$disconnect();
 });

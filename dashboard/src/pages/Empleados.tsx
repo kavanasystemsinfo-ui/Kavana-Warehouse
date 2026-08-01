@@ -35,7 +35,7 @@ export function Empleados() {
   if (loading) return <div className="loading"><div className="spinner" />Cargando empleados...</div>
 
   const empleadosFiltrados = filtroCentro
-    ? empleados.filter(e => (e as any).asignaciones?.[0]?.centro?.id_centro === Number(filtroCentro))
+    ? empleados.filter(e => e.asignaciones?.[0]?.centro?.id_centro === Number(filtroCentro))
     : empleados;
 
   return (
@@ -118,14 +118,14 @@ export function Empleados() {
             </thead>
             <tbody>
               {empleadosFiltrados.length === 0 ? (
-                <tr><td colSpan={5} style={{ color: '#9ca3af' }}>No hay empleados en este centro</td></tr>
+                <tr><td colSpan={5} style={{ color: '#6b7280' }}>No hay empleados en este centro</td></tr>
               ) : (
                 empleadosFiltrados.map(e => (
                   <tr key={e.id_usuario}>
                     <td><strong>{e.nombre} {e.apellidos || ''}</strong></td>
                     <td>{e.email}</td>
                     <td>{e.numero_empleado || '—'}</td>
-                    <td>{(e as any).asignaciones?.[0]?.centro?.nombre_centro || '—'}</td>
+                    <td>{e.asignaciones?.[0]?.centro?.nombre_centro || '—'}</td>
                     <td><span className={`badge ${e.estado === 'activo' ? 'badge-success' : 'badge-secondary'}`}>{e.estado}</span></td>
                   </tr>
                 ))

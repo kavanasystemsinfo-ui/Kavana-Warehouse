@@ -9,20 +9,55 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const { PrismaClient } = require('@prisma/client');
+const logger = require('./lib/logger');
 
 const app = express();
 app.set('trust proxy', true);
-app.use(cors({ origin: true, credentials: true }));
+// CORS: whitelist de orígenes (evita reflejar cualquier dominio con credentials)
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:4001,http://localhost:4000')
+  .split(',').map(o => o.trim()).filter(Boolean);
+app.use(cors({
+  origin: (origin, cb) => {
+    // Permitir requests sin Origin (curl, Postman, server-to-server)
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error('Origen no permitido por CORS'));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'cleanstock-jwt-secret';
+const jwtSecretRaw = process.env.JWT_SECRET;
+if (process.env.NODE_ENV === 'production' && !jwtSecretRaw) {
+  console.error('[FATAL] JWT_SECRET no definido en producción. Abortando arranque.');
+  process.exit(1);
+}
+const JWT_SECRET = jwtSecretRaw || 'cleanstock-jwt-secret-dev';
 
 // ----- Auth middleware -----
-const auth = (req, res, next) => {
+// Resuelve id_cliente desde BD y lo popula en req.user para que los handlers
+// apliquen scoping multi-tenant sin re-consultar (evita fugas cross-tenant).
+const auth = async (req, res, next) => {
   const h = req.headers.authorization;
   if (!h?.startsWith('Bearer ')) return res.status(401).json({ error: 'Token requerido' });
-  try { req.user = jwt.verify(h.split(' ')[1], JWT_SECRET); next(); }
-  catch { res.status(401).json({ error: 'Token invalido' }); }
+  try {
+    const decoded = jwt.verify(h.split(' ')[1], JWT_SECRET);
+    let idCliente = decoded.id_cliente;
+    const u = await prisma.usuario.findUnique({ where: { id_usuario: decoded.id_usuario } });
+    if (!u) return res.status(401).json({ error: 'Token invalido' });
+    if (!idCliente && u.id_cliente) idCliente = u.id_cliente;
+    req.user = {
+      id_usuario: u.id_usuario,
+      email: u.email,
+      rol: u.rol,
+      is_super_admin: u.is_super_admin,
+      id_cliente: idCliente,
+    };
+    next();
+  } catch (e) {
+    if (e.name === 'TokenExpiredError') return res.status(401).json({ error: 'Token expirado. Inicie sesión nuevamente.' });
+    res.status(401).json({ error: 'Token invalido' });
+  }
 };
 const supervisorOnly = (req, res, next) => {
   if (req.user.rol !== 'supervisor') return res.status(403).json({ error: 'Solo supervisor' });
@@ -42,28 +77,30 @@ app.post('/api/v1/auth/login', async (req, res) => {
       ? await prisma.usuario.findUnique({ where: { email } })
       : await prisma.usuario.findFirst({ where: { username: email } });
     if (!u || !(await bcrypt.compare(password, u.password_hash))) return res.status(401).json({ error: 'Credenciales invalidas' });
-    const token = jwt.sign({ id_usuario: u.id_usuario, email: u.email, rol: u.rol, is_super_admin: u.is_super_admin }, JWT_SECRET, { expiresIn: '12h' });
+    const token = jwt.sign({ id_usuario: u.id_usuario, email: u.email, rol: u.rol, is_super_admin: u.is_super_admin, id_cliente: u.id_cliente }, JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '2h' });
     res.json({ token, usuario: { id_usuario: u.id_usuario, nombre: u.nombre, email: u.email, username: u.username, rol: u.rol, is_super_admin: u.is_super_admin } });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 
 // ----- DASHBOARD -----
 app.get('/api/v1/dashboard', auth, async (req, res) => {
   try {
+    const idCliente = req.user.id_cliente;
+    const filtro = idCliente ? { id_cliente: idCliente } : {};
     const tp = await prisma.producto.count();
-    const tc = await prisma.centro.count();
-    const te = await prisma.usuario.count({ where: { rol: 'limpiador' } });
-    const bs = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as c FROM inventario_centros WHERE cantidad_actual <= stock_minimo AND stock_minimo > 0`);
-    const ch = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as c FROM registro_movimientos WHERE fecha_hora >= CURRENT_DATE`);
+    const tc = await prisma.centro.count({ where: filtro });
+    const te = await prisma.usuario.count({ where: { rol: 'limpiador', ...(idCliente ? { id_cliente: idCliente } : {}) } });
+    const bs = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as c FROM inventario_centros ic JOIN centros c ON ic.id_centro = c.id_centro WHERE ic.cantidad_actual <= ic.stock_minimo AND ic.stock_minimo > 0 ${idCliente ? `AND c.id_cliente = ${Number(idCliente)}` : ''}`);
+    const ch = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as c FROM registro_movimientos rm JOIN centros c ON rm.id_centro = c.id_centro WHERE rm.fecha_hora >= CURRENT_DATE ${idCliente ? `AND c.id_cliente = ${Number(idCliente)}` : ''}`);
     res.json({ totalProductos: tp, totalCentros: tc, totalEmpleados: te, bajoStock: parseInt(bs[0]?.c||0), consumosHoy: parseInt(ch[0]?.c||0), topConsumos: [] });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
 
 // Dashboard — Consumption data (frontend)
 app.get('/api/v1/dashboard/consumption', auth, async (req, res) => {
   try {
-    const { centro, producto, desde, hasta } = req.query;
-    // Return basic consumption data
+    const idCliente = req.user.id_cliente;
+    const filtro = idCliente ? ` AND c.id_cliente = ${Number(idCliente)}` : '';
     const movs = await prisma.$queryRawUnsafe(`
       SELECT rm.*, p.nombre_producto, p.unidad_medida, p.coste_unitario,
              c.nombre_centro, u.nombre as usuario_nombre
@@ -71,7 +108,7 @@ app.get('/api/v1/dashboard/consumption', auth, async (req, res) => {
       JOIN productos p ON rm.id_producto = p.id_producto
       JOIN centros c ON rm.id_centro = c.id_centro
       JOIN usuarios u ON rm.id_usuario = u.id_usuario
-      WHERE rm.cantidad < 0
+      WHERE rm.cantidad < 0${filtro}
       ORDER BY rm.fecha_hora DESC LIMIT 50
     `);
     const total = movs.reduce((s, m) => s + Math.abs(Number(m.cantidad)), 0);
@@ -91,18 +128,20 @@ app.get('/api/v1/dashboard/consumption', auth, async (req, res) => {
         usuario: { nombre: m.usuario_nombre }
       }))
     });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
 
 // Dashboard — Alerts (frontend)
 app.get('/api/v1/dashboard/alerts', auth, async (req, res) => {
   try {
+    const idCliente = req.user.id_cliente;
+    const filtro = idCliente ? ` AND c.id_cliente = ${Number(idCliente)}` : '';
     const criticas = await prisma.$queryRawUnsafe(`
       SELECT ic.*, p.nombre_producto, c.nombre_centro
       FROM inventario_centros ic
       JOIN productos p ON ic.id_producto = p.id_producto
       JOIN centros c ON ic.id_centro = c.id_centro
-      WHERE ic.cantidad_actual <= 0
+      WHERE ic.cantidad_actual <= 0${filtro}
       ORDER BY c.nombre_centro
     `);
     const advertencias = await prisma.$queryRawUnsafe(`
@@ -110,14 +149,14 @@ app.get('/api/v1/dashboard/alerts', auth, async (req, res) => {
       FROM inventario_centros ic
       JOIN productos p ON ic.id_producto = p.id_producto
       JOIN centros c ON ic.id_centro = c.id_centro
-      WHERE ic.cantidad_actual > 0 AND ic.cantidad_actual <= ic.stock_minimo AND ic.stock_minimo > 0
+      WHERE ic.cantidad_actual > 0 AND ic.cantidad_actual <= ic.stock_minimo AND ic.stock_minimo > 0${filtro}
       ORDER BY c.nombre_centro
     `);
     res.json({
       criticas: criticas.map(c => ({ id: c.id_centro + '-' + c.id_producto, centro: c.nombre_centro, producto: c.nombre_producto, cantidad_actual: c.cantidad_actual })),
       advertencias: advertencias.map(a => ({ id: a.id_centro + '-' + a.id_producto, centro: a.nombre_centro, producto: a.nombre_producto, cantidad_actual: a.cantidad_actual }))
     });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
 
 // Dashboard — Desviaciones (mermas de inventario: registrado vs físico)
@@ -144,7 +183,6 @@ app.post('/api/v1/demo/reset', auth, async (req, res) => {
       const id = cli.id_cliente;
       await prisma.registroMovimiento.deleteMany({ where: { centro: { id_cliente: id } } });
       await prisma.inventarioCentro.deleteMany({ where: { centro: { id_cliente: id } } });
-      await prisma.consumoTeorico.deleteMany({ where: { centro: { id_cliente: id } } });
       await prisma.asignacionPersonal.deleteMany({ where: { centro: { id_cliente: id } } });
       const uids = (await prisma.usuario.findMany({ where: { id_cliente: id } })).map(u => u.id_usuario);
       await prisma.reglaNotificacion.deleteMany({ where: { id_supervisor: { in: uids } } });
@@ -154,8 +192,8 @@ app.post('/api/v1/demo/reset', auth, async (req, res) => {
     }
     res.json({ ok: true, mensaje: 'Datos de demostración eliminados. Panel limpio listo.' });
   } catch (e) {
-    console.error('[demo/reset]', e);
-    res.status(500).json({ error: e.message });
+    logger.error('demo/reset', e);
+    res.status(500).json({ error: 'Error interno' });
   }
 });
 
@@ -165,11 +203,20 @@ app.get('/api/v1/categorias', auth, async (req, res) => {
     const cats = await prisma.$queryRawUnsafe(`SELECT id_categoria, nombre, icono, descripcion FROM categorias ORDER BY nombre`);
     res.json({ categorias: cats }); 
   }
-  catch(e) { res.status(500).json({ error: e.message }); }
+  catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 app.post('/api/v1/categorias', auth, supervisorOnly, async (req, res) => {
-  try { const c = await prisma.categoria.create({ data: req.body }); res.json({ categoria: c }); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+  try {
+    const c = await prisma.categoria.create({
+      data: {
+        nombre: req.body.nombre,
+        icono: req.body.icono,
+        descripcion: req.body.descripcion
+      }
+    });
+    res.json({ categoria: c });
+  }
+  catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
 
 // ----- PRODUCTOS -----
@@ -181,11 +228,22 @@ app.get('/api/v1/productos', auth, async (req, res) => {
     if (categoria) where.id_categoria = parseInt(categoria);
     const prods = await prisma.producto.findMany({ where, include: { categoria: true }, orderBy: { nombre_producto: 'asc' } });
     res.json({ productos: prods });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
 app.post('/api/v1/productos', auth, supervisorOnly, async (req, res) => {
-  try { const p = await prisma.producto.create({ data: req.body }); res.json({ producto: p }); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+  try {
+    const p = await prisma.producto.create({
+      data: {
+        nombre_producto: req.body.nombre_producto,
+        unidad_medida: req.body.unidad_medida || 'unidades',
+        coste_unitario: Number(req.body.coste_unitario) || 0,
+        stock_minimo_alerta: Number(req.body.stock_minimo_alerta) || 5,
+        id_categoria: req.body.id_categoria ? Number(req.body.id_categoria) : null
+      }
+    });
+    res.json({ producto: p });
+  }
+  catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
 app.put('/api/v1/productos/:id', auth, supervisorOnly, async (req, res) => {
   try {
@@ -197,7 +255,7 @@ app.put('/api/v1/productos/:id', auth, supervisorOnly, async (req, res) => {
     if (req.body.stock_minimo_alerta !== undefined) data.stock_minimo_alerta = Number(req.body.stock_minimo_alerta);
     const p = await prisma.producto.update({ where: { id_producto: id }, data });
     res.json({ producto: p });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 app.delete('/api/v1/productos/:id', auth, supervisorOnly, async (req, res) => {
   try {
@@ -208,7 +266,7 @@ app.delete('/api/v1/productos/:id', auth, supervisorOnly, async (req, res) => {
     }
     await prisma.producto.delete({ where: { id_producto: id } });
     res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 
 // ----- CENTROS -----
@@ -230,22 +288,46 @@ app.get('/api/v1/centros', auth, async (req, res) => {
       },
     });
     res.json({ centros });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 app.post('/api/v1/centros', auth, supervisorOnly, async (req, res) => {
-  try { const c = await prisma.centro.create({ data: req.body }); res.json({ centro: c }); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+  try {
+    const idCliente = req.user.id_cliente;
+    if (!idCliente) return res.status(403).json({ error: 'Sin empresa asociada' });
+    const c = await prisma.centro.create({
+      data: {
+        nombre_centro: req.body.nombre_centro,
+        direccion: req.body.direccion,
+        presupuesto_mensual: Number(req.body.presupuesto_mensual) || 0,
+        id_cliente: idCliente
+      }
+    });
+    res.json({ centro: c });
+  }
+  catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
 app.put('/api/v1/centros/:id', auth, supervisorOnly, async (req, res) => {
   try {
     const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Centro inválido' });
+    // Scoping multi-tenant: el centro debe pertenecer al cliente del usuario.
+    let idCliente = req.user?.id_cliente;
+    if (!idCliente && req.user?.id_usuario) {
+      const u = await prisma.usuario.findUnique({ where: { id_usuario: req.user.id_usuario } });
+      idCliente = u?.id_cliente;
+    }
+    const existente = await prisma.centro.findUnique({ where: { id_centro: id } });
+    if (!existente) return res.status(404).json({ error: 'Centro no encontrado' });
+    if (idCliente && existente.id_cliente !== idCliente) {
+      return res.status(403).json({ error: 'Sin acceso a este centro' });
+    }
     const data = {};
     if (req.body.nombre_centro !== undefined) data.nombre_centro = req.body.nombre_centro;
     if (req.body.direccion !== undefined) data.direccion = req.body.direccion;
     if (req.body.presupuesto_mensual !== undefined) data.presupuesto_mensual = Number(req.body.presupuesto_mensual);
     const c = await prisma.centro.update({ where: { id_centro: id }, data });
     res.json({ centro: c });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 
 // ----- EMPLEADOS -----
@@ -263,26 +345,33 @@ app.get('/api/v1/empleados', auth, supervisorOnly, async (req, res) => {
       orderBy: { nombre: 'asc' },
     });
     res.json({ empleados: emps });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 app.post('/api/v1/empleados', auth, supervisorOnly, async (req, res) => {
   try {
     const { nombre, email, password, numero_empleado, id_centro } = req.body;
     if (!nombre || !email) return res.status(400).json({ error: 'Nombre y email obligatorios' });
-    const hash = await bcrypt.hash(password || 'cleanstock', 12);
-    let idCliente = req.user?.id_cliente;
-    if (!idCliente && req.user?.id_usuario) {
-      const u = await prisma.usuario.findUnique({ where: { id_usuario: req.user.id_usuario } });
-      idCliente = u?.id_cliente;
+    if (!password) return res.status(400).json({ error: 'La contraseña es obligatoria' });
+    const idCliente = req.user.id_cliente;
+    if (!idCliente) return res.status(403).json({ error: 'Sin empresa asociada' });
+    if (id_centro && !(await requireCentroDelCliente(id_centro, idCliente))) {
+      return res.status(403).json({ error: 'Sin acceso a este centro' });
     }
-    const u = await prisma.usuario.create({
-      data: { nombre, email, password_hash: hash, numero_empleado, id_cliente: idCliente, rol: 'limpiador' },
+    const hash = await bcrypt.hash(password, 12);
+    const result = await prisma.$transaction(async (tx) => {
+      const u = await tx.usuario.create({
+        data: { nombre, email, password_hash: hash, numero_empleado, id_cliente: idCliente, rol: 'limpiador' },
+      });
+      if (id_centro) {
+        await tx.asignacionPersonal.create({ data: { id_usuario: u.id_usuario, id_centro, fecha_inicio: new Date() } });
+      }
+      return u;
     });
-    if (id_centro) {
-      await prisma.asignacionPersonal.create({ data: { id_usuario: u.id_usuario, id_centro, fecha_inicio: new Date() } });
-    }
-    res.json({ empleado: u });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    res.json({ empleado: result });
+  } catch(e) {
+    if (e.code === 'P2002') return res.status(409).json({ error: 'El email ya está registrado' });
+    res.status(500).json({ error: 'Error interno' });
+  }
 });
 
 // Centro activo del usuario logueado (app empleado)
@@ -299,35 +388,55 @@ app.get('/api/v1/asignaciones/active', auth, async (req, res) => {
     });
     if (!asignacion) return res.status(404).json({ error: 'No tienes un centro asignado' });
     res.json({ asignacion: { centro: asignacion.centro } });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 
-// ----- INVENTARIO -----
+// ----- INVENTARIO (scoping multi-tenant) -----
+const requireCentroDelCliente = async (idCentro, idCliente) => {
+  if (!idCentro) return false;
+  const c = await prisma.centro.findUnique({ where: { id_centro: Number(idCentro) } });
+  return !!c && (idCliente == null || c.id_cliente === idCliente);
+};
+
 app.get('/api/v1/inventario', auth, async (req, res) => {
   try {
     const { centro, search } = req.query;
     const where = {};
-    if (centro) where.id_centro = parseInt(centro);
+    if (centro) {
+      if (!(await requireCentroDelCliente(centro, req.user.id_cliente))) {
+        return res.status(403).json({ error: 'Sin acceso a este centro' });
+      }
+      where.id_centro = parseInt(centro);
+    } else if (req.user.id_cliente) {
+      const centros = await prisma.centro.findMany({ where: { id_cliente: req.user.id_cliente }, select: { id_centro: true } });
+      where.id_centro = { in: centros.map(c => c.id_centro) };
+    }
     const items = await prisma.inventarioCentro.findMany({ where, include: { producto: { include: { categoria: true } }, centro: true } });
     let result = items;
     if (search) result = items.filter(i => i.producto.nombre.toLowerCase().includes(search.toLowerCase()));
     res.json({ inventario: result });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
 app.post('/api/v1/inventario', auth, supervisorOnly, async (req, res) => {
   try {
     const { id_centro, id_producto, cantidad_actual, stock_minimo } = req.body;
+    if (!(await requireCentroDelCliente(id_centro, req.user.id_cliente))) {
+      return res.status(403).json({ error: 'Sin acceso a este centro' });
+    }
     const item = await prisma.inventarioCentro.upsert({
       where: { id_centro_id_producto: { id_centro, id_producto } },
       update: { cantidad_actual, stock_minimo, fecha_actualizacion: new Date() },
       create: { id_centro, id_producto, cantidad_actual, stock_minimo }
     });
     res.json({ inventario: item });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
 app.post('/api/v1/inventario/reponer', auth, supervisorOnly, async (req, res) => {
   try {
     const { id_centro, id_producto, cantidad } = req.body;
+    if (!(await requireCentroDelCliente(id_centro, req.user.id_cliente))) {
+      return res.status(403).json({ error: 'Sin acceso a este centro' });
+    }
     const inv = await prisma.inventarioCentro.findUnique({ where: { id_centro_id_producto: { id_centro, id_producto } } });
     const nueva = (inv?.cantidad_actual || 0) + cantidad;
     await prisma.inventarioCentro.upsert({
@@ -336,38 +445,44 @@ app.post('/api/v1/inventario/reponer', auth, supervisorOnly, async (req, res) =>
       create: { id_centro, id_producto, cantidad_actual: cantidad }
     });
     res.json({ message: 'Repuesto' });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
 
-// Stock inventory con productos (para frontend getProductos)
+// Stock inventory con productos (para frontend getProductos) — scoping multi-tenant
 app.get('/api/v1/stock/inventory', auth, async (req, res) => {
   try {
     const { centro } = req.query;
-    let sql = `SELECT ic.id_centro, ic.id_producto, ic.cantidad_actual,
-               c.nombre_centro,
-               p.id_producto as prod_id, p.nombre_producto, p.unidad_medida, p.stock_minimo_alerta, p.coste_unitario, p.id_categoria
-               FROM inventario_centros ic
-               JOIN centros c ON ic.id_centro = c.id_centro
-               JOIN productos p ON ic.id_producto = p.id_producto`;
-    if (centro) sql += ` WHERE ic.id_centro = ${parseInt(centro)}`;
-    sql += ` ORDER BY p.nombre_producto`;
-    const items = await prisma.$queryRawUnsafe(sql);
+    const where = {};
+    if (centro) {
+      if (!(await requireCentroDelCliente(centro, req.user.id_cliente))) {
+        return res.status(403).json({ error: 'Sin acceso a este centro' });
+      }
+      where.id_centro = parseInt(centro);
+    } else if (req.user.id_cliente) {
+      const centros = await prisma.centro.findMany({ where: { id_cliente: req.user.id_cliente }, select: { id_centro: true } });
+      where.id_centro = { in: centros.map(c => c.id_centro) };
+    }
+    const items = await prisma.inventarioCentro.findMany({
+      where,
+      include: { producto: true, centro: { select: { nombre_centro: true } } },
+      orderBy: { id_producto: 'asc' }
+    });
     const result = items.map(i => ({
       id_centro: i.id_centro,
       id_producto: i.id_producto,
       cantidad_actual: i.cantidad_actual,
-      centro: { nombre_centro: i.nombre_centro },
+      centro: { nombre_centro: i.centro?.nombre_centro },
       producto: {
-        id_producto: i.prod_id,
-        nombre_producto: i.nombre_producto,
-        unidad_medida: i.unidad_medida,
-        stock_minimo_alerta: i.stock_minimo_alerta,
-        coste_unitario: i.coste_unitario,
-        id_categoria: i.id_categoria
+        id_producto: i.producto.id_producto,
+        nombre_producto: i.producto.nombre_producto,
+        unidad_medida: i.producto.unidad_medida,
+        stock_minimo_alerta: i.producto.stock_minimo_alerta,
+        coste_unitario: i.producto.coste_unitario,
+        id_categoria: i.producto.id_categoria
       }
     }));
     res.json({ inventario: result });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
 
 // Consumir stock (app empleado)
@@ -393,47 +508,75 @@ app.post('/api/v1/stock/consume', auth, async (req, res) => {
       inventario: { id_centro, id_producto, cantidad_actual: updated.cantidad_actual, producto: { id_producto: updated.producto.id_producto, nombre_producto: updated.producto.nombre_producto, unidad_medida: updated.producto.unidad_medida, stock_minimo_alerta: updated.producto.stock_minimo_alerta } },
       movimiento: { id_movimiento: mov.id_movimiento, cantidad: mov.cantidad, fecha_hora: mov.fecha_hora }
     });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 
-// ----- CONSUMOS -----
+// ----- CONSUMOS (scoping multi-tenant) -----
 app.get('/api/v1/consumos', auth, async (req, res) => {
   try {
     const { centro } = req.query;
     const where = {};
-    if (centro) where.id_centro = parseInt(centro);
+    if (centro) {
+      if (!(await requireCentroDelCliente(centro, req.user.id_cliente))) {
+        return res.status(403).json({ error: 'Sin acceso a este centro' });
+      }
+      where.id_centro = parseInt(centro);
+    } else if (req.user.id_cliente) {
+      const centros = await prisma.centro.findMany({ where: { id_cliente: req.user.id_cliente }, select: { id_centro: true } });
+      where.id_centro = { in: centros.map(c => c.id_centro) };
+    }
     const movs = await prisma.registroMovimiento.findMany({
       where, include: { producto: true, centro: true, usuario: { select: { nombre: true } } },
       orderBy: { fecha_hora: 'desc' }, take: 200
     });
     res.json({ consumos: movs });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
 app.post('/api/v1/consumos', auth, async (req, res) => {
   try {
     const { id_centro, id_producto, cantidad } = req.body;
+    if (!(await requireCentroDelCliente(id_centro, req.user.id_cliente))) {
+      return res.status(403).json({ error: 'Sin acceso a este centro' });
+    }
     const inv = await prisma.inventarioCentro.findUnique({ where: { id_centro_id_producto: { id_centro, id_producto } } });
     if (!inv || inv.cantidad_actual < cantidad) return res.status(400).json({ error: 'Stock insuficiente' });
     await prisma.inventarioCentro.update({ where: { id_centro_id_producto: { id_centro, id_producto } }, data: { cantidad_actual: inv.cantidad_actual - cantidad } });
     const mov = await prisma.registroMovimiento.create({ data: { id_centro, id_producto, id_usuario: req.user.id_usuario, cantidad: -Math.abs(cantidad) } });
     res.json({ consumo: mov });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
 
-// ----- INCIDENCIAS -----
+// ----- INCIDENCIAS (scoping multi-tenant) -----
 app.get('/api/v1/incidencias', auth, async (req, res) => {
   try {
-    const incs = await prisma.incidencia.findMany({ include: { centro: true, usuario: { select: { nombre: true } } }, orderBy: { fecha_creacion: 'desc' } });
+    const where = req.user.id_cliente
+      ? { centro: { id_cliente: req.user.id_cliente } }
+      : {};
+    const incs = await prisma.incidencia.findMany({ where, include: { centro: true, usuario: { select: { nombre: true } } }, orderBy: { fecha_creacion: 'desc' } });
     res.json({ incidencias: incs });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
 app.post('/api/v1/incidencias', auth, async (req, res) => {
-  try { const inc = await prisma.incidencia.create({ data: { ...req.body, id_usuario: req.user.id_usuario } }); res.json({ incidencia: inc }); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+  try {
+    const { id_centro } = req.body;
+    if (!(await requireCentroDelCliente(id_centro, req.user.id_cliente))) {
+      return res.status(403).json({ error: 'Sin acceso a este centro' });
+    }
+    const inc = await prisma.incidencia.create({ data: { id_centro, id_usuario: req.user.id_usuario, categoria: req.body.categoria, titulo: req.body.titulo, descripcion: req.body.descripcion, foto_url: req.body.foto_url } });
+    res.json({ incidencia: inc });
+  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
 app.put('/api/v1/incidencias/:id', auth, supervisorOnly, async (req, res) => {
-  try { const inc = await prisma.incidencia.update({ where: { id_incidencia: parseInt(req.params.id) }, data: { estado: req.body.estado } }); res.json({ incidencia: inc }); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+  try {
+    const id = parseInt(req.params.id);
+    const inc = await prisma.incidencia.findUnique({ where: { id_incidencia: id } });
+    if (!inc) return res.status(404).json({ error: 'Incidencia no encontrada' });
+    if (req.user.id_cliente && inc.id_centro && !(await requireCentroDelCliente(inc.id_centro, req.user.id_cliente))) {
+      return res.status(403).json({ error: 'Sin acceso a esta incidencia' });
+    }
+    const updated = await prisma.incidencia.update({ where: { id_incidencia: id }, data: { estado: req.body.estado } });
+    res.json({ incidencia: updated });
+  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
 
 // ============================
@@ -448,47 +591,48 @@ app.post('/api/v1/auth/register-empresa', async (req, res) => {
       return res.status(400).json({ error: 'Faltan campos obligatorios' });
     }
 
-    // Crear cliente
-    const cliente = await prisma.cliente.create({
-      data: {
-        nombre_empresa,
-        email_contacto: email,
-        telefono,
-        plan: 'basic',
-        estado: 'trial',
-        trial_fin: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
-      }
-    });
+    // Crear cliente + centro + usuario + asignación en una sola transacción
+    const { cliente, centro, usuario } = await prisma.$transaction(async (tx) => {
+      const cliente = await tx.cliente.create({
+        data: {
+          nombre_empresa,
+          email_contacto: email,
+          telefono,
+          plan: 'basic',
+          estado: 'trial',
+          trial_fin: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+        }
+      });
 
-    // Crear centro por defecto
-    const centro = await prisma.centro.create({
-      data: {
-        nombre_centro: 'Centro Principal',
-        id_cliente: cliente.id_cliente,
-      }
-    });
+      const centro = await tx.centro.create({
+        data: {
+          nombre_centro: 'Centro Principal',
+          id_cliente: cliente.id_cliente,
+        }
+      });
 
-    // Crear usuario admin del cliente
-    const hash = await bcrypt.hash(password, 12);
-    const usuario = await prisma.usuario.create({
-      data: {
-        nombre: nombre_responsable,
-        email,
-        password_hash: hash,
-        rol: 'supervisor',
-        estado: 'activo',
-        id_cliente: cliente.id_cliente,
-        telefono,
-      }
-    });
+      const hash = await bcrypt.hash(password, 12);
+      const usuario = await tx.usuario.create({
+        data: {
+          nombre: nombre_responsable,
+          email,
+          password_hash: hash,
+          rol: 'supervisor',
+          estado: 'activo',
+          id_cliente: cliente.id_cliente,
+          telefono,
+        }
+      });
 
-    // Asignar al centro por defecto
-    await prisma.asignacionPersonal.create({
-      data: {
-        id_usuario: usuario.id_usuario,
-        id_centro: centro.id_centro,
-        fecha_inicio: new Date(),
-      }
+      await tx.asignacionPersonal.create({
+        data: {
+          id_usuario: usuario.id_usuario,
+          id_centro: centro.id_centro,
+          fecha_inicio: new Date(),
+        }
+      });
+
+      return { cliente, centro, usuario };
     });
 
     // Enviar email de bienvenida
@@ -533,7 +677,7 @@ app.post('/api/v1/auth/register-empresa', async (req, res) => {
     });
   } catch(e) {
     if (e.code === 'P2002') return res.status(409).json({ error: 'El email ya está registrado' });
-    res.status(500).json({ error: e.message });
+    logger.error('api', e); res.status(500).json({ error: 'Error interno' });
   }
 });
 
@@ -548,7 +692,7 @@ app.get('/api/v1/admin/clientes', auth, superAdminOnly, async (req, res) => {
       orderBy: { fecha_registro: 'desc' }
     });
     res.json({ clientes });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 
 app.get('/api/v1/admin/clientes/:id', auth, superAdminOnly, async (req, res) => {
@@ -562,7 +706,7 @@ app.get('/api/v1/admin/clientes/:id', auth, superAdminOnly, async (req, res) => 
     });
     if (!cliente) return res.status(404).json({ error: 'Cliente no encontrado' });
     res.json({ cliente });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 
 app.put('/api/v1/admin/clientes/:id', auth, superAdminOnly, async (req, res) => {
@@ -580,7 +724,7 @@ app.put('/api/v1/admin/clientes/:id', auth, superAdminOnly, async (req, res) => 
       data,
     });
     res.json({ cliente, mensaje: 'Cliente actualizado' });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 
 app.get('/api/v1/admin/stats', auth, superAdminOnly, async (req, res) => {
@@ -593,7 +737,7 @@ app.get('/api/v1/admin/stats', auth, superAdminOnly, async (req, res) => {
     const pro = await prisma.cliente.count({ where: { plan: 'pro' } });
     const ingresos_mensuales = (basic * 9) + (pro * 29);
     res.json({ stats: { total, activos, trials, expirados, basic, pro, ingresos_mensuales } });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 
 // Login ahora también devuelve is_super_admin

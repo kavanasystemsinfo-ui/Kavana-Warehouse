@@ -15,12 +15,14 @@ quién cogió qué, dónde y cuándo, con alertas automáticas de desviación."*
   Plaza de Toros, Museo Bellas Artes).
 
 ## 3. Decisión de producto
-- **MVP-vendible**: encargada registra consumos por centro desde móvil (1 clic)
+- **MVP-vendible**: encargada registra consumos por centro desde el panel web (1 clic)
   + dashboard de desviaciones por centro. NO depende de que el limpiador use la app.
-- **Evolución**: el limpiador consume directo (PWA) si hay adopción.
+- **Decisión de alcance (aplicada):** esperar que el limpiador registre consumo introduce
+  fricción → **se descartó**. El limpiador no usa ninguna app; el consumo lo hace el
+  supervisor o personal adecuado. La "evolución" de PWA del limpiador quedó fuera del alcance.
 
 ## 4. Funcionalidades priorizadas (roadmap)
-1. Registro de consumo por centro (móvil encargada) — YA EXISTE
+1. Registro de consumo por centro (panel web de la encargada) — YA EXISTE
 2. Dashboard comparativo por centro + desviación real vs teórico — AÑADIDO (15/07)
 3. Alertas de anomalía (motor de reglas) — YA EXISTE
 4. Reporte para justificar pedidos (CSV) — YA EXISTE

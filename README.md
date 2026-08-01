@@ -1,8 +1,8 @@
 # CleanStock
 
-**SaaS de control de inventario para empresas de limpieza**
+**SaaS de trazabilidad de consumo para encargados de limpieza con centros descentralizados**
 
-CleanStock permite a supervisores ver quién ha cogido qué, dónde y cuándo, con alertas de stock mínimo. Los operarios consumen productos desde su móvil con un solo clic.
+CleanStock permite a supervisores y personal de control ver qué producto se ha consumido, dónde y cuándo, con alertas de stock mínimo y desviaciones por centro. **El consumo lo registra el supervisor o personal adecuado** (desde el panel web, también accesible desde móvil) — los limpiadores **no usan ninguna app**.
 
 ---
 
@@ -13,9 +13,10 @@ CleanStock permite a supervisores ver quién ha cogido qué, dónde y cuándo, c
 | 🌐 Landing | `https://cleanstock.kavanasystems.com/welcome/` |
 | 📝 Registro (30 días gratis) | `https://cleanstock.kavanasystems.com/registro/` |
 | 📊 Panel supervisor | `https://cleanstock.kavanasystems.com/` |
-| 📱 App operario | `https://cleanstock.kavanasystems.com/empleado/` |
 | 🔧 Admin panel | `https://cleanstock.kavanasystems.com/admin/` |
 | 💚 Health | `https://cleanstock.kavanasystems.com/api/v1/health` |
+
+> **Nota de alcance:** No hay app móvil del limpiador. El registro de consumos se hace desde el panel del supervisor (responsive, usable desde el móvil del encargado). Ver `docs/REUNION_DIRECTIVA_2026-07-15.md` para el rediseño de visión de negocio.
 
 ---
 
@@ -23,7 +24,7 @@ CleanStock permite a supervisores ver quién ha cogido qué, dónde y cuándo, c
 
 | Capa | Tecnología |
 |------|------------|
-| **Frontend** | React + Vite + TailwindCSS |
+| **Frontend** | React + Vite + TypeScript (dashboard supervisor) |
 | **Backend** | Node.js + Express + Prisma ORM |
 | **Database** | PostgreSQL 16 (Docker) |
 | **Auth** | JWT + bcrypt |
@@ -38,15 +39,17 @@ CleanStock permite a supervisores ver quién ha cogido qué, dónde y cuándo, c
 ```
 clean-stock/
 ├── src/
-│   ├── app.js              # API Express (todo en un archivo)
+│   ├── app.js              # API Express (todo en un archivo, 38 endpoints)
 │   ├── server.js           # Entry point
+│   ├── lib/logger.js       # Logger estructurado
+│   ├── controllers/        # costeController, deviationController, purchaseController
 │   └── __tests__/
-│       └── api.test.js     # 17 tests de integración
+│       └── api.test.js     # 26 tests de integración
 ├── prisma/
-│   ├── schema.prisma       # Modelo de datos
+│   ├── schema.prisma       # Modelo de datos (10 modelos)
 │   └── seed.js             # Datos de ejemplo
-├── dashboard/              # Panel supervisor (React)
-├── mobile/                 # App operario (React + Capacitor)
+├── dashboard/              # Panel supervisor (React + Vite + TS)
+├── mobile/                 # App legacy (no usada en producción — ver nota de alcance)
 ├── landing/                # Página de aterrizaje (HTML)
 ├── docker-compose.yml      # Infraestructura completa
 ├── Dockerfile.api          # Build de la API
@@ -70,7 +73,7 @@ docker compose up -d
 
 ```env
 DATABASE_URL=postgresql://kavana:***@db:5432/kavana_cleanstock
-JWT_SECRET=tu...tock <kavanasystems.info@gmail.com>
+JWT_SECRET=*** <kavanasystems.info@gmail.com>
 ```
 
 ---
@@ -89,6 +92,8 @@ JWT_SECRET=tu...tock <kavanasystems.info@gmail.com>
 | `GET` | `/api/v1/dashboard` | Stats generales |
 | `GET` | `/api/v1/dashboard/consumption` | Consumos con filtros |
 | `GET` | `/api/v1/dashboard/alerts` | Alertas de stock crítico/bajo |
+| `GET` | `/api/v1/dashboard/deviations` | Desviación stock registrado vs físico |
+| `GET` | `/api/v1/dashboard/costes` | Coste € por centro vs presupuesto |
 
 ### CRUD (supervisor)
 | Método | Ruta | Descripción |
@@ -99,16 +104,14 @@ JWT_SECRET=tu...tock <kavanasystems.info@gmail.com>
 | `GET/POST` | `/api/v1/empleados` | Empleados |
 | `GET/POST` | `/api/v1/inventario` | Stock por centro |
 | `POST` | `/api/v1/inventario/reponer` | Reponer producto |
-| `GET/POST` | `/api/v1/consumos` | Historial de consumos |
+| `GET/POST` | `/api/v1/consumos` | Historial de consumos (registrado por supervisor) |
 | `GET/POST` | `/api/v1/incidencias` | Incidencias |
 
-### App operario
+### Registro de consumo (desde el panel del supervisor)
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| `GET` | `/api/v1/asignaciones/active` | Centro activo del empleado |
 | `GET` | `/api/v1/stock/inventory?centro=X` | Inventario del centro |
-| `POST` | `/api/v1/stock/consume` | Consumir producto |
-| `POST` | `/api/v1/incidencias` | Reportar incidencia |
+| `POST` | `/api/v1/stock/consume` | Registrar consumo (panel del supervisor) |
 
 ### Admin (super admin)
 | Método | Ruta | Descripción |
@@ -126,11 +129,11 @@ JWT_SECRET=tu...tock <kavanasystems.info@gmail.com>
 
 ## 🧪 Tests (TDD)
 
-17 tests de integración que verifican todos los endpoints críticos:
+26 tests de integración (Jest) que verifican auth, CRUD, scoping multi-tenant y escritura:
 
 ```bash
 npm test
-# 17 passed, 17 total
+# 26 passed, 26 total
 ```
 
 ---
@@ -149,8 +152,8 @@ npm test
 
 ## ⚠️ Notas técnicas
 
-- **Supervisor:** login con email, menú: Dashboard, Empleados, Centros, Inventario, Incidencias
-- **Operario:** login con email, ve su centro asignado, consume productos, reporta incidencias
+- **Supervisor:** login con email, menú: Dashboard, Empleados, Centros, Inventario, Incidencias, Desviaciones, Costes. Registra consumos y repone stock.
+- **Empleado (limpiador):** figura en el modelo de datos (`Usuario.rol='limpiador'`, `AsignacionPersonal`) para trazabilidad de quién está asignado a qué centro, **pero no usa ninguna app** — su consumo lo registra el supervisor.
 - **Admin:** `https://cleanstock.kavanasystems.com/admin/` usuario `jorge`
 - **Email:** usa Gmail App Password (verificación 2 pasos → App Passwords)
 - **Registro:** crea empresa + centro + usuario supervisor + trial 30d + email credenciales

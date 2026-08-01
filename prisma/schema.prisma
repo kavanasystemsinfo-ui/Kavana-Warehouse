@@ -75,13 +75,12 @@ model Centro {
   nombre_centro String
   direccion           String?
   presupuesto_mensual Float     @default(0.0)
-  id_cliente    Int?
+  id_cliente    Int       // OBLIGATORIO: un centro SIEMPRE pertenece a una empresa (evita huérfanos que escapan al scoping)
 
-  cliente             Cliente?  @relation(fields: [id_cliente], references: [id_cliente])
+  cliente             Cliente  @relation(fields: [id_cliente], references: [id_cliente])
   asignaciones        AsignacionPersonal[]
   inventarioCentros   InventarioCentro[]
   registroMovimientos RegistroMovimiento[]
-  consumosTeoricos    ConsumoTeorico[]
   incidencias         Incidencia[]
   reglasNotificacion  ReglaNotificacion[]
 
@@ -104,7 +103,6 @@ model Producto {
   categoria         Categoria? @relation(fields: [id_categoria], references: [id_categoria])
   inventarioCentros   InventarioCentro[]
   registroMovimientos RegistroMovimiento[]
-  consumosTeoricos    ConsumoTeorico[]
   reglasNotificacion  ReglaNotificacion[]
 
   @@map("productos")
@@ -145,8 +143,8 @@ model InventarioCentro {
   stock_minimo   Int    @default(0)
   fecha_actualizacion DateTime @default(now()) @db.Timestamptz()
 
-  centro  Centro  @relation(fields: [id_centro], references: [id_centro])
-  producto Producto @relation(fields: [id_producto], references: [id_producto])
+  centro  Centro  @relation(fields: [id_centro], references: [id_centro], onDelete: Cascade)
+  producto Producto @relation(fields: [id_producto], references: [id_producto], onDelete: Cascade)
 
   @@id([id_centro, id_producto])
   @@map("inventario_centros")
@@ -184,28 +182,12 @@ model RegistroMovimiento {
   cantidad      Int      // Negativo = salida, Positivo = entrada
   fecha_hora    DateTime @default(now())
 
-  usuario  Usuario  @relation(fields: [id_usuario], references: [id_usuario])
-  centro   Centro   @relation(fields: [id_centro], references: [id_centro])
-  producto Producto @relation(fields: [id_producto], references: [id_producto])
-
-  @@index([id_centro, fecha_hora], name: "idx_movimientos_centro_fecha")
-  @@map("registro_movimientos")
-}
-
-// =============================================================================
-// Model: ConsumoTeorico
-// Descripción: Cantidad estándar mensual asignada a un centro por producto
-// =============================================================================
-model ConsumoTeorico {
-  id_centro        Int
-  id_producto      Int
-  cantidad_teorica Int // Cantidad mensual permitida
-
+  usuario  Usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
   centro   Centro   @relation(fields: [id_centro], references: [id_centro], onDelete: Cascade)
   producto Producto @relation(fields: [id_producto], references: [id_producto], onDelete: Cascade)
 
-  @@id([id_centro, id_producto])
-  @@map("consumo_teorico")
+  @@index([id_centro, fecha_hora], name: "idx_movimientos_centro_fecha")
+  @@map("registro_movimientos")
 }
 
 // =============================================================================

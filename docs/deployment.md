@@ -1,8 +1,8 @@
 # Deployment Guide — Kavana CleanStock
 
 > **Target:** DevOps, IT Operations
-> **Version:** 4.0.0
-> **Last Updated:** 2026-07-11
+> **Version:** 4.1.0 (actualizado 2026-07-16, post-rediseño de visión de negocio)
+> **Last Updated:** 2026-07-16
 
 ---
 
@@ -16,31 +16,35 @@
                        │  :443   │
                        └────┬────┘
                             │
-           ┌────────────────┼────────────────┐
-           ▼                ▼                ▼
-    ┌────────────┐  ┌────────────┐  ┌──────────────┐
-    │ Dashboard  │  │   Mobile   │  │  API Express │
-    │ :4001      │  │ :4000      │  │ :3000        │
-    │ React SPA  │  │ PWA React  │  │ + Prisma     │
-    │ (Docker)   │  │ (Docker)   │  │ (Docker)     │
-    └────────────┘  └────────────┘  └──────┬───────┘
-                                           │
-                                           ▼
-                                    ┌────────────┐
-                                    │ PostgreSQL │
-                                    │ :5432      │
-                                    │ (Docker)   │
-                                    └────────────┘
+              ┌─────────────┴─────────────┐
+              ▼                           ▼
+    ┌────────────┐              ┌──────────────┐
+    │ Dashboard  │              │  API Express │
+    │ :4001      │              │ :3000        │
+    │ React SPA  │              │ + Prisma     │
+    │ (Docker)   │              │ (Docker)     │
+    └────────────┘              └──────┬───────┘
+                                       │
+                                       ▼
+                                ┌────────────┐
+                                │ PostgreSQL │
+                                │ :5432      │
+                                │ (Docker)   │
+                                └────────────┘
 ```
+
+> **Nota de alcance (2026-07-16):** El proyecto **no tiene app móvil del limpiador**.
+> El registro de consumos lo hace el **supervisor o personal de control** desde el dashboard
+> web (responsive, accesible desde el móvil del encargado). La carpeta `mobile/` existe
+> en el repo pero **no se despliega** (es código legacy del enfoque anterior).
 
 | Componente | Plataforma | Coste |
 |---|---|---|
 | Servidor | Hetzner VPS (2 cores, 3.7 GB) | ~4€/mes |
 | Base de datos | PostgreSQL 16 (Docker) | Incluido |
 | Backend API | Express + Prisma (Docker) | Incluido |
-| Frontends | nginx reverse proxy | Incluido |
+| Frontend | nginx reverse proxy (dashboard :4001) | Incluido |
 | SSL | Let's Encrypt (certbot) | Gratis |
-| APK Android | Capacitor (build local) | Gratis |
 | **TOTAL** | | **~4€/mes** |
 
 ## Servidor
@@ -67,9 +71,6 @@ server {
     location /api/ {
         proxy_pass http://127.0.0.1:3000;
     }
-    location /empleado/ {
-        proxy_pass http://127.0.0.1:4000/;
-    }
     location / {
         proxy_pass http://127.0.0.1:4001;
     }
@@ -80,22 +81,10 @@ server {
 
 | Ruta | Servicio interno | Puerto |
 |---|---|---|
-| `https://cleanstock.kavanasystems.com/` | Dashboard supervisor | :4001 |
-| `https://cleanstock.kavanasystems.com/empleado/` | App móvil limpiador | :4000 |
+| `https://cleanstock.kavanasystems.com/` | Dashboard supervisor (web, responsive) | :4001 |
 | `https://cleanstock.kavanasystems.com/api/v1/*` | API REST | :3000 |
 
-## APK Android (Capacitor)
-
-La app móvil tiene Capacitor configurado para generar un APK. El APK carga `https://cleanstock.kavanasystems.com/empleado` en una WebView nativa.
-
-**Para generar el APK desde Android Studio:**
-
-1. Clonar el repo: `git clone https://github.com/kavanasystemsinfo-ui/clean-stock.git`
-2. Android Studio → File → Open → `clean-stock/mobile/android/`
-3. Build → Build APK
-4. APK en `android/app/build/outputs/apk/debug/app-debug.apk`
-
-No es necesario reinstalar el APK tras cambios en la web — la app siempre carga el contenido actualizado del servidor.
+> No hay ruta `/empleado/` en producción. El registro de consumos se hace desde el dashboard.
 
 ## Mantenimiento
 
@@ -129,7 +118,9 @@ docker builder prune -f
 |---|---|---|
 | `admin@kavana.com` | Admin | CleanStock2026! |
 | `supervisor@kavana.com` | Supervisor | CleanStock2026! |
-| `empleado@kavana.com` | Limpiador | CleanStock2026! |
+
+> El rol `limpiador` existe en el modelo de datos (`Usuario.rol`) para trazabilidad de
+> asignación a centros, **pero no tiene credenciales de acceso a ninguna app**.
 
 ## Migración futura a Serverless
 

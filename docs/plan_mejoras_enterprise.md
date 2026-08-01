@@ -1,93 +1,104 @@
-# Plan de Implementación: Mejoras Enterprise para Kavana CleanStock (CLECE / ISS)
+# Plan de Implementación: Mejoras Enterprise — CleanStock
 
-> **Estado:** ✅ Todos los módulos han sido implementados en el Hito 6 (v6.0.0)
-> **Última actualización:** 2026-06-06
-
-Este documento detalla el plan técnico para incorporar funcionalidades avanzadas orientadas a grandes operadoras de *facility services* (como CLECE o ISS). El foco está puesto en la rentabilidad financiera por centro de coste, el control de desviaciones de consumo y el reporte de incidencias desde movilidad.
+> **Estado:** Parcialmente implementado (actualizado 2026-07-16 con datos reales del código en producción)
+> **⚠️ Versión anterior marcaba todo como ✅ IMPLEMENTADO. Esta versión refleja lo que realmente existe.**
+> Los módulos A (Costes), B (Desviaciones), C (Incidencias backend) y D (Compras) están en producción.
+> El módulo E (Notificaciones) y las conexiones en tiempo real son planificados.
 
 ---
 
-## 1. Módulos y Cambios Propuestos
+## Módulo A: Costes, Presupuestos y Traducción Financiera ✅ IMPLEMENTADO
 
-### Módulo A: Costes, Presupuestos y Traducción Financiera ✅ IMPLEMENTADO
 Permite asignar presupuestos en euros por centro y valorar económicamente el consumo de stock.
 
 1. **Base de Datos (Prisma)** ✅:
-   - [`Producto.coste_unitario`](prisma/schema.prisma:68) (Float) añadido en `schema.prisma`
-   - [`Centro.presupuesto_mensual`](prisma/schema.prisma:47) (Float) añadido en `schema.prisma`
+   - `Producto.coste_unitario` (Float) — añadido en schema
+   - `Centro.presupuesto_mensual` (Float) — añadido en schema
 2. **Endpoints Backend** ✅:
-   - [`GET /api/v1/dashboard/consumption`](src/controllers/dashboardController.js:14) modificado: incluye `coste_unitario`, `presupuesto_mensual`, `gasto_total_euros`, `porcentaje_consumido`
+   - `GET /api/v1/dashboard/costes` — implementado en `src/controllers/costeController.js`
+   - Incluye coste unitario, presupuesto mensual, gasto total €, porcentaje consumido
 3. **Frontend Dashboard** ✅:
-   - Dashboard muestra métricas en euros con barra de progreso del presupuesto consumido
+   - Página `/costes` con tabla de gasto por centro y barra de presupuesto
 
 ---
 
-### Módulo B: Consumo Teórico vs. Consumo Real (Desviación) ✅ IMPLEMENTADO
-Permite alertar a los supervisores cuando en un colegio u oficina se está gastando más producto químico del estipulado técnicamente en el contrato.
+## Módulo B: Consumo Teórico vs. Consumo Real (Desviación) ✅ IMPLEMENTADO
+
+Compara el stock registrado (`cantidad_actual`) contra el stock físico real tras conteo del supervisor.
+Permite alertar cuando se detecta material faltante (merma).
 
 1. **Base de Datos (Prisma)** ✅:
-   - Modelo [`ConsumoTeorico`](prisma/schema.prisma:161-171) creado con PK compuesta `(id_centro, id_producto)`
+   - `InventarioCentro.stock_fisico` (campo nullable para los conteos físicos)
 2. **Endpoints Backend** ✅:
-   - [`GET /api/v1/dashboard/deviations`](src/controllers/deviationController.js:12) implementado con filtros por centro y mes, cálculo de desviación, porcentaje y coste
+   - `GET /api/v1/dashboard/deviations` — implementado en `src/controllers/deviationController.js`
+   - Filtros por centro y mes, cálculo de desviación, porcentaje y coste
 3. **Frontend Dashboard** ✅:
-   - Nueva sección ["Desviaciones"](dashboard/src/pages/Deviations.tsx) con tabla comparativa y filtros
+   - Página `/desviaciones` con tabla comparativa y filtros
+
+> **Nota técnica:** El modelo `ConsumoTeorico` fue **eliminado** en la auditoría ECC (M15, julio 2026)
+> por ser tabla muerta (no se usaba en ningún endpoint). Las desviaciones se calculan comparando
+> `cantidad_actual` (stock registrado) vs `stock_fisico` (conteo real), no contra tabla teórica.
 
 ---
 
-### Módulo C: Reporte de Incidencias en la Instalación ✅ IMPLEMENTADO
-Permite a los operarios (limpiadores) actuar como sensores del estado del edificio y reportar daños en maquinaria o griferías de forma rápida.
+## Módulo C: Reporte de Incidencias en la Instalación ✅ BACKEND IMPLEMENTADO / ⏳ FRONTEND MÓVIL PENDIENTE
+
+Los **supervisores o personal de control** reportan averías (fontanería, electricidad, etc.) y les dan seguimiento desde el dashboard.
 
 1. **Base de Datos (Prisma)** ✅:
-   - Modelo [`Incidencia`](prisma/schema.prisma:177-192) creado con categorías: `limpieza`, `fontaneria`, `electricidad`, `cerrajeria`, `otros`
-2. **Endpoints Backend** ✅:
-   - [`POST /api/v1/incidencias`](src/controllers/incidenciaController.js:13) — creación con validación de centro activo
-   - [`GET /api/v1/incidencias`](src/controllers/incidenciaController.js:76) — listado con filtros por centro/estado/categoría
-   - [`PUT /api/v1/incidencias/:id`](src/controllers/incidenciaController.js:105) — actualización de estado
-3. **Frontend Móvil (Limpiador)** ⏳ Pendiente:
-   - Pendiente de añadir pantalla de reporte en la PWA móvil
-4. **Frontend Dashboard (Supervisor)** ✅:
-   - Nueva sección ["Incidencias"](dashboard/src/pages/Incidents.tsx) con bandeja de seguimiento y cambio de estado
+   - Modelo `Incidencia` con categorías: `limpieza`, `fontaneria`, `electricidad`, `cerrajeria`, `otros`
+2. **Endpoints Backend** (implementados en `src/app.js`, no en controlador separado) ✅:
+   - `POST /api/v1/incidencias` — creación con validación de centro activo
+   - `GET /api/v1/incidencias` — listado con filtros por centro/estado/categoría
+   - `PUT /api/v1/incidencias/:id` — actualización de estado (pendiente→en_proceso→resuelta)
+3. **Frontend Supervisor** ✅:
+   - Página `/incidents` con bandeja de seguimiento y cambio de estado
+4. **Frontend (registro de consumo)** ✅ En el dashboard del supervisor:
+   - El supervisor registra el consumo y reporta incidencias desde el panel web (responsive).
+   - No hay app móvil del limpiador (rediseño 2026-07-16: el limpiador no usa ninguna app).
 
 ---
 
-### Módulo D: Propuestas de Pedidos de Compra Automatizados (Auto-Restock) ✅ IMPLEMENTADO
-Agiliza las compras automatizando el cálculo de qué hace falta pedir al proveedor para cada centro.
+## Módulo D: Propuestas de Pedidos de Compra Automatizados ✅ IMPLEMENTADO
+
+Genera una propuesta de pedido basada en el stock mínimo por centro.
 
 1. **Endpoints Backend** ✅:
-   - [`GET /api/v1/purchases/proposal`](src/controllers/purchaseController.js:13) implementado: analiza inventario, calcula déficit, redondea a múltiplo de 5, estima coste total
-2. **Frontend Dashboard** ⏳ Pendiente:
+   - `GET /api/v1/purchases/proposal` — implementado en `src/controllers/purchaseController.js`
+   - Analiza inventario, calcula déficit (`stock_minimo - cantidad_actual`), redondea a múltiplo de 5, estima coste total
+2. **Frontend Dashboard** ⏳ **Pendiente**:
    - Pendiente de añadir botón "Generar Propuesta de Pedido" en la sección de Inventario
 
 ---
 
-### Bonus: Sistema de Notificaciones para Supervisores ✅ IMPLEMENTADO
-Sistema de reglas y notificaciones para mantener informados a los supervisores.
+## Módulo E: Notificaciones y Tiempo Real ⏳ PLANIFICADO (NO implementado)
 
-1. **Base de Datos (Prisma)** ✅:
-   - Modelo [`ReglaNotificacion`](prisma/schema.prisma:198-212) — configuración de alertas por centro/operario/producto
-   - Modelo [`Notificacion`](prisma/schema.prisma:218-229) — historial de notificaciones
-2. **Endpoints Backend** ✅:
-   - [`GET /api/v1/notifications`](src/controllers/notificationsController.js:12) — historial del supervisor
-   - [`PUT /api/v1/notifications/:id/read`](src/controllers/notificationsController.js:30) — marcar como leída
-   - [`GET/POST /api/v1/notifications/rules`](src/controllers/notificationsController.js:51) — CRUD de reglas
-   - [`DELETE /api/v1/notifications/rules/:id`](src/controllers/notificationsController.js:101) — eliminar regla
-3. **Frontend Dashboard** ✅:
-   - Nueva sección ["Notificaciones"](dashboard/src/pages/Notifications.tsx) con historial y gestión de reglas
+**Las tablas existen en la BD pero NO hay endpoints CRUD ni frontend enrutado.**
+Se intentó implementar pero la página de Notificaciones no está enrutada en el dashboard.
+
+1. **Base de Datos (Prisma)** ✅ (solo tablas):
+   - `ReglaNotificacion` — configuración de alertas por centro/usuario/producto
+   - `Notificacion` — historial de notificaciones
+2. **Endpoints Backend** ❌ **No implementados**:
+   - No existe `GET /api/v1/notifications` ni `PUT /api/v1/notifications/:id/read`
+   - No existe CRUD de reglas de notificación
+   - El endpoint `POST /api/v1/stock/consume` **no** genera notificaciones automáticas
+3. **Socket.IO / Tiempo real** ❌ **No implementado**:
+   - No hay servidor Socket.IO ni suscripciones en el frontend
+   - Las alertas se consultan vía `GET /api/v1/dashboard/alerts` (REST polling)
+4. **Frontend Dashboard** ❌ **No enrutado**:
+   - El archivo `pages/Notifications.tsx` existe pero **no tiene ruta** en `App.tsx`
+   - Lo mismo para `Alerts.tsx` (la página que conectaba Socket.IO)
 
 ---
 
-## 2. Plan de Verificación
+## 2. Plan de Verificación — Estado real
 
-### Pruebas de Integración y Unitarias ⏳ Pendiente
-- [ ] Tests para incidencias (creación, listado, actualización de estado)
-- [ ] Tests para desviaciones (cálculo de porcentajes, filtros por centro/mes)
-- [ ] Tests para propuestas de compra (cálculo de déficit, redondeo, coste estimado)
-- [ ] Tests para notificaciones (CRUD de reglas, marcado como leída)
-
-### Verificación Manual ✅
-- [x] Acceder al Dashboard, sección Desviaciones: muestra comparativa teórico vs. real
-- [x] Crear incidencia desde API: aparece en el Dashboard con estado "pendiente"
-- [x] Cambiar estado de incidencia a "resuelta" desde el Dashboard
-- [x] Consumo en Dashboard muestra gasto en euros y porcentaje de presupuesto
-- [x] Propuesta de compra genera pedidos con redondeo a múltiplo de 5
-- [x] Notificaciones: crear regla, ver historial, marcar como leída
+| Tipo | Estado | Notas |
+|------|--------|-------|
+| **Tests automatizados** (Jest) | ✅ 26 tests | Cubren auth, CRUD, scoping multi-tenant (SECURITY), escritura |
+| Tests para incidencias | ❌ No cubiertos específicamente | Las rutas de incidencias existen pero sin test dedicado |
+| Tests para desviaciones | ❌ No cubiertos | El controlador existe, sin test |
+| Tests para propuestas de compra | ❌ No cubiertos | El controlador existe, sin test |
+| Tests para notificaciones | ❌ No aplica | Módulo no implementado |
+| Verificación manual | ✅ Parcial | Centros, consumos, incidencias, desviaciones verificados manualmente |

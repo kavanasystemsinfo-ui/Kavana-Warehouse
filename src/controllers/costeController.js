@@ -90,9 +90,23 @@ async function setPresupuesto(req, res) {
     const usuario = req.user;
     if (!usuario) return res.status(401).json({ error: 'No autenticado' });
     const idCentro = Number(req.params.id_centro);
+    if (!Number.isInteger(idCentro) || idCentro <= 0) {
+      return res.status(400).json({ error: 'Centro inválido' });
+    }
     const valor = Number(req.body.presupuesto_mensual);
     if (!Number.isFinite(valor) || valor < 0) {
       return res.status(400).json({ error: 'Presupuesto inválido' });
+    }
+    // Scoping multi-tenant: el centro debe pertenecer al cliente del usuario.
+    let idCliente = usuario.id_cliente;
+    if (!idCliente && usuario.id_usuario) {
+      const u = await prisma.usuario.findUnique({ where: { id_usuario: usuario.id_usuario } });
+      idCliente = u?.id_cliente;
+    }
+    const centro = await prisma.centro.findUnique({ where: { id_centro: idCentro } });
+    if (!centro) return res.status(404).json({ error: 'Centro no encontrado' });
+    if (idCliente && centro.id_cliente !== idCliente) {
+      return res.status(403).json({ error: 'Sin acceso a este centro' });
     }
     const updated = await prisma.centro.update({
       where: { id_centro: idCentro },
