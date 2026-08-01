@@ -42,7 +42,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <img src="/logo.png" alt="Kavana CleanStock" className="login-logo" />
+          <img src="/logo-empleado.png" alt="Kavana CleanStock" className="login-logo" />
           <h1>Kavana CleanStock</h1>
           <p className="login-subtitle">Control de Stock — Limpiador</p>
         </div>

@@ -1,5 +1,3 @@
-version: '3.8'
-
 name: kavana-cleanstock
 
 # =============================================================================
@@ -45,7 +43,7 @@ services:
         condition: service_healthy
     environment:
       # Database — uses Docker service name 'db' instead of localhost
-      DATABASE_URL: "postgresql://kavana:${DB_PASSWORD:-kavana_pass}@db:5432/kavana_cleanstock"
+      DATABASE_URL: "postgresql://kavana:***@db:5432/kavana_cleanstock"
       # JWT
       JWT_SECRET: ${JWT_SECRET:-kavana-cleanstock-jwt-secret-prod-2026}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
@@ -55,17 +53,25 @@ services:
       PORT: 3000
       NODE_ENV: production
       CORS_ORIGIN: "*"
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      # SMTP (for registration emails)
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: ${SMTP_FROM:-noreply@cleanstock.com}
     ports:
       - "3000:3000"
     networks:
       - kavana-net
     # Health check via Express /health endpoint
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      start_period: 30s
-      retries: 3
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 40s
+      retries: 5
 
   # ---------------------------------------------------------------------------
   # Dashboard Supervisor (Vite + React + nginx)
@@ -84,10 +90,10 @@ services:
     networks:
       - kavana-net
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
-      interval: 30s
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 10s
       timeout: 5s
-      start_period: 10s
+      start_period: 20s
       retries: 3
 
   # ---------------------------------------------------------------------------
@@ -107,10 +113,10 @@ services:
     networks:
       - kavana-net
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
-      interval: 30s
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 10s
       timeout: 5s
-      start_period: 10s
+      start_period: 20s
       retries: 3
 
 # ---------------------------------------------------------------------------

@@ -1,43 +1,15 @@
-# Dependencies
+# Kavana CleanStock — .gitignore
 node_modules/
-dashboard/node_modules/
-mobile/node_modules/
-
-# Environment
+dist/
 .env
-.env.local
-.env.production
-
-# Logs
+.env.*
 logs/
 *.log
-npm-debug.log*
-
-# Build / Dist
-dist/
-dashboard/dist/
-mobile/dist/
-build/
-
-# Coverage
-coverage/
-
-# IDE / Editor
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# TypeScript
+*.bak*
+*.backup
 *.tsbuildinfo
-
-# Credenciales (NUNCA subir a GitHub)
-credenciales.txt
-credentiales.txt
-connections string neontech.txt
-connections_string*.txt
+SUPABASE_MIGRATION_ENDPOINT_INVENTORY.md
+server-minimal.js
+.DS_Store
+.vercel
+.env*

@@ -12,15 +12,36 @@ export interface AuthResponse {
 export interface Usuario {
   id_usuario: number
   nombre: string
+  apellidos?: string
   email: string
-  rol: 'limpiador' | 'supervisor' | 'admin'
+  rol: 'limpiador' | 'supervisor'
   estado: string
+  numero_empleado?: string
+}
+
+export interface Categoria {
+  id_categoria: number
+  nombre: string
+  icono: string
+  descripcion?: string
 }
 
 export interface Centro {
   id_centro: number
   nombre_centro: string
   direccion?: string
+  telefono?: string
+  _count?: { usuarios?: number; inventario_centros?: number }
+}
+
+export interface Empleado {
+  id_usuario: number
+  nombre: string
+  apellidos?: string
+  email: string
+  numero_empleado?: string
+  estado: string
+  centro?: Centro
 }
 
 export interface Producto {
@@ -320,8 +341,39 @@ export async function getUsuarios(): Promise<{ id_usuario: number; nombre: strin
 }
 
 export async function getCentros(): Promise<Centro[]> {
-  const res = await apiFetch<{ centros: Centro[] }>('/stock/centros')
+  const res = await apiFetch<{ centros: Centro[] }>('/centros')
   return res.centros
+}
+
+export async function createCentro(data: { nombre: string; direccion?: string; telefono?: string }): Promise<{ centro: Centro }> {
+  return apiFetch('/centros', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function getCategorias(): Promise<Categoria[]> {
+  const res = await apiFetch<{ categorias: Categoria[] }>('/categorias')
+  return res.categorias
+}
+
+export async function getEmpleados(): Promise<Empleado[]> {
+  const res = await apiFetch<{ empleados: Empleado[] }>('/empleados')
+  return res.empleados
+}
+
+export async function createEmpleado(data: {
+  nombre: string; apellidos?: string; email: string; password: string
+  numero_empleado?: string; id_centro: number
+}): Promise<{ empleado: Empleado }> {
+  return apiFetch('/empleados', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function getConsumos(centroId?: number): Promise<any[]> {
+  const qs = centroId ? `?centro=${centroId}` : ''
+  const res = await apiFetch<{ consumos: any[] }>(`/consumos${qs}`)
+  return res.consumos
+}
+
+export async function resolverIncidencia(id: number): Promise<any> {
+  return apiFetch(`/incidencias/${id}`, { method: 'PUT', body: JSON.stringify({ estado: 'resuelta' }) })
 }
 
 export async function getProductos(): Promise<Producto[]> {

@@ -5,6 +5,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  engineType = "wasm"
 }
 
 datasource db {
@@ -18,22 +19,49 @@ datasource db {
 // =============================================================================
 model Usuario {
   id_usuario    Int       @id @default(autoincrement())
-  nombre        String    @db.VarChar(100)
-  email         String    @unique @db.VarChar(100)
-  password_hash String    @db.VarChar(255)
-  rol           String    @default("limpiador") @db.VarChar(20) // limpiador | supervisor | admin
-  estado        String    @default("activo") @db.VarChar(20)    // activo | baja_medica | inactivo
+  nombre        String
+  email         String    @unique
+  username      String?   @unique
+  password_hash String
+  rol           String    @default("limpiador") // limpiador | supervisor | admin
+  estado        String    @default("activo")    // activo | baja_medica | inactivo
+  id_cliente    Int?                              // NULL para super admin
+  is_super_admin Boolean  @default(false)
+  telefono      String?
 
+  cliente           Cliente? @relation(fields: [id_cliente], references: [id_cliente])
   asignaciones       AsignacionPersonal[]
   registroMovimientos RegistroMovimiento[]
   incidencias        Incidencia[]
   reglasComoOperario ReglaNotificacion[] @relation("ReglaOperario")
   reglasComoSupervisor ReglaNotificacion[] @relation("ReglaSupervisor")
   notificaciones     Notificacion[]
-
+  pushSubscriptions  PushSubscription[] @relation("PushSubscriptionUsuario")
   tokensExpirados    RefreshToken[]
 
   @@map("usuarios")
+}
+
+// =============================================================================
+// Model: Cliente
+// Descripción: Empresas clientes del SaaS, suscripciones y planes
+// =============================================================================
+model Cliente {
+  id_cliente      Int      @id @default(autoincrement())
+  nombre_empresa  String
+  email_contacto  String
+  telefono        String?
+  plan            String   @default("basic")     // basic | pro
+  estado          String   @default("trial")     // trial | activo | expirado | cancelado
+  fecha_registro  DateTime @default(now())
+  trial_fin       DateTime
+  fecha_renovacion DateTime?
+  notas           String?
+
+  usuarios   Usuario[]
+  centros    Centro[]
+
+  @@map("clientes")
 }
 
 // =============================================================================
@@ -42,10 +70,12 @@ model Usuario {
 // =============================================================================
 model Centro {
   id_centro     Int       @id @default(autoincrement())
-  nombre_centro String    @db.VarChar(150)
-  direccion           String?   @db.VarChar(255)
-  presupuesto_mensual Float     @default(0.0) // Límite de coste mensual (ej. 300.00 €)
+  nombre_centro String
+  direccion           String?
+  presupuesto_mensual Float     @default(0.0)
+  id_cliente    Int?
 
+  cliente             Cliente?  @relation(fields: [id_cliente], references: [id_cliente])
   asignaciones        AsignacionPersonal[]
   inventarioCentros   InventarioCentro[]
   registroMovimientos RegistroMovimiento[]
@@ -62,11 +92,14 @@ model Centro {
 // =============================================================================
 model Producto {
   id_producto       Int     @id @default(autoincrement())
-  nombre_producto   String  @db.VarChar(100)
+  nombre_producto   String   @db.VarChar(100)
   unidad_medida       String  @default("unidades") @db.VarChar(20)
   stock_minimo_alerta Int     @default(5)
-  coste_unitario      Float   @default(0.0) // Coste de adquisición (ej. 1.50 €)
+  coste_unitario      Float   @default(0.0)
+  id_categoria      Int?
+  campos_extra      Json?   @default("{}")
 
+  categoria         Categoria? @relation(fields: [id_categoria], references: [id_categoria])
   inventarioCentros   InventarioCentro[]
   registroMovimientos RegistroMovimiento[]
   consumosTeoricos    ConsumoTeorico[]
@@ -79,16 +112,16 @@ model Producto {
 // Model: AsignacionPersonal
 // Descripción: Asignaciones temporales de personal a centros de trabajo.
 //   fecha_fin = NULL significa personal fijo (indefinido).
-//   Query crítica: SELECT id_centro WHERE id_usuario = ? 
-//     AND fecha_inicio <= CURRENT_DATE 
+//   Query crítica: SELECT id_centro WHERE id_usuario = ?
+//     AND fecha_inicio <= CURRENT_DATE
 //     AND (fecha_fin >= CURRENT_DATE OR fecha_fin IS NULL);
 // =============================================================================
 model AsignacionPersonal {
   id_asignacion Int   @id @default(autoincrement())
   id_usuario    Int
   id_centro     Int
-  fecha_inicio  DateTime @db.Date
-  fecha_fin     DateTime? @db.Date
+  fecha_inicio  DateTime
+  fecha_fin     DateTime?
 
   usuario Usuario @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
   centro  Centro  @relation(fields: [id_centro], references: [id_centro], onDelete: Cascade)
@@ -121,7 +154,7 @@ model InventarioCentro {
 model RefreshToken {
   id_refresh_token Int      @id @default(autoincrement())
   id_usuario       Int
-  token            String   @unique @db.VarChar(512)
+  token            String   @unique
   expires_at       DateTime
   created_at       DateTime @default(now())
   revoked          Boolean  @default(false)
@@ -144,7 +177,7 @@ model RegistroMovimiento {
   id_centro     Int
   id_producto   Int
   cantidad      Int      // Negativo = salida, Positivo = entrada
-  fecha_hora    DateTime @default(now()) @db.Timestamp(6)
+  fecha_hora    DateTime @default(now())
 
   usuario  Usuario  @relation(fields: [id_usuario], references: [id_usuario])
   centro   Centro   @relation(fields: [id_centro], references: [id_centro])
@@ -178,15 +211,15 @@ model Incidencia {
   id_incidencia  Int      @id @default(autoincrement())
   id_centro      Int
   id_usuario     Int
-  categoria      String   @db.VarChar(50) // "limpieza" | "fontaneria" | "electricidad" | "cerrajeria" | "otros"
-  titulo         String   @db.VarChar(100)
-  descripcion    String   @db.Text
+  categoria      String   // "limpieza" | "fontaneria" | "electricidad" | "cerrajeria" | "otros"
+  titulo         String
+  descripcion    String
   foto_url       String?
-  estado         String   @default("pendiente") @db.VarChar(20) // "pendiente" | "en_proceso" | "resuelta"
+  estado         String   @default("pendiente") // "pendiente" | "en_proceso" | "resuelta"
   fecha_creacion DateTime @default(now())
 
   centro  Centro  @relation(fields: [id_centro], references: [id_centro], onDelete: Cascade)
-  usuario Usuario @relation(fields: [id_usuario], references: [id_usuario])
+  usuario Usuario @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
 
   @@map("incidencias")
 }
@@ -213,17 +246,44 @@ model ReglaNotificacion {
 
 // =============================================================================
 // Model: Notificacion
-// Descripción: Historial de notificaciones enviadas a supervisores
+// Descripcion: Historial de notificaciones enviadas a supervisores
 // =============================================================================
 model Notificacion {
   id_notificacion Int      @id @default(autoincrement())
-  id_usuario      Int      // Supervisor que recibe la notificación
-  titulo          String   @db.VarChar(100)
-  mensaje         String   @db.Text
+  id_usuario      Int      // Supervisor que recibe la notificacion
+  titulo          String
+  mensaje         String
   leida           Boolean  @default(false)
   fecha_creacion  DateTime @default(now())
 
   usuario Usuario @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
 
   @@map("notificaciones")
+}
+
+// =============================================================================
+// Model: PushSubscription
+// Descripcion: Suscripciones push de los dispositivos de los usuarios
+// =============================================================================
+model PushSubscription {
+  id           Int      @id @default(autoincrement())
+  endpoint     String   @unique
+  p256dh       String
+  auth         String
+  usuarioId    Int
+  usuario      Usuario  @relation("PushSubscriptionUsuario", fields: [usuarioId], references: [id_usuario], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([usuarioId])
+}
+model Categoria {
+  id_categoria Int      @id @default(autoincrement())
+  nombre       String   @unique @db.VarChar(100)
+  icono        String?  @default("📦") @db.VarChar(10)
+  descripcion  String?
+  created_at   DateTime? @default(now()) @db.Timestamptz()
+  productos    Producto[]
+  
+  @@map("categorias")
 }

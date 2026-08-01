@@ -30,6 +30,14 @@ export function Layout() {
             <span className="sidebar-link-icon">🔔</span>
             Alertas
           </NavLink>
+          <NavLink to="/empleados" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
+            <span className="sidebar-link-icon">👥</span>
+            Empleados
+          </NavLink>
+          <NavLink to="/centros" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
+            <span className="sidebar-link-icon">🏢</span>
+            Centros
+          </NavLink>
           <NavLink to="/asignaciones" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
             <span className="sidebar-link-icon">👥</span>
             Asignaciones
@@ -54,9 +62,7 @@ export function Layout() {
         <div className="sidebar-footer">
           <div className="sidebar-user">
             <strong>{user?.nombre}</strong>
-            {user?.rol === 'admin' ? (
-              <span className="badge badge-danger" style={{ marginTop: '0.25rem', backgroundColor: '#7c3aed' }}>Admin</span>
-            ) : (
+            {user?.rol === 'supervisor' && (
               <span className="badge badge-info" style={{ marginTop: '0.25rem' }}>Supervisor</span>
             )}
           </div>

@@ -89,4 +89,8 @@ router.get('/notifications/rules', authorize('supervisor', 'admin'), notificatio
 router.post('/notifications/rules', authorize('supervisor', 'admin'), notificationsController.createRule);
 router.delete('/notifications/rules/:id', authorize('supervisor', 'admin'), notificationsController.deleteRule);
 
+// --- Push Notifications ---
+const pushRouter = require('./push');
+router.use('/push', pushRouter);
+
 module.exports = router;

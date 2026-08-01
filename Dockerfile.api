@@ -29,6 +29,9 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 appuser
 
+# Install curl for healthcheck
+RUN apk add --no-cache curl
+
 # Copy from deps stage
 COPY --from=deps --chown=appuser:nodejs /app/node_modules ./node_modules
 COPY --from=deps --chown=appuser:nodejs /app/prisma ./prisma
@@ -36,15 +39,10 @@ COPY --from=deps --chown=appuser:nodejs /app/prisma ./prisma
 # Copy application source
 COPY --chown=appuser:nodejs . .
 
-# Create startup script that runs migrations then starts server
-RUN echo '#!/bin/sh\n\
-echo "[Kavana CleanStock] Running Prisma migrations..."\n\
-npx prisma migrate deploy\n\
-echo "[Kavana CleanStock] Seeding database..."\n\
-node prisma/seed.js\n\
-echo "[Kavana CleanStock] Starting server..."\n\
-exec node src/server.js\n\
-' > /app/start.sh && chmod +x /app/start.sh && chown appuser:nodejs /app/start.sh
+# Create logs directory for winston file transport and ensure ownership
+RUN mkdir -p /app/logs && \
+    chown -R appuser:nodejs /app/logs && \
+    chmod -R 755 /app/logs
 
 USER appuser
 
@@ -52,5 +50,9 @@ EXPOSE 3000
 
 ENV NODE_ENV=production
 ENV PORT=3000
+
+# Startup script that runs migrations then starts server
+COPY --chown=appuser:nodejs start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 CMD ["/app/start.sh"]

@@ -1,69 +1,160 @@
-# Kavana CleanStock
+# CleanStock
 
-Kavana CleanStock es un sistema MES (Manufacturing Execution System) industrial multi-tenant adaptado para el control de inventario distribuido, control de producción y costes, diseñado inicialmente para fabricantes de estanterías metálicas (Puntales Titán K-100, Largueros L-2700, Bandejas E-900).
+**SaaS de control de inventario para empresas de limpieza**
 
-El sistema consta de:
-* **Backend API**: Servidor Express + Prisma (PostgreSQL) + Socket.IO para tiempo real.
-* **Mobile App (PWA/Tablet)**: Aplicación móvil para operarios de limpieza con capacidades offline.
-* **Dashboard App**: Panel de control interactivo para supervisores y administradores.
+CleanStock permite a supervisores y operarios gestionar productos, inventarios y consumos desde cualquier dispositivo. Registro con 30 días de prueba gratuita y email automático de bienvenida con credenciales.
 
 ---
 
-## Requisitos Previos
+## 🚀 Demo
 
-* Node.js v18 o superior
-* Docker y Docker Compose (para base de datos PostgreSQL en local)
+| Sitio | URL |
+|-------|-----|
+| 🌐 Landing página | `https://cleanstock.kavanasystems.com/welcome/` |
+| 📝 Registro | `https://cleanstock.kavanasystems.com/registro/` |
+| 📊 Panel supervisor | `https://cleanstock.kavanasystems.com/` |
+| 📱 App operario | `https://cleanstock.kavanasystems.com/empleado/` |
+| 🔧 Admin panel | `https://cleanstock.kavanasystems.com/admin/` |
+| 💚 Health | `https://cleanstock.kavanasystems.com/api/v1/health` |
 
-## Instalación y Configuración
+---
 
-1. Instalar dependencias en el directorio raíz:
-   ```bash
-   npm install
-   ```
-2. Instalar dependencias del panel (dashboard) y la aplicación móvil:
-   ```bash
-   cd dashboard && npm install
-   cd ../mobile && npm install
-   ```
-3. Copiar archivo de entorno `.env.example` a `.env` en la raíz y configurar las variables:
-   ```bash
-   cp .env.example .env
-   ```
-4. Levantar la base de datos en Docker:
-   ```bash
-   npm run docker:db
-   ```
-5. Ejecutar las migraciones y el seed de base de datos:
-   ```bash
-   npx prisma migrate dev
-   node prisma/seed.js
-   ```
+## 🛠️ Stack
 
-## Ejecución en Local
+| Capa | Tecnología |
+|------|------------|
+| **Frontend** | React + Vite + TailwindCSS |
+| **Backend** | Node.js + Express + Prisma ORM |
+| **Database** | PostgreSQL 16 (Docker) |
+| **Auth** | JWT + bcrypt |
+| **Email** | Nodemailer + Gmail SMTP |
+| **Infra** | Docker Compose + nginx + Let's Encrypt |
+| **Hosting** | VPS Hetzner (2 vCPU, 3.7 GB RAM) |
 
-* **Iniciar Backend API**: `npm run dev` (ejecuta nodemon en el puerto 4000)
-* **Iniciar App Móvil**: `npm run mobile:dev`
-* **Iniciar Dashboard**: `npm run dashboard:dev`
+---
 
-## Ejecutar Pruebas
+## 📁 Estructura
 
-Para validar la lógica de negocio y las validaciones de seguridad:
-```bash
-npm run test
+```
+clean-stock/
+├── src/
+│   └── app.js              # API Express (toda la lógica)
+├── prisma/
+│   ├── schema.prisma       # Modelo de datos
+│   └── seed.js             # Seed de ejemplo
+├── dashboard/              # Panel supervisor (React)
+├── mobile/                 # App operario (React + Capacitor)
+├── landing/                # Página de aterrizaje (HTML estático)
+├── api/index.js            # Entry Vercel (opcional)
+├── docker-compose.yml      # Infraestructura completa
+├── Dockerfile.api          # Build de la API
+├── nginx/                  # Configuración nginx
+└── supabase_init.sql       # Esquema para migración futura
 ```
 
 ---
 
-## Módulos Enterprise Implementados
+## 🚀 Despliegue (VPS)
 
-Recientemente hemos implementado mejoras críticas para asegurar la aplicación y dotarla de capacidad Enterprise:
+### Requisitos
+- Docker + Docker Compose
+- Dominio apuntando al VPS (A record)
+- Puerto 80/443 abierto
 
-1. **Inteligencia Financiera (OPEX y Desviaciones)**: Cálculo del "Hambre de material" en tiempo real usando Consumos Teóricos. El dashboard traduce las unidades consumidas a impacto económico (OPEX) usando el coste de adquisición del producto y alertas financieras si se supera el presupuesto asignado al centro.
-2. **Propuestas de Compra Predictivas (CSV)**: Generador inteligente de propuestas de pedido que calcula el déficit entre el stock mínimo y el actual, estimando el coste total por proveedor. Permite exportación a formato `.csv` compatible con Excel y sistemas ERP de contabilidad.
-3. **Gestión Integral de Incidencias**: Flujo completo de reportes desde el cliente móvil PWA para reportar fallos en campo (Limpieza, Fontanería, etc.) hasta el dashboard de supervisión para su resolución.
-4. **Sistema de Alertas y Reglas de Notificación**: Motor de notificaciones dinámico. Los administradores pueden suscribirse a eventos específicos (ej. "Avisarme si Carlos saca Lejía", o "Avisarme de cualquier consumo en la Fábrica Norte").
-5. **Seguridad y Anti-Fraude**: 
-   - Restricción estricta (Bypass) de Centros por ROL y protección CORS dinámica.
-   - Refactor de la arquitectura para soportar sesiones persistentes (`Refresh Tokens`) e interceptores de red para caídas de cobertura en sótanos/fábricas.
+### Pasos
 
-Para ver las decisiones arquitectónicas en detalle técnico, consulta [DECISIONES_ESTRATEGICAS.md](./DECISIONES_ESTRATEGICAS.md).
+```bash
+git clone git@github.com:kavanasystemsinfo-ui/clean-stock.git
+cd clean-stock
+cp .env.example .env
+# Editar .env con tus credenciales reales
+docker compose up -d
+# Configurar nginx + SSL (certbot)
+```
+
+### Variables de entorno
+
+```env
+DATABASE_URL=postgresql://kavana:pass@db:5432/kavana_cleanstock
+JWT_SECRET=tu-secret-seguro
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=kavanasystems.info@gmail.com
+SMTP_PASS=app-password-gmail
+SMTP_FROM=CleanStock <kavanasystems.info@gmail.com>
+```
+
+---
+
+## 📚 API
+
+### Auth
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `POST` | `/api/v1/auth/login` | Login (email o username) |
+| `POST` | `/api/v1/auth/register-empresa` | Registro + email bienvenida |
+
+### Recursos (requieren auth)
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/api/v1/dashboard` | Stats (productos, centros, empleados) |
+| `GET` | `/api/v1/categorias` | Categorías |
+| `GET` | `/api/v1/productos` | Productos (filtro search, categoria) |
+| `POST` | `/api/v1/productos` | Crear producto |
+| `GET` | `/api/v1/centros` | Centros |
+| `POST` | `/api/v1/centros` | Crear centro |
+| `GET` | `/api/v1/empleados` | Empleados |
+| `POST` | `/api/v1/empleados` | Crear empleado |
+| `GET` | `/api/v1/inventario` | Stock por centro |
+| `POST` | `/api/v1/inventario` | Ajustar stock |
+| `POST` | `/api/v1/inventario/reponer` | Reponer producto |
+| `GET` | `/api/v1/consumos` | Historial consumos |
+| `POST` | `/api/v1/consumos` | Registrar consumo |
+| `GET` | `/api/v1/incidencias` | Incidencias |
+| `POST` | `/api/v1/incidencias` | Crear incidencia |
+
+### Admin (super admin)
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/api/v1/admin/clientes` | Listar empresas |
+| `GET` | `/api/v1/admin/clientes/:id` | Detalle cliente |
+| `PUT` | `/api/v1/admin/clientes/:id` | Actualizar plan/estado |
+| `GET` | `/api/v1/admin/stats` | Estadísticas SaaS |
+
+---
+
+## 💰 Planes
+
+| Característica | Basic (9€/mes) | Pro (29€/mes) |
+|----------------|----------------|----------------|
+| Empleados | 5 usuarios | Ilimitados |
+| Centros | 3 centros | Ilimitados |
+| Historial | 60 días | Ilimitado |
+| Exportar datos | ❌ | ✅ |
+| Notificaciones | ❌ | ✅ |
+
+---
+
+## 📱 APK Android
+
+```bash
+cd mobile
+npx cap sync android
+# Abrir mobile/android/ en Android Studio
+# Build > Generate Signed Bundle/APK
+```
+
+---
+
+## ⚠️ Notas técnicas
+
+- **Auth:** login por email (clientes) o username (admin `jorge`)
+- **Email:** Gmail App Password - activar verificación 2 pasos → App Passwords
+- **Admin:** `https://cleanstock.kavanasystems.com/admin/` usuario `jorge`
+- **Registro:** crea empresa + centro principal + usuario supervisor + trial 30 días
+
+---
+
+## 🆘 Soporte
+
+kavanasystems.info@gmail.com

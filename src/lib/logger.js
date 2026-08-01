@@ -4,8 +4,13 @@
 
 const winston = require('winston');
 const path = require('path');
+const fs = require('fs');
 
 const logDir = path.join(__dirname, '..', '..', 'logs');
+// Ensure log directory exists
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir, { recursive: true });
+}
 
 const levels = {
   error: 0,

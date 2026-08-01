@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
 import { Alerts } from './pages/Alerts'
@@ -8,7 +9,8 @@ import { Inventario } from './pages/Inventario'
 import { Deviations } from './pages/Deviations'
 import { Incidents } from './pages/Incidents'
 import { Notifications } from './pages/Notifications'
-import { Layout } from './components/Layout'
+import { Empleados } from './pages/Empleados'
+import { Centros } from './pages/Centros'
 import { getStoredUser } from './lib/api'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -69,6 +71,8 @@ export default function App() {
         <Route path="deviations" element={<Deviations />} />
         <Route path="incidents" element={<Incidents />} />
         <Route path="notifications" element={<Notifications />} />
+        <Route path="empleados" element={<Empleados />} />
+        <Route path="centros" element={<Centros />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -9,6 +9,7 @@
 const prisma = require('../lib/prisma');
 const logger = require('../lib/logger');
 const { emitStockConsumed, emitStockRestocked } = require('../lib/socket');
+const { sendPushNotification } = require('../lib/push');
 
 // ---------------------------------------------------------------------------
 // GET /api/v1/stock/inventory?centro=:id
@@ -84,109 +85,107 @@ async function consumeStock(req, res) {
 
       // Si intentó especificar otro centro en el cuerpo de la petición, le denegamos acceso
       if (id_centro && Number(id_centro) !== asignacion.id_centro) {
-        return res.status(403).json({ error: 'No tienes permisos para registrar consumos en este centro.' });
+        return res.status(403).json({ error: 'No tienes permiso para consumir en ese centro.' });
       }
+
       centroId = asignacion.id_centro;
-    } else {
-      // Para supervisor/admin, id_centro es obligatorio
-      if (!centroId) {
-        return res.status(400).json({ error: 'Debe especificar el id_centro.' });
-      }
     }
 
-    // Verificar que el producto exista
-    const producto = await prisma.producto.findUnique({ where: { id_producto } });
+    // Obtener información del producto y centro
+    const producto = await prisma.producto.findUnique({
+      where: { id_producto: Number(id_producto) }
+    });
+
     if (!producto) {
       return res.status(404).json({ error: 'Producto no encontrado.' });
     }
 
-    // Verificar stock suficiente (consumo = cantidad positiva)
-    const inventarioActual = await prisma.inventarioCentro.findUnique({
-      where: {
-        id_centro_id_producto: { id_centro: centroId, id_producto },
-      },
+    const centro = await prisma.centro.findUnique({
+      where: { id_centro: centroId }
     });
 
-    if (!inventarioActual || inventarioActual.cantidad_actual - cantidad < 0) {
-      return res.status(400).json({
-        error: 'Stock insuficiente.',
-        disponible: inventarioActual?.cantidad_actual ?? 0,
-      });
+    if (!centro) {
+      return res.status(404).json({ error: 'Centro no encontrado.' });
     }
 
-    // Transacción: actualizar inventario + registrar movimiento
-    const [inventario, movimiento] = await prisma.$transaction([
-      prisma.inventarioCentro.update({
-        where: {
-          id_centro_id_producto: { id_centro: centroId, id_producto },
-        },
-        data: {
-          cantidad_actual: { decrement: cantidad }, // cantidad es positiva, decrementamos
-        },
-      }),
-      prisma.registroMovimiento.create({
-        data: {
-          id_usuario: req.user.id_usuario,
-          id_centro: centroId,
-          id_producto,
-          cantidad: -cantidad, // negativa = consumo en el log
-        },
-      }),
-    ]);
-
-    // --- Notificación en tiempo real (Sockets) ---
-    emitStockConsumed({
-      id_centro: centroId,
-      id_producto,
-      nombre_producto: producto.nombre_producto,
-      cantidad: -cantidad, // negativa = consumo para el cliente socket
-      usuario: { id_usuario: req.user.id_usuario, nombre: req.user.nombre || 'Desconocido' },
-      cantidad_actual: inventario.cantidad_actual,
-      stock_minimo_alerta: producto.stock_minimo_alerta,
-    });
-
-    // --- Sistema de Notificaciones (Reglas Supervisor) ---
-    // Buscar reglas que apliquen a este consumo
-    const reglas = await prisma.reglaNotificacion.findMany({
+    // Obtener inventario actual
+    let inventario = await prisma.inventarioCentro.findFirst({
       where: {
-        activa: true,
-        OR: [
-          { id_centro: null, id_operario: null, id_producto: null }, // Regla global
-          { id_centro: centroId },
-          { id_operario: req.user.id_usuario },
-          { id_producto: id_producto },
-        ]
+        id_centro: centroId,
+        id_producto: Number(id_producto)
       }
     });
 
-    // Filtrar reglas que coincidan de forma estricta (si tienen varios filtros)
-    const reglasAplicables = reglas.filter(r => 
-      (r.id_centro === null || r.id_centro === centroId) &&
-      (r.id_operario === null || r.id_operario === req.user.id_usuario) &&
-      (r.id_producto === null || r.id_producto === id_producto)
-    );
-
-    // Crear notificaciones en la base de datos
-    if (reglasAplicables.length > 0) {
-      const centro = await prisma.centro.findUnique({ where: { id_centro: centroId } });
-      const nombreCentro = centro ? centro.nombre_centro : `Centro ${centroId}`;
-      const operador = req.user.nombre || 'Operario desconocido';
-      
-      const mensaje = `${operador} ha retirado ${cantidad} ud de ${producto.nombre_producto} en ${nombreCentro}. Quedan ${inventario.cantidad_actual}.`;
-
-      // Evitar notificaciones duplicadas al mismo supervisor si varias reglas coinciden
-      const supervisoresSet = new Set(reglasAplicables.map(r => r.id_supervisor));
-      
-      const notificacionesData = Array.from(supervisoresSet).map(id_supervisor => ({
-        id_usuario: id_supervisor,
-        titulo: 'Alerta de Consumo',
-        mensaje: mensaje,
-        leida: false,
-      }));
-
-      await prisma.notificacion.createMany({
-        data: notificacionesData
+    // Si no existe inventario previo, crear uno con cantidad 0
+    if (!inventario) {
+      inventario = await prisma.inventarioCentro.create({
+        data: {
+          id_centro: centroId,
+          id_producto: Number(id_producto),
+          cantidad_actual: 0
+        }
       });
+    }
+
+    // Validar stock suficiente (solo para consumo, negativo)
+    if (cantidad < 0 && Math.abs(cantidad) > inventario.cantidad_actual) {
+      return res.status(400).json({ error: 'Stock insuficiente.' });
+    }
+
+    // Actualizar inventario
+    const nuevaCantidad = inventario.cantidad_actual + cantidad; // cantidad es negativa para consumo
+    inventario = await prisma.inventarioCentro.update({
+      where: {
+        id_centro_id_producto: {
+          id_centro: centroId,
+          id_producto: Number(id_producto)
+        }
+      },
+      data: {
+        cantidad_actual: nuevaCantidad
+      }
+    });
+
+    // Registrar movimiento
+    const movimiento = await prisma.registroMovimiento.create({
+      data: {
+        id_usuario: req.user.id_usuario,
+        id_centro: centroId,
+        id_producto: Number(id_producto),
+        cantidad: cantidad // negativa = consumo
+      }
+    });
+
+    // --- Notificación en tiempo real (Socket.IO) ---
+    emitStockConsumed({
+      id_centro: centroId,
+      id_producto: Number(id_producto),
+      nombre_producto: producto.nombre_producto,
+      cantidad: cantidad, // negativa = consumo
+      usuario: { id_usuario: req.user.id_usuario, nombre: req.user.nombre || 'Desconocido' },
+      cantidad_actual: nuevaCantidad,
+      stock_minimo_alerta: producto.stock_minimo_alerta
+    });
+
+    // --- Notificaciones push para el operario ---
+    try {
+      const operadorNombre = req.user.nombre || 'Operario';
+      const payload = {
+        title: 'Consumo Registrado',
+        body: `${operadorNombre} ha retirado ${Math.abs(cantidad)} ud de ${producto.nombre_producto} en ${centro.nombre_centro}. Quedan ${nuevaCantidad}.`,
+        data: {
+          type: 'consumption_confirmation',
+          centroId: centroId,
+          productoId: Number(id_producto),
+          movimientoId: movimiento.id_movimiento
+        }
+      };
+      
+      // Send to the operator who performed the action
+      await sendPushNotification(req.user.id_usuario, payload);
+    } catch (pushError) {
+      logger.error('Error sending push notification for consumption:', pushError);
+      // Don't fail the main operation
     }
 
     res.json({
@@ -195,65 +194,97 @@ async function consumeStock(req, res) {
       movimiento,
     });
   } catch (error) {
-    logger.error('Error en consumeStock:', { error: error.message, stack: error.stack, body: req.body, user: req.user?.id_usuario });
+    logger.error('Error en consumeStock:', error);
     res.status(500).json({ error: 'Error interno del servidor.' });
   }
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/v1/stock/restock (supervisor+)
+// POST /api/v1/stock/restock
 // Body: { id_producto: number, cantidad: number, id_centro: number }
 // ---------------------------------------------------------------------------
 async function restock(req, res) {
   try {
     const { id_producto, cantidad, id_centro } = req.body;
 
-    // Verificar que el producto exista
-    const producto = await prisma.producto.findUnique({ where: { id_producto } });
+    // Validar permisos (solo supervisor y admin pueden reponer)
+    if (!['supervisor', 'admin'].includes(req.user.rol)) {
+      return res.status(403).json({ error: 'No tienes permiso para realizar esta acción.' });
+    }
+
+    // Obtener información del producto y centro
+    const producto = await prisma.producto.findUnique({
+      where: { id_producto: Number(id_producto) }
+    });
+
     if (!producto) {
       return res.status(404).json({ error: 'Producto no encontrado.' });
     }
 
-    // Verificar que el centro exista
-    const centro = await prisma.centro.findUnique({ where: { id_centro } });
+    const centro = await prisma.centro.findUnique({
+      where: { id_centro: Number(id_centro) }
+    });
+
     if (!centro) {
       return res.status(404).json({ error: 'Centro no encontrado.' });
     }
 
-    // Asegurar que exista el registro de inventario (upsert)
-    const [inventario, movimiento] = await prisma.$transaction([
-      prisma.inventarioCentro.upsert({
-        where: {
-          id_centro_id_producto: { id_centro, id_producto },
-        },
-        create: {
-          id_centro,
-          id_producto,
-          cantidad_actual: cantidad,
-        },
-        update: {
-          cantidad_actual: { increment: cantidad },
-        },
-      }),
-      prisma.registroMovimiento.create({
-        data: {
-          id_usuario: req.user.id_usuario,
-          id_centro,
-          id_producto,
-          cantidad, // positiva = reposición
-        },
-      }),
-    ]);
-
-    // --- Notificación en tiempo real ---
-    emitStockRestocked({
-      id_centro,
-      id_producto,
-      nombre_producto: producto.nombre_producto,
-      cantidad,
-      usuario: { id_usuario: req.user.id_usuario, nombre: req.user.nombre || 'Desconocido' },
-      cantidad_actual: inventario.cantidad_actual,
+    // Obtener inventario actual
+    let inventario = await prisma.inventarioCentro.findFirst({
+      where: {
+        id_centro: Number(id_centro),
+        id_producto: Number(id_producto)
+      }
     });
+
+    // Si no existe inventario previo, crear uno con cantidad 0
+    if (!inventario) {
+      inventario = await prisma.inventarioCentro.create({
+        data: {
+          id_centro: Number(id_centro),
+          id_producto: Number(id_producto),
+          cantidad_actual: 0
+        }
+      });
+    }
+
+    // Actualizar inventario
+    const nuevaCantidad = inventario.cantidad_actual + cantidad; // cantidad es positiva para reposición
+    inventario = await prisma.inventarioCentro.update({
+      where: {
+        id_centro_id_producto: {
+          id_centro: Number(id_centro),
+          id_producto: Number(id_producto)
+        }
+      },
+      data: {
+        cantidad_actual: nuevaCantidad
+      }
+    });
+
+    // Registrar movimiento
+    const movimiento = await prisma.registroMovimiento.create({
+      data: {
+        id_usuario: req.user.id_usuario,
+        id_centro: Number(id_centro),
+        id_producto: Number(id_producto),
+        cantidad: cantidad // positiva = reposición
+      }
+    });
+
+    // --- Notificación en tiempo real (Socket.IO) ---
+    emitStockRestocked({
+      id_centro: Number(id_centro),
+      id_producto: Number(id_producto),
+      nombre_producto: producto.nombre_producto,
+      cantidad: cantidad, // positiva = reposición
+      usuario: { id_usuario: req.user.id_usuario, nombre: req.user.nombre || 'Desconocido' },
+      cantidad_actual: nuevaCantidad
+    });
+
+    // --- Notificaciones push para el supervisor (opcional) ---
+    // Podemos enviar notificaciones de reposición si es necesario
+    // Por ahora, nos enfocamos en las notificaciones de consumo para el operario
 
     res.json({
       message: 'Reposición registrada correctamente.',
@@ -261,7 +292,7 @@ async function restock(req, res) {
       movimiento,
     });
   } catch (error) {
-    logger.error('Error en restock:', { error: error.message, stack: error.stack, body: req.body, user: req.user?.id_usuario });
+    logger.error('Error en restock:', error);
     res.status(500).json({ error: 'Error interno del servidor.' });
   }
 }
