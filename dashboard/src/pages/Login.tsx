@@ -61,14 +61,14 @@ export function Login({ onLogin }: LoginProps) {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label" htmlFor="email">Correo electrónico</label>
+            <label className="form-label" htmlFor="email">Usuario o correo</label>
             <input
               id="email"
               className="form-input"
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="supervisor@kavana.com"
+              placeholder="warehouse"
               required
               autoFocus
             />

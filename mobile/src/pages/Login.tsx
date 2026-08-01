@@ -51,15 +51,15 @@ export function Login({ onLoginSuccess }: LoginProps) {
           {error && <div className="login-error">{error}</div>}
 
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">Usuario o email</label>
             <input
               id="email"
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="usuario@kavana.com"
+              placeholder="usuario o email"
               required
-              autoComplete="email"
+              autoComplete="username"
               autoFocus
             />
           </div>

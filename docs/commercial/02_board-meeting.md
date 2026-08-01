@@ -34,7 +34,7 @@ quién cogió qué, dónde y cuándo, con alertas automáticas de desviación."*
   - Centros: Diputación, Beneficencia, Plaza de Toros, Museo Bellas Artes
   - Producto estrella: Papel higiénico (consumo teórico 10/mes)
   - Anomalía inyectada: Plaza de Toros consumió 35 rollos (3.5x teórico)
-  - Login encargada: supervisor.demo@kavanawarehouse.com / demo1234
+  - Login encargada: warehouse / kavana
 - Endpoint `/api/v1/dashboard/deviations` + página `/desviaciones` en dashboard.
 - Ruta montada en `src/app.js` (no en routes/api.js, que es huérfano).
 

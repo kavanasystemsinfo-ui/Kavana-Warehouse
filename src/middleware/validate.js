@@ -51,8 +51,8 @@ function validateParams(schema) {
 
 const loginSchema = z.object({
   email: z
-    .string({ required_error: 'Email requerido' })
-    .email('Email inválido'),
+    .string({ required_error: 'Usuario o email requerido' })
+    .min(2, 'Usuario o email demasiado corto'),
   password: z
     .string({ required_error: 'Contraseña requerida' })
     .min(4, 'La contraseña debe tener al menos 4 caracteres'),

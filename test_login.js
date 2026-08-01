@@ -3,7 +3,7 @@ const crypto = require('crypto');
 
 async function testLogin() {
   try {
-    const email = 'supervisor@kavana.com';
+    const email = 'supervisor.demo@kavanawarehouse.com';
     const usuario = await prisma.usuario.findUnique({ where: { email } });
     if (!usuario) {
       console.log('Usuario no encontrado');

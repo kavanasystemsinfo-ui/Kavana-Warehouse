@@ -117,7 +117,7 @@ docker builder prune -f
 
 | Email | Rol | Contraseña |
 |---|---|---|
-| `supervisor.demo@kavanawarehouse.com` | Supervisor demo (Zaira García) | `demo1234` |
+| `warehouse` | Supervisor demo (Zaira García) | `kavana` |
 | `admin@kavana.com` | Admin | `KAVANA WAREHOUSE2026!` |
 | `supervisor@kavana.com` | Supervisor | `KAVANA WAREHOUSE2026!` |
 

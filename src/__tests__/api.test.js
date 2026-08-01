@@ -36,7 +36,7 @@ describe('POST /api/v1/auth/login', () => {
   it('accepts supervisor credentials and returns token', async () => {
     const res = await request(app)
       .post('/api/v1/auth/login')
-      .send({ email: 'supervisor@kavana.com', password: 'KAVANA WAREHOUSE2026!' });
+      .send({ email: 'warehouse', password: 'kavana' });
     expect(res.status).toBe(200);
     expect(res.body.token).toBeTruthy();
     expect(res.body.usuario.rol).toBe('supervisor');

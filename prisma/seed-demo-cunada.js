@@ -153,13 +153,24 @@ async function main() {
   console.log('  ✓ Inventario con conteo físico inicializado');
 
   // 5. Usuarios (supervisor + operarios)
-  const pw = await bcrypt.hash('demo1234', 10);
-  let supervisor = await prisma.usuario.findFirst({ where: { email: 'supervisor.demo@kavanawarehouse.com' } });
-  if (!supervisor) {
-    supervisor = await prisma.usuario.create({
-      data: { nombre: 'Zaira García', email: 'supervisor.demo@kavanawarehouse.com', username: 'zaira', password_hash: pw, rol: 'supervisor', id_cliente: idCliente },
+  const pw = await bcrypt.hash('kavana', 10);
+  const supervisorEmail = 'supervisor.demo@kavanawarehouse.com';
+  let supervisor;
+  const supervisorExistente = await prisma.usuario.findFirst({
+    where: { OR: [{ username: 'warehouse' }, { email: supervisorEmail }] },
+  });
+  if (supervisorExistente) {
+    // Idempotente: actualiza username y password si el usuario demo ya existe
+    supervisor = await prisma.usuario.update({
+      where: { id_usuario: supervisorExistente.id_usuario },
+      data: { username: 'warehouse', password_hash: pw, rol: 'supervisor', id_cliente: idCliente, nombre: 'Zaira García' },
     });
-    console.log('  ✓ Supervisor creado (Zaira García)');
+    console.log('  ✓ Supervisor demo actualizado (login: warehouse / kavana)');
+  } else {
+    supervisor = await prisma.usuario.create({
+      data: { nombre: 'Zaira García', email: supervisorEmail, username: 'warehouse', password_hash: pw, rol: 'supervisor', id_cliente: idCliente },
+    });
+    console.log('  ✓ Supervisor creado (Zaira García, login: warehouse / kavana)');
   }
   // 5b. Empleados (5-10 por centro) — email normal, teléfono, nº empleado 100-500
   const nombres = ['María', 'José', 'Lucía', 'Antonio', 'Carmen', 'David', 'Ana', 'Carlos', 'Pedro', 'Laura', 'Miguel', 'Sara', 'Javier', 'Elena', 'Francisco', 'Marta', 'Manuel', 'Paula', 'Diego', 'Raquel', 'Álvaro', 'Nuria', 'Pablo', 'Cristina', 'Sergio', 'Beatriz', 'Rubén', 'Patricia', 'Ángel', 'Mónica'];
@@ -215,7 +226,7 @@ async function main() {
   }
   console.log('  ✓ Empleados generados (5-10 por centro)');
 
-  console.log('\n✅ Demo lista. Login encargada: supervisor.demo@kavanawarehouse.com / demo1234');
+  console.log('\n✅ Demo lista. Login encargada: warehouse / kavana');
   console.log('   Centros: Diputación, Beneficencia, Plaza de Toros, Museo Bellas Artes');
   console.log('   Merma esperada: Plaza de Toros papel registrado 50 / físico 30 → FALTAN 20 rollos');
   console.log('   Beneficencia: pendiente de contar (sin stock_fisico)');
