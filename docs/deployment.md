@@ -116,10 +116,21 @@ docker builder prune -f
 
 | Usuario | Rol | Contraseña |
 |---|---|---|
-| `warehouse` | Supervisor demo (Zaira García) | `kavana` |
+| `warehouse` | Oficina (Zaira García, gestión total) | `kavana` |
 
 > El rol `limpiador` existe en el modelo de datos (`Usuario.rol`) para trazabilidad de
 > asignación a centros, **pero no tiene credenciales de acceso a ninguna app**.
+
+## Supervisores demo (reclutadores)
+
+Para que cualquier visitante pruebe la app sin contaminar los datos compartidos:
+
+- La **oficina** crea supervisores de prueba desde el dashboard (`/supervisores`)
+- Cada supervisores se guarda en BD con `session_id` (etiqueta única por navegador,
+  generada en `localStorage`) y `expira_en` (now + 24h)
+- Un cron diario (`cleanup_warehouse_supervisores.sh`) borra los expirados
+- La empresa ficticia con 3 meses de histórico (`seed-historico.js`) es la base
+  que todos ven al entrar con `warehouse` / `kavana`
 
 ## Migración futura a Serverless
 

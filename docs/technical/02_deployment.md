@@ -117,7 +117,7 @@ docker builder prune -f
 
 | Email | Rol | Contraseña |
 |---|---|---|
-| `warehouse` | Supervisor demo (Zaira García) | `kavana` |
+| `warehouse` | Oficina (Zaira García, gestión total) | `kavana` |
 
 > El rol `limpiador` existe en el modelo de datos (`Usuario.rol`) para trazabilidad de
 > asignación a centros, **pero no tiene credenciales de acceso a ninguna app**.
