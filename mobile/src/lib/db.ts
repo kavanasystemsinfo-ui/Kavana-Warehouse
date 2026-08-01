@@ -58,7 +58,7 @@ function centroKey(idCentro: number, idProducto: number): string {
 function getDB(): Promise<IDBPDatabase<CleanStockDB>> {
   if (!dbPromise) {
     dbPromise = openDB<CleanStockDB>(DB_NAME, DB_VERSION, {
-      upgrade(db, oldVersion) {
+      upgrade(db, _oldVersion) {
         // Delete existing stores to ensure clean schema
         if (db.objectStoreNames.contains('inventory')) {
           db.deleteObjectStore('inventory')
