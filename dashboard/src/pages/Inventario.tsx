@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  getInventory, restock, getCentros,
+  getInventory, restock, getCentros, getPurchaseProposal,
   type InventarioItem, type Centro,
 } from '../lib/api'
 import {
@@ -8,6 +8,7 @@ import {
   joinCentro, leaveCentro,
   type StockConsumedPayload, type StockRestockedPayload,
 } from '../lib/socket'
+import { exportToCsv } from '../lib/csv'
 
 export function Inventario() {
   const [inventory, setInventory] = useState<InventarioItem[]>([])
@@ -169,6 +170,34 @@ export function Inventario() {
     }
   }
 
+  const handleGenerateProposal = async () => {
+    try {
+      setLoading(true)
+      const proposal = await getPurchaseProposal(filtroCentro ? Number(filtroCentro) : undefined)
+      if (proposal.propuestas.length === 0) {
+        setSuccess('No hay productos por debajo del stock mínimo. No se requiere compra.')
+        setTimeout(() => setSuccess(''), 4000)
+        return
+      }
+      const rows = proposal.propuestas.map(p => ({
+        Centro: p.centro.nombre_centro,
+        Producto: p.producto.nombre_producto,
+        'Stock Actual': p.stock_actual,
+        'Stock Mínimo': p.stock_minimo,
+        'Déficit': p.deficit,
+        'Cantidad a Pedir': p.cantidad_pedido,
+        'Coste Estimado (€)': p.coste_estimado
+      }))
+      exportToCsv(`propuesta-compra-${new Date().toISOString().split('T')[0]}`, rows)
+      setSuccess(`Propuesta exportada. Coste total estimado: ${proposal.total_coste_estimado} €`)
+      setTimeout(() => setSuccess(''), 5000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al generar propuesta')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const availableProducts = inventory
     .filter((item) => !restockCentro || item.id_centro === Number(restockCentro))
     .map((item) => item.producto)
@@ -187,9 +216,14 @@ export function Inventario() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Inventario</h1>
-        <button className="btn btn-primary" onClick={openRestock}>
-          + Reponer Stock
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button className="btn btn-outline" onClick={handleGenerateProposal}>
+            📥 Propuesta de Compra
+          </button>
+          <button className="btn btn-primary" onClick={openRestock}>
+            + Reponer Stock
+          </button>
+        </div>
       </div>
 
       {/* Real-time notification toast */}

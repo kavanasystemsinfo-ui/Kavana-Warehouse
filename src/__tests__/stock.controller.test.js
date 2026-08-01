@@ -77,11 +77,13 @@ describe('stockController.consumeStock', () => {
 
   beforeEach(() => {
     req = httpMocks.createRequest({
-      body: { id_producto: 1, cantidad: -2 },
+      body: { id_producto: 1, cantidad: 2 },
       user: { id_usuario: 1, rol: 'limpiador' },
     });
     res = httpMocks.createResponse();
     jest.clearAllMocks();
+    // Mock reglaNotificacion to return empty (no notification rules active)
+    mockPrisma.reglaNotificacion.findMany.mockResolvedValue([]);
   });
 
   test('should resolve active center and consume stock for limpiador', async () => {
@@ -129,7 +131,24 @@ describe('stockController.consumeStock', () => {
     expect(data.error).toContain('No tienes un centro activo');
   });
 
-  test('should use provided id_centro when given', async () => {
+  test('should return 403 if limpiador attempts to consume from a different center', async () => {
+    req.body.id_centro = 2; // Different from assigned center
+
+    mockPrisma.asignacionPersonal.findFirst.mockResolvedValue({
+      id_asignacion: 1,
+      id_usuario: 1,
+      id_centro: 1, // Assigned to center 1
+    });
+
+    await consumeStock(req, res);
+
+    expect(res.statusCode).toBe(403);
+    const data = JSON.parse(res._getData());
+    expect(data.error).toContain('No tienes permisos para registrar consumos en este centro');
+  });
+
+  test('should use provided id_centro when given for supervisor', async () => {
+    req.user.rol = 'supervisor';
     req.body.id_centro = 2;
 
     mockPrisma.producto.findUnique.mockResolvedValue({
@@ -156,6 +175,7 @@ describe('stockController.consumeStock', () => {
   });
 
   test('should return 404 if product not found', async () => {
+    req.user.rol = 'supervisor';
     req.body.id_centro = 1; // Provide centro to skip assignment lookup
     mockPrisma.producto.findUnique.mockResolvedValue(null);
 
@@ -180,7 +200,7 @@ describe('stockController.consumeStock', () => {
     mockPrisma.inventarioCentro.findUnique.mockResolvedValue({
       id_centro: 1,
       id_producto: 1,
-      cantidad_actual: 1, // only 1 available, trying to consume -2
+      cantidad_actual: 1, // only 1 available, trying to consume 2
     });
 
     await consumeStock(req, res);

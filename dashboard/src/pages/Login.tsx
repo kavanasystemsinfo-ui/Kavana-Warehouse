@@ -18,6 +18,13 @@ export function Login({ onLogin }: LoginProps) {
     const existingUser = getStoredUser()
     if (existingUser && existingUser.rol !== 'limpiador') {
       navigate('/', { replace: true })
+      return
+    }
+
+    const expiredError = localStorage.getItem('auth_error')
+    if (expiredError) {
+      setError(expiredError)
+      localStorage.removeItem('auth_error')
     }
   }, [navigate])
 
@@ -45,8 +52,8 @@ export function Login({ onLogin }: LoginProps) {
     <div className="login-page">
       <div className="login-card">
         <div className="login-logo" style={{ textAlign: 'center' }}>
-          <img src="/logo.png" alt="Kavana CleanOps" style={{ width: '80px', height: '80px', borderRadius: '12px', marginBottom: '0.75rem' }} />
-          <h1>Kavana CleanOps</h1>
+          <img src="/logo.png" alt="Kavana CleanStock" style={{ width: '80px', height: '80px', borderRadius: '12px', marginBottom: '0.75rem' }} />
+          <h1>Kavana CleanStock</h1>
           <p>Panel de Control del Supervisor</p>
         </div>
 

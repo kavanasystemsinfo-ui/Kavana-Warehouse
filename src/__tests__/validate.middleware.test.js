@@ -112,7 +112,7 @@ describe('consumeStockSchema', () => {
   test('should accept valid consume data', () => {
     const result = consumeStockSchema.safeParse({
       id_producto: 1,
-      cantidad: -3,
+      cantidad: 3,
     });
     expect(result.success).toBe(true);
   });
@@ -120,17 +120,17 @@ describe('consumeStockSchema', () => {
   test('should accept consume data with optional id_centro', () => {
     const result = consumeStockSchema.safeParse({
       id_producto: 1,
-      cantidad: -3,
+      cantidad: 3,
       id_centro: 2,
     });
     expect(result.success).toBe(true);
     expect(result.data.id_centro).toBe(2);
   });
 
-  test('should reject positive cantidad', () => {
+  test('should reject negative cantidad', () => {
     const result = consumeStockSchema.safeParse({
       id_producto: 1,
-      cantidad: 3,
+      cantidad: -3,
     });
     expect(result.success).toBe(false);
   });
@@ -138,7 +138,7 @@ describe('consumeStockSchema', () => {
   test('should reject non-integer id_producto', () => {
     const result = consumeStockSchema.safeParse({
       id_producto: 'abc',
-      cantidad: -3,
+      cantidad: 3,
     });
     expect(result.success).toBe(false);
   });

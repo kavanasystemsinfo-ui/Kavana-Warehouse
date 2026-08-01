@@ -1,5 +1,5 @@
 # =============================================================================
-# Kavana CleanOps — Mobile PWA Dockerfile (Vite + React + nginx)
+# Kavana CleanStock — Mobile PWA Dockerfile (Vite + React + nginx)
 # Build context: ./mobile/
 # Multi-stage: build → nginx serve
 # =============================================================================

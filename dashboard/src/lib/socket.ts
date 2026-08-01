@@ -1,5 +1,5 @@
 // =============================================================================
-// Kavana CleanOps Dashboard — Socket.IO Client
+// Kavana CleanStock Dashboard — Socket.IO Client
 //   - Se conecta al servidor Socket.IO usando el token JWT almacenado
 //   - Proporciona hooks y helpers para que los componentes se suscriban
 //     a eventos en tiempo real (stock:consumed, stock:restocked, stock:alert)

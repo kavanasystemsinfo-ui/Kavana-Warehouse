@@ -1,5 +1,5 @@
 // =============================================================================
-// Kavana CleanOps — Swagger/OpenAPI Configuration
+// Kavana CleanStock — Swagger/OpenAPI Configuration
 // =============================================================================
 
 const swaggerJsdoc = require('swagger-jsdoc');
@@ -8,7 +8,7 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Kavana CleanOps API',
+      title: 'Kavana CleanStock API',
       version: '4.0.0',
       description: `API REST para la gestión de stock y personal en Facility Management.
 
@@ -18,7 +18,7 @@ Extensión del ecosistema Kavana enfocado en la gestión de stock y personal par
 ## Flujo Crítico del Limpiador
 **< 10 segundos y 3 clics:** Login → Centro automático → Restar stock → Confirmar`,
       contact: {
-        name: 'Kavana CleanOps',
+        name: 'Kavana CleanStock',
       },
     },
     servers: [

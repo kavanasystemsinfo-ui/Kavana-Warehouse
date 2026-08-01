@@ -1,4 +1,4 @@
-// Kavana CleanOps Mobile — API Client
+// Kavana CleanStock Mobile — API Client
 // Handles JWT auth, refresh token rotation, and offline queue
 
 const BASE_URL = '/api/v1'
@@ -124,26 +124,43 @@ export async function apiFetch<T>(
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  let res = await fetch(`${BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  })
+  let res: Response
+  try {
+    res = await fetch(`${BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    })
+  } catch (error) {
+    throw new Error('Error de conexión. Por favor, inténtalo de nuevo cuando tengas cobertura.')
+  }
 
   // If 401, try refreshing the token
-  if (res.status === 401 && getRefreshToken()) {
-    const refreshed = await tryRefresh()
+  if (res.status === 401) {
+    let refreshed = false
+    if (getRefreshToken()) {
+      refreshed = await tryRefresh()
+    }
     if (refreshed) {
       const newToken = getAccessToken()
       headers['Authorization'] = `Bearer ${newToken}`
-      res = await fetch(`${BASE_URL}${endpoint}`, {
-        ...options,
-        headers,
-      })
+      try {
+        res = await fetch(`${BASE_URL}${endpoint}`, {
+          ...options,
+          headers,
+        })
+      } catch (error) {
+        throw new Error('Error de conexión. Por favor, inténtalo de nuevo cuando tengas cobertura.')
+      }
+    } else {
+      clearTokens()
+      localStorage.setItem('auth_error', 'Su sesión ha expirado. Por favor, inicie sesión de nuevo.')
+      window.dispatchEvent(new Event('auth:unauthorized'))
+      throw new Error('Su sesión ha expirado. Por favor, inicie sesión de nuevo.')
     }
   }
 
   if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({ error: 'Unknown error' }))
+    const errorBody = await res.json().catch(() => ({ error: 'Error desconocido' }))
     throw new Error(errorBody.error || `HTTP ${res.status}`)
   }
 
@@ -204,11 +221,25 @@ export async function consumeStock(
 ): Promise<ConsumoResponse> {
   const body: Record<string, unknown> = {
     id_producto: idProducto,
-    cantidad: -Math.abs(cantidad),
+    cantidad: Math.abs(cantidad),
   }
   if (offlineId) body.offline_id = offlineId
   return apiFetch<ConsumoResponse>('/stock/consume', {
     method: 'POST',
     body: JSON.stringify(body),
   })
+}
+
+// --- Incidencias ---
+export async function createIncidencia(data: {
+  id_centro: number;
+  categoria: string;
+  titulo: string;
+  descripcion?: string;
+  foto_url?: string;
+}): Promise<{ message: string }> {
+  return apiFetch('/incidencias', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }

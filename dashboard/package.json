@@ -1,9 +1,9 @@
 {
-  "name": "kavana-cleanops-dashboard",
+  "name": "kavana-cleanstock-dashboard",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Kavana CleanOps — Panel de Control del Supervisor",
+  "description": "Kavana CleanStock — Panel de Control del Supervisor",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

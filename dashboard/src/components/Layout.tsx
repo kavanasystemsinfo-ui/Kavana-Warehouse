@@ -17,7 +17,7 @@ export function Layout() {
         <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <img src="/logo.png" alt="Kavana" style={{ width: '36px', height: '36px', borderRadius: '8px' }} />
           <div>
-            <h1>CleanOps</h1>
+            <h1>CleanStock</h1>
             <span>Panel de Supervisor</span>
           </div>
         </div>
@@ -37,6 +37,18 @@ export function Layout() {
           <NavLink to="/inventario" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
             <span className="sidebar-link-icon">📦</span>
             Inventario
+          </NavLink>
+          <NavLink to="/deviations" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
+            <span className="sidebar-link-icon">📈</span>
+            Desviaciones
+          </NavLink>
+          <NavLink to="/incidents" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
+            <span className="sidebar-link-icon">🛠️</span>
+            Incidencias
+          </NavLink>
+          <NavLink to="/notifications" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
+            <span className="sidebar-link-icon">📬</span>
+            Notificaciones
           </NavLink>
         </nav>
         <div className="sidebar-footer">

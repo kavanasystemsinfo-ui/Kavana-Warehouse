@@ -1,5 +1,5 @@
 // =============================================================================
-// Kavana CleanOps — Seed Data for Development
+// Kavana CleanStock — Seed Data for Development
 // Ejecutar: npx prisma db seed
 // Configurar en package.json: "prisma": { "seed": "node prisma/seed.js" }
 // =============================================================================
@@ -17,18 +17,18 @@ async function main() {
   // -----------------------------------------------------------------------
   const salt = await bcrypt.genSalt(12);
 
-  // Passwords seguras para desarrollo (evitar detección de brecha en navegadores)
-  const hashAdmin = await bcrypt.hash('AdminKavana2026!', salt);
-  const hashSuper = await bcrypt.hash('SuperKavana2026!', salt);
-  const hashLimp = await bcrypt.hash('LimpKavana2026!', salt);
+  // Contraseña común para todos los usuarios (producción y desarrollo)
+  // Email: supervisor@kavana.com / carlos@kavana.com / ana@kavana.com / admin@kavana.com
+  // Password: CleanStock2026!
+  const hash = await bcrypt.hash('CleanStock2026!', salt);
 
   const admin = await prisma.usuario.upsert({
     where: { email: 'admin@kavana.com' },
-    update: { password_hash: hashAdmin },
+    update: { password_hash: hash },
     create: {
       nombre: 'Admin Kavana',
       email: 'admin@kavana.com',
-      password_hash: hashAdmin,
+      password_hash: hash,
       rol: 'admin',
       estado: 'activo',
     },
@@ -36,23 +36,23 @@ async function main() {
 
   const supervisor = await prisma.usuario.upsert({
     where: { email: 'supervisor@kavana.com' },
-    update: { password_hash: hashSuper },
+    update: { password_hash: hash },
     create: {
       nombre: 'María García',
       email: 'supervisor@kavana.com',
-      password_hash: hashSuper,
+      password_hash: hash,
       rol: 'supervisor',
       estado: 'activo',
     },
   });
 
   const limpiador1 = await prisma.usuario.upsert({
-    where: { email: 'limpiador@kavana.com' },
-    update: { password_hash: hashLimp },
+    where: { email: 'carlos@kavana.com' },
+    update: { password_hash: hash },
     create: {
       nombre: 'Carlos López',
-      email: 'limpiador@kavana.com',
-      password_hash: hashLimp,
+      email: 'carlos@kavana.com',
+      password_hash: hash,
       rol: 'limpiador',
       estado: 'activo',
     },
@@ -60,11 +60,11 @@ async function main() {
 
   const limpiador2 = await prisma.usuario.upsert({
     where: { email: 'ana@kavana.com' },
-    update: { password_hash: hashLimp },
+    update: { password_hash: hash },
     create: {
       nombre: 'Ana Martínez',
       email: 'ana@kavana.com',
-      password_hash: hashLimp,
+      password_hash: hash,
       rol: 'limpiador',
       estado: 'activo',
     },
@@ -72,11 +72,11 @@ async function main() {
 
   const bajaMedica = await prisma.usuario.upsert({
     where: { email: 'baja@kavana.com' },
-    update: { password_hash: hashLimp },
+    update: { password_hash: hash },
     create: {
       nombre: 'Pedro Sánchez',
       email: 'baja@kavana.com',
-      password_hash: hashLimp,
+      password_hash: hash,
       rol: 'limpiador',
       estado: 'baja_medica',
     },
@@ -93,6 +93,7 @@ async function main() {
     create: {
       nombre_centro: 'CEIP San Juan',
       direccion: 'Calle Mayor 15, Madrid',
+      presupuesto_mensual: 200.0,
     },
   });
 
@@ -102,6 +103,7 @@ async function main() {
     create: {
       nombre_centro: 'Oficinas Centrales Kavana',
       direccion: 'Av. de la Industria 42, Alcobendas',
+      presupuesto_mensual: 500.0,
     },
   });
 
@@ -111,6 +113,7 @@ async function main() {
     create: {
       nombre_centro: 'Hospital Universitario del Sur',
       direccion: 'Calle Salud 100, Getafe',
+      presupuesto_mensual: 1500.0,
     },
   });
 
@@ -123,32 +126,32 @@ async function main() {
     prisma.producto.upsert({
       where: { id_producto: 1 },
       update: {},
-      create: { nombre_producto: 'Lejía 2L', unidad_medida: 'unidades', stock_minimo_alerta: 5 },
+      create: { nombre_producto: 'Lejía 2L', unidad_medida: 'unidades', stock_minimo_alerta: 5, coste_unitario: 1.20 },
     }),
     prisma.producto.upsert({
       where: { id_producto: 2 },
       update: {},
-      create: { nombre_producto: 'Fregasuelos 1L', unidad_medida: 'unidades', stock_minimo_alerta: 10 },
+      create: { nombre_producto: 'Fregasuelos 1L', unidad_medida: 'unidades', stock_minimo_alerta: 10, coste_unitario: 1.50 },
     }),
     prisma.producto.upsert({
       where: { id_producto: 3 },
       update: {},
-      create: { nombre_producto: 'Bolsa de Basura 50L (pack 10)', unidad_medida: 'paquetes', stock_minimo_alerta: 8 },
+      create: { nombre_producto: 'Bolsa de Basura 50L (pack 10)', unidad_medida: 'paquetes', stock_minimo_alerta: 8, coste_unitario: 0.80 },
     }),
     prisma.producto.upsert({
       where: { id_producto: 4 },
       update: {},
-      create: { nombre_producto: 'Papel Higiénico (pack 12)', unidad_medida: 'paquetes', stock_minimo_alerta: 15 },
+      create: { nombre_producto: 'Papel Higiénico (pack 12)', unidad_medida: 'paquetes', stock_minimo_alerta: 15, coste_unitario: 3.50 },
     }),
     prisma.producto.upsert({
       where: { id_producto: 5 },
       update: {},
-      create: { nombre_producto: 'Jabón de Manos 5L', unidad_medida: 'unidades', stock_minimo_alerta: 3 },
+      create: { nombre_producto: 'Jabón de Manos 5L', unidad_medida: 'unidades', stock_minimo_alerta: 3, coste_unitario: 5.00 },
     }),
     prisma.producto.upsert({
       where: { id_producto: 6 },
       update: {},
-      create: { nombre_producto: 'Bayetas Microfibra (pack 5)', unidad_medida: 'paquetes', stock_minimo_alerta: 10 },
+      create: { nombre_producto: 'Bayetas Microfibra (pack 5)', unidad_medida: 'paquetes', stock_minimo_alerta: 10, coste_unitario: 2.50 },
     }),
   ]);
 
@@ -226,58 +229,58 @@ async function main() {
   // -----------------------------------------------------------------------
   // CEIP San Juan
   await prisma.inventarioCentro.upsert({
-    where: { id_centro_id_producto: { id_centro: centro1.id_centro, id_producto: 1 } },
+    where: { id_centro_id_producto: { id_centro: centro1.id_centro, id_producto: productos[0].id_producto } },
     update: {},
-    create: { id_centro: centro1.id_centro, id_producto: 1, cantidad_actual: 12 },
+    create: { id_centro: centro1.id_centro, id_producto: productos[0].id_producto, cantidad_actual: 12 },
   });
   await prisma.inventarioCentro.upsert({
-    where: { id_centro_id_producto: { id_centro: centro1.id_centro, id_producto: 2 } },
+    where: { id_centro_id_producto: { id_centro: centro1.id_centro, id_producto: productos[1].id_producto } },
     update: {},
-    create: { id_centro: centro1.id_centro, id_producto: 2, cantidad_actual: 8 },
+    create: { id_centro: centro1.id_centro, id_producto: productos[1].id_producto, cantidad_actual: 8 },
   });
   await prisma.inventarioCentro.upsert({
-    where: { id_centro_id_producto: { id_centro: centro1.id_centro, id_producto: 3 } },
+    where: { id_centro_id_producto: { id_centro: centro1.id_centro, id_producto: productos[2].id_producto } },
     update: {},
-    create: { id_centro: centro1.id_centro, id_producto: 3, cantidad_actual: 3 }, // Bajo stock!
+    create: { id_centro: centro1.id_centro, id_producto: productos[2].id_producto, cantidad_actual: 3 }, // Bajo stock!
   });
   await prisma.inventarioCentro.upsert({
-    where: { id_centro_id_producto: { id_centro: centro1.id_centro, id_producto: 4 } },
+    where: { id_centro_id_producto: { id_centro: centro1.id_centro, id_producto: productos[3].id_producto } },
     update: {},
-    create: { id_centro: centro1.id_centro, id_producto: 4, cantidad_actual: 20 },
+    create: { id_centro: centro1.id_centro, id_producto: productos[3].id_producto, cantidad_actual: 20 },
   });
 
   // Hospital
   await prisma.inventarioCentro.upsert({
-    where: { id_centro_id_producto: { id_centro: centro3.id_centro, id_producto: 4 } },
+    where: { id_centro_id_producto: { id_centro: centro3.id_centro, id_producto: productos[3].id_producto } },
     update: {},
-    create: { id_centro: centro3.id_centro, id_producto: 4, cantidad_actual: 10 },
+    create: { id_centro: centro3.id_centro, id_producto: productos[3].id_producto, cantidad_actual: 10 },
   });
   await prisma.inventarioCentro.upsert({
-    where: { id_centro_id_producto: { id_centro: centro3.id_centro, id_producto: 5 } },
+    where: { id_centro_id_producto: { id_centro: centro3.id_centro, id_producto: productos[4].id_producto } },
     update: {},
-    create: { id_centro: centro3.id_centro, id_producto: 5, cantidad_actual: 2 }, // Bajo stock!
+    create: { id_centro: centro3.id_centro, id_producto: productos[4].id_producto, cantidad_actual: 2 }, // Bajo stock!
   });
   await prisma.inventarioCentro.upsert({
-    where: { id_centro_id_producto: { id_centro: centro3.id_centro, id_producto: 6 } },
+    where: { id_centro_id_producto: { id_centro: centro3.id_centro, id_producto: productos[5].id_producto } },
     update: {},
-    create: { id_centro: centro3.id_centro, id_producto: 6, cantidad_actual: 15 },
+    create: { id_centro: centro3.id_centro, id_producto: productos[5].id_producto, cantidad_actual: 15 },
   });
 
   // Oficinas
   await prisma.inventarioCentro.upsert({
-    where: { id_centro_id_producto: { id_centro: centro2.id_centro, id_producto: 1 } },
+    where: { id_centro_id_producto: { id_centro: centro2.id_centro, id_producto: productos[0].id_producto } },
     update: {},
-    create: { id_centro: centro2.id_centro, id_producto: 1, cantidad_actual: 6 },
+    create: { id_centro: centro2.id_centro, id_producto: productos[0].id_producto, cantidad_actual: 6 },
   });
   await prisma.inventarioCentro.upsert({
-    where: { id_centro_id_producto: { id_centro: centro2.id_centro, id_producto: 2 } },
+    where: { id_centro_id_producto: { id_centro: centro2.id_centro, id_producto: productos[1].id_producto } },
     update: {},
-    create: { id_centro: centro2.id_centro, id_producto: 2, cantidad_actual: 4 }, // Bajo stock!
+    create: { id_centro: centro2.id_centro, id_producto: productos[1].id_producto, cantidad_actual: 4 }, // Bajo stock!
   });
   await prisma.inventarioCentro.upsert({
-    where: { id_centro_id_producto: { id_centro: centro2.id_centro, id_producto: 5 } },
+    where: { id_centro_id_producto: { id_centro: centro2.id_centro, id_producto: productos[4].id_producto } },
     update: {},
-    create: { id_centro: centro2.id_centro, id_producto: 5, cantidad_actual: 3 },
+    create: { id_centro: centro2.id_centro, id_producto: productos[4].id_producto, cantidad_actual: 3 },
   });
 
   console.log('  ✅ Inventario inicial creado');
@@ -295,21 +298,21 @@ async function main() {
       {
         id_usuario: limpiador1.id_usuario,
         id_centro: centro1.id_centro,
-        id_producto: 1,
+        id_producto: productos[0].id_producto,
         cantidad: -2,
         fecha_hora: ayer,
       },
       {
         id_usuario: limpiador1.id_usuario,
         id_centro: centro1.id_centro,
-        id_producto: 3,
+        id_producto: productos[2].id_producto,
         cantidad: -1,
         fecha_hora: ayer,
       },
       {
         id_usuario: supervisor.id_usuario,
         id_centro: centro1.id_centro,
-        id_producto: 1,
+        id_producto: productos[0].id_producto,
         cantidad: 10,
         fecha_hora: anteayer,
       },
@@ -318,6 +321,38 @@ async function main() {
   });
 
   console.log('  ✅ Movimientos de ejemplo creados');
+
+  // -----------------------------------------------------------------------
+  // 7. Consumo Teórico y Reglas de Notificación (OPEX & Enterprise)
+  // -----------------------------------------------------------------------
+  await prisma.consumoTeorico.createMany({
+    data: [
+      { id_centro: centro1.id_centro, id_producto: productos[0].id_producto, cantidad_teorica: 15 }, // Lejía
+      { id_centro: centro1.id_centro, id_producto: productos[1].id_producto, cantidad_teorica: 10 }, // Fregasuelos
+      { id_centro: centro1.id_centro, id_producto: productos[2].id_producto, cantidad_teorica: 5 },  // Bolsas
+      { id_centro: centro3.id_centro, id_producto: productos[3].id_producto, cantidad_teorica: 50 }, // Papel higiénico (Hospital)
+      { id_centro: centro3.id_centro, id_producto: productos[4].id_producto, cantidad_teorica: 20 }, // Jabón (Hospital)
+    ],
+    skipDuplicates: true,
+  });
+
+  await prisma.reglaNotificacion.createMany({
+    data: [
+      {
+        id_supervisor: supervisor.id_usuario,
+        id_centro: centro1.id_centro,
+        activa: true
+      },
+      {
+        id_supervisor: supervisor.id_usuario,
+        id_operario: limpiador1.id_usuario,
+        activa: true
+      }
+    ],
+    skipDuplicates: true,
+  });
+
+  console.log('  ✅ Consumos teóricos y reglas de notificación creadas');
   console.log('🎉 Seed completado correctamente.');
 }
 

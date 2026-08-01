@@ -1,4 +1,4 @@
-// Kavana CleanOps Mobile — Main Dashboard
+// Kavana CleanStock Mobile — Main Dashboard
 // Shows active center and inventory, allows quick consumption
 // 3-click flow: Login → Centro → Restar stock → Confirmar
 
@@ -7,6 +7,7 @@ import {
   getCentroActivo,
   getInventory,
   consumeStock,
+  createIncidencia,
   logout,
   getStoredUser,
   clearTokens,
@@ -46,6 +47,15 @@ export function Main({ onLogout }: MainProps) {
   const [consumeLoading, setConsumeLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [offlineCount, setOfflineCount] = useState(0)
+  
+  // Tab Navigation
+  const [activeTab, setActiveTab] = useState<'inventory' | 'incidents'>('inventory')
+
+  // Incident form
+  const [incidenciaCategoria, setIncidenciaCategoria] = useState('limpieza')
+  const [incidenciaTitulo, setIncidenciaTitulo] = useState('')
+  const [incidenciaDescripcion, setIncidenciaDescripcion] = useState('')
+  const [incidenciaLoading, setIncidenciaLoading] = useState(false)
 
   // Load data
   const loadData = useCallback(async () => {
@@ -212,6 +222,33 @@ export function Main({ onLogout }: MainProps) {
   const isLowStock = (item: ProductoInventario) =>
     item.cantidad_actual <= item.producto.stock_minimo_alerta
 
+  const handleReportIncidencia = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!centro) return
+    if (!isOnline) {
+      setError('No puedes reportar incidencias sin conexión.')
+      return
+    }
+    setIncidenciaLoading(true)
+    try {
+      await createIncidencia({
+        id_centro: centro.id_centro,
+        categoria: incidenciaCategoria,
+        titulo: incidenciaTitulo,
+        descripcion: incidenciaDescripcion,
+      })
+      setSuccessMessage('Incidencia reportada correctamente')
+      setIncidenciaTitulo('')
+      setIncidenciaDescripcion('')
+      setIncidenciaCategoria('limpieza')
+      setTimeout(() => setSuccessMessage(''), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al reportar incidencia')
+    } finally {
+      setIncidenciaLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="main-loading">
@@ -227,7 +264,7 @@ export function Main({ onLogout }: MainProps) {
       <header className="main-header">
         <div className="header-top">
           <div>
-            <h1 className="header-title">Kavana CleanOps</h1>
+            <h1 className="header-title">Kavana CleanStock</h1>
             <p className="header-user">
               {user?.nombre} — {user?.rol}
             </p>
@@ -272,63 +309,115 @@ export function Main({ onLogout }: MainProps) {
         </div>
       )}
 
-      {/* Inventory */}
-      <main className="inventory-list">
-        <h2 className="section-title">
-          Inventario
-          <button
-            onClick={loadData}
-            className="btn-refresh"
-            disabled={loading}
-          >
-            ↻
-          </button>
-        </h2>
-
-        {inventory.length === 0 ? (
-          <p className="empty-state">
-            No hay productos asignados a este centro.
-          </p>
-        ) : (
-          inventory.map((item) => (
-            <div
-              key={`${item.id_centro}-${item.id_producto}`}
-              className={`inventory-card ${isLowStock(item) ? 'low-stock' : ''}`}
+      {/* Content based on active tab */}
+      {activeTab === 'inventory' ? (
+        <main className="inventory-list">
+          <h2 className="section-title">
+            Inventario
+            <button
+              onClick={loadData}
+              className="btn-refresh"
+              disabled={loading}
             >
-              <div className="card-info">
-                <p className="card-product-name">
-                  {item.producto.nombre_producto}
-                </p>
-                <p className="card-stock">
-                  <span
-                    className={`stock-value ${item.cantidad_actual <= 0 ? 'stock-critical' : ''}`}
-                  >
-                    {item.cantidad_actual}
-                  </span>{' '}
-                  {item.producto.unidad_medida}
-                </p>
-                {isLowStock(item) && (
-                  <p className="stock-alert">
-                    {item.cantidad_actual <= 0
-                      ? '⚠️ Sin stock'
-                      : `⚠️ Mínimo: ${item.producto.stock_minimo_alerta}`}
-                  </p>
-                )}
-              </div>
-              <button
-                className="btn-consume"
-                onClick={() => {
-                  setConsumeModal({ product: item })
-                  setConsumeAmount(1)
-                }}
-                disabled={item.cantidad_actual <= 0}
+              ↻
+            </button>
+          </h2>
+
+          {inventory.length === 0 ? (
+            <p className="empty-state">
+              No hay productos asignados a este centro.
+            </p>
+          ) : (
+            inventory.map((item) => (
+              <div
+                key={`${item.id_centro}-${item.id_producto}`}
+                className={`inventory-card ${isLowStock(item) ? 'low-stock' : ''}`}
               >
-                Consumir
-              </button>
+                <div className="card-info">
+                  <p className="card-product-name">
+                    {item.producto.nombre_producto}
+                  </p>
+                  <p className="card-stock">
+                    <span
+                      className={`stock-value ${item.cantidad_actual <= 0 ? 'stock-critical' : ''}`}
+                    >
+                      {item.cantidad_actual}
+                    </span>{' '}
+                    {item.producto.unidad_medida}
+                  </p>
+                  {isLowStock(item) && (
+                    <p className="stock-alert">
+                      {item.cantidad_actual <= 0
+                        ? '⚠️ Sin stock'
+                        : `⚠️ Mínimo: ${item.producto.stock_minimo_alerta}`}
+                    </p>
+                  )}
+                </div>
+                <button
+                  className="btn-consume"
+                  onClick={() => {
+                    setConsumeModal({ product: item })
+                    setConsumeAmount(1)
+                  }}
+                  disabled={item.cantidad_actual <= 0}
+                >
+                  Consumir
+                </button>
+              </div>
+            ))
+          )}
+        </main>
+      ) : (
+        <main className="incidents-form-container">
+          <h2 className="section-title">Reportar Incidencia</h2>
+          <form className="incidents-form" onSubmit={handleReportIncidencia}>
+            <div className="form-group">
+              <label>Categoría</label>
+              <select 
+                value={incidenciaCategoria} 
+                onChange={(e) => setIncidenciaCategoria(e.target.value)}
+                className="form-input"
+              >
+                <option value="limpieza">🧼 Limpieza</option>
+                <option value="fontaneria">🚰 Fontanería</option>
+                <option value="electricidad">⚡ Electricidad</option>
+                <option value="cerrajeria">🔑 Cerrajería</option>
+                <option value="otros">❓ Otros</option>
+              </select>
             </div>
-          ))
-        )}
-      </main>
+            <div className="form-group">
+              <label>Título (Breve descripción)</label>
+              <input 
+                type="text" 
+                value={incidenciaTitulo}
+                onChange={(e) => setIncidenciaTitulo(e.target.value)}
+                placeholder="Ej. Fuga de agua en baño 1"
+                required
+                minLength={3}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Detalles adicionales</label>
+              <textarea 
+                value={incidenciaDescripcion}
+                onChange={(e) => setIncidenciaDescripcion(e.target.value)}
+                placeholder="Explica qué ha ocurrido con más detalle..."
+                rows={4}
+                className="form-input"
+              />
+            </div>
+            <button 
+              type="submit" 
+              className="btn-confirm" 
+              style={{ width: '100%', padding: '1rem', marginTop: '0.5rem' }}
+              disabled={incidenciaLoading || !incidenciaTitulo.trim()}
+            >
+              {incidenciaLoading ? 'Enviando...' : 'Enviar Reporte'}
+            </button>
+          </form>
+        </main>
+      )}
 
       {/* Consume Modal */}
       {consumeModal && (
@@ -400,6 +489,24 @@ export function Main({ onLogout }: MainProps) {
           </div>
         </div>
       )}
+
+      {/* Bottom Navigation */}
+      <nav className="bottom-nav">
+        <button 
+          className={`nav-item ${activeTab === 'inventory' ? 'active' : ''}`}
+          onClick={() => setActiveTab('inventory')}
+        >
+          <span className="nav-icon">📦</span>
+          <span className="nav-text">Inventario</span>
+        </button>
+        <button 
+          className={`nav-item ${activeTab === 'incidents' ? 'active' : ''}`}
+          onClick={() => setActiveTab('incidents')}
+        >
+          <span className="nav-icon">🛠️</span>
+          <span className="nav-text">Incidencias</span>
+        </button>
+      </nav>
     </div>
   )
 }

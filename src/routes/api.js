@@ -1,5 +1,5 @@
 // =============================================================================
-// Kavana CleanOps — Protected API Routes (/api/v1)
+// Kavana CleanStock — Protected API Routes (/api/v1)
 //   Stock:
 //     GET    /stock/inventory   → Inventario (autenticado)
 //     POST   /stock/consume     → Consumir stock (autenticado)
@@ -13,8 +13,24 @@
 //     PUT    /asignaciones/:id    → Actualizar asignación (supervisor+)
 //
 //   Dashboard:
-//     GET    /dashboard/consumption → Consumo por centro/producto/período
-//     GET    /dashboard/alerts      → Alertas críticas de stock
+//     GET    /dashboard/consumption  → Consumo OPEX por centro/producto
+//     GET    /dashboard/alerts       → Alertas críticas de stock
+//     GET    /dashboard/deviations   → Desviaciones teórico vs. real
+//
+//   Incidencias:
+//     POST   /incidencias       → Reportar incidencia (autenticado)
+//     GET    /incidencias        → Listar incidencias (autenticado)
+//     PUT    /incidencias/:id    → Actualizar estado (supervisor+)
+//
+//   Compras:
+//     GET    /purchases/proposal → Propuesta de reabastecimiento (supervisor+)
+//
+//   Notificaciones:
+//     GET    /notifications            → Obtener notificaciones (supervisor+)
+//     PUT    /notifications/:id/read   → Marcar como leída (supervisor+)
+//     GET    /notifications/rules      → Obtener reglas (supervisor+)
+//     POST   /notifications/rules      → Crear regla (supervisor+)
+//     DELETE /notifications/rules/:id  → Eliminar regla (supervisor+)
 // =============================================================================
 
 const { Router } = require('express');
@@ -29,6 +45,10 @@ const {
 const stockController = require('../controllers/stockController');
 const asignacionController = require('../controllers/asignacionController');
 const dashboardController = require('../controllers/dashboardController');
+const deviationController = require('../controllers/deviationController');
+const incidenciaController = require('../controllers/incidenciaController');
+const purchaseController = require('../controllers/purchaseController');
+const notificationsController = require('../controllers/notificationsController');
 
 const router = Router();
 
@@ -52,5 +72,21 @@ router.put('/asignaciones/:id', authorize('supervisor', 'admin'), validate(updat
 // --- Dashboard ---
 router.get('/dashboard/consumption', authorize('supervisor', 'admin'), dashboardController.consumption);
 router.get('/dashboard/alerts', authorize('supervisor', 'admin'), dashboardController.alerts);
+router.get('/dashboard/deviations', authorize('supervisor', 'admin'), deviationController.getDeviations);
+
+// --- Incidencias ---
+router.post('/incidencias', incidenciaController.createIncidencia);
+router.get('/incidencias', incidenciaController.listIncidencias);
+router.put('/incidencias/:id', authorize('supervisor', 'admin'), incidenciaController.updateIncidencia);
+
+// --- Compras ---
+router.get('/purchases/proposal', authorize('supervisor', 'admin'), purchaseController.getProposal);
+
+// --- Notificaciones ---
+router.get('/notifications', authorize('supervisor', 'admin'), notificationsController.getNotifications);
+router.put('/notifications/:id/read', authorize('supervisor', 'admin'), notificationsController.markAsRead);
+router.get('/notifications/rules', authorize('supervisor', 'admin'), notificationsController.getRules);
+router.post('/notifications/rules', authorize('supervisor', 'admin'), notificationsController.createRule);
+router.delete('/notifications/rules/:id', authorize('supervisor', 'admin'), notificationsController.deleteRule);
 
 module.exports = router;

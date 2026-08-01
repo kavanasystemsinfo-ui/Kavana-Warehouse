@@ -1,9 +1,9 @@
 version: '3.8'
 
-name: kavana-cleanops
+name: kavana-cleanstock
 
 # =============================================================================
-# Kavana CleanOps — Full Stack Deployment
+# Kavana CleanStock — Full Stack Deployment
 # Services: API + PostgreSQL + Dashboard + Mobile PWA
 # =============================================================================
 
@@ -18,13 +18,13 @@ services:
     environment:
       POSTGRES_USER: kavana
       POSTGRES_PASSWORD: ${DB_PASSWORD:-kavana_pass}
-      POSTGRES_DB: kavana_cleanops
+      POSTGRES_DB: kavana_cleanstock
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kavana -d kavana_cleanops"]
+      test: ["CMD-SHELL", "pg_isready -U kavana -d kavana_cleanstock"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -45,9 +45,9 @@ services:
         condition: service_healthy
     environment:
       # Database — uses Docker service name 'db' instead of localhost
-      DATABASE_URL: "postgresql://kavana:${DB_PASSWORD:-kavana_pass}@db:5432/kavana_cleanops"
+      DATABASE_URL: "postgresql://kavana:${DB_PASSWORD:-kavana_pass}@db:5432/kavana_cleanstock"
       # JWT
-      JWT_SECRET: ${JWT_SECRET:-kavana-cleanops-jwt-secret-prod-2026}
+      JWT_SECRET: ${JWT_SECRET:-kavana-cleanstock-jwt-secret-prod-2026}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
       # Refresh Tokens
       REFRESH_TOKEN_EXPIRY_DAYS: ${REFRESH_TOKEN_EXPIRY_DAYS:-30}

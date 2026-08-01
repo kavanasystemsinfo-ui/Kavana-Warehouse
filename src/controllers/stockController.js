@@ -1,5 +1,5 @@
 // =============================================================================
-// Kavana CleanOps — Stock Controller
+// Kavana CleanStock — Stock Controller
 //   - getInventory:   Obtener inventario (filtrable por centro)
 //   - consumeStock:   Registrar consumo de producto (cantidad negativa)
 //   - restock:        Registrar reposición de producto (cantidad positiva)
@@ -64,9 +64,9 @@ async function consumeStock(req, res) {
   try {
     const { id_producto, cantidad, id_centro } = req.body;
 
-    // Si el usuario es limpiador, resuelve su centro activo automáticamente
+    // Resolver y validar centro de trabajo
     let centroId = id_centro;
-    if (!centroId) {
+    if (req.user.rol === 'limpiador') {
       const asignacion = await prisma.asignacionPersonal.findFirst({
         where: {
           id_usuario: req.user.id_usuario,
@@ -81,7 +81,17 @@ async function consumeStock(req, res) {
       if (!asignacion) {
         return res.status(403).json({ error: 'No tienes un centro activo asignado.' });
       }
+
+      // Si intentó especificar otro centro en el cuerpo de la petición, le denegamos acceso
+      if (id_centro && Number(id_centro) !== asignacion.id_centro) {
+        return res.status(403).json({ error: 'No tienes permisos para registrar consumos en este centro.' });
+      }
       centroId = asignacion.id_centro;
+    } else {
+      // Para supervisor/admin, id_centro es obligatorio
+      if (!centroId) {
+        return res.status(400).json({ error: 'Debe especificar el id_centro.' });
+      }
     }
 
     // Verificar que el producto exista
@@ -90,14 +100,14 @@ async function consumeStock(req, res) {
       return res.status(404).json({ error: 'Producto no encontrado.' });
     }
 
-    // Verificar stock suficiente (consumo = cantidad negativa)
+    // Verificar stock suficiente (consumo = cantidad positiva)
     const inventarioActual = await prisma.inventarioCentro.findUnique({
       where: {
         id_centro_id_producto: { id_centro: centroId, id_producto },
       },
     });
 
-    if (!inventarioActual || inventarioActual.cantidad_actual + cantidad < 0) {
+    if (!inventarioActual || inventarioActual.cantidad_actual - cantidad < 0) {
       return res.status(400).json({
         error: 'Stock insuficiente.',
         disponible: inventarioActual?.cantidad_actual ?? 0,
@@ -111,7 +121,7 @@ async function consumeStock(req, res) {
           id_centro_id_producto: { id_centro: centroId, id_producto },
         },
         data: {
-          cantidad_actual: { increment: cantidad }, // cantidad es negativa
+          cantidad_actual: { decrement: cantidad }, // cantidad es positiva, decrementamos
         },
       }),
       prisma.registroMovimiento.create({
@@ -119,21 +129,65 @@ async function consumeStock(req, res) {
           id_usuario: req.user.id_usuario,
           id_centro: centroId,
           id_producto,
-          cantidad, // negativa = consumo
+          cantidad: -cantidad, // negativa = consumo en el log
         },
       }),
     ]);
 
-    // --- Notificación en tiempo real ---
+    // --- Notificación en tiempo real (Sockets) ---
     emitStockConsumed({
       id_centro: centroId,
       id_producto,
       nombre_producto: producto.nombre_producto,
-      cantidad,
+      cantidad: -cantidad, // negativa = consumo para el cliente socket
       usuario: { id_usuario: req.user.id_usuario, nombre: req.user.nombre || 'Desconocido' },
       cantidad_actual: inventario.cantidad_actual,
       stock_minimo_alerta: producto.stock_minimo_alerta,
     });
+
+    // --- Sistema de Notificaciones (Reglas Supervisor) ---
+    // Buscar reglas que apliquen a este consumo
+    const reglas = await prisma.reglaNotificacion.findMany({
+      where: {
+        activa: true,
+        OR: [
+          { id_centro: null, id_operario: null, id_producto: null }, // Regla global
+          { id_centro: centroId },
+          { id_operario: req.user.id_usuario },
+          { id_producto: id_producto },
+        ]
+      }
+    });
+
+    // Filtrar reglas que coincidan de forma estricta (si tienen varios filtros)
+    const reglasAplicables = reglas.filter(r => 
+      (r.id_centro === null || r.id_centro === centroId) &&
+      (r.id_operario === null || r.id_operario === req.user.id_usuario) &&
+      (r.id_producto === null || r.id_producto === id_producto)
+    );
+
+    // Crear notificaciones en la base de datos
+    if (reglasAplicables.length > 0) {
+      const centro = await prisma.centro.findUnique({ where: { id_centro: centroId } });
+      const nombreCentro = centro ? centro.nombre_centro : `Centro ${centroId}`;
+      const operador = req.user.nombre || 'Operario desconocido';
+      
+      const mensaje = `${operador} ha retirado ${cantidad} ud de ${producto.nombre_producto} en ${nombreCentro}. Quedan ${inventario.cantidad_actual}.`;
+
+      // Evitar notificaciones duplicadas al mismo supervisor si varias reglas coinciden
+      const supervisoresSet = new Set(reglasAplicables.map(r => r.id_supervisor));
+      
+      const notificacionesData = Array.from(supervisoresSet).map(id_supervisor => ({
+        id_usuario: id_supervisor,
+        titulo: 'Alerta de Consumo',
+        mensaje: mensaje,
+        leida: false,
+      }));
+
+      await prisma.notificacion.createMany({
+        data: notificacionesData
+      });
+    }
 
     res.json({
       message: 'Consumo registrado correctamente.',

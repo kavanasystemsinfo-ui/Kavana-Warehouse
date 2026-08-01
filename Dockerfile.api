@@ -1,5 +1,5 @@
 # =============================================================================
-# Kavana CleanOps — API Dockerfile (Node.js + Express + Prisma)
+# Kavana CleanStock — API Dockerfile (Node.js + Express + Prisma)
 # Multi-stage build: install → generate → run
 # =============================================================================
 
@@ -38,11 +38,11 @@ COPY --chown=appuser:nodejs . .
 
 # Create startup script that runs migrations then starts server
 RUN echo '#!/bin/sh\n\
-echo "[Kavana CleanOps] Running Prisma migrations..."\n\
+echo "[Kavana CleanStock] Running Prisma migrations..."\n\
 npx prisma migrate deploy\n\
-echo "[Kavana CleanOps] Seeding database..."\n\
+echo "[Kavana CleanStock] Seeding database..."\n\
 node prisma/seed.js\n\
-echo "[Kavana CleanOps] Starting server..."\n\
+echo "[Kavana CleanStock] Starting server..."\n\
 exec node src/server.js\n\
 ' > /app/start.sh && chmod +x /app/start.sh && chown appuser:nodejs /app/start.sh
 

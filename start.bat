@@ -1,9 +1,9 @@
 @echo off
-title Kavana CleanOps — Launcher
+title Kavana CleanStock — Launcher
 cd /d "%~dp0"
 
 echo =============================================
-echo   Kavana CleanOps — Inicio Rapido
+echo   Kavana CleanStock — Inicio Rapido
 echo =============================================
 echo.
 

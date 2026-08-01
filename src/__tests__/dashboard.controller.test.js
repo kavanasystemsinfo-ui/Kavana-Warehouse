@@ -24,7 +24,7 @@ describe('dashboardController.consumption', () => {
     jest.clearAllMocks();
   });
 
-  test('should return consumption data grouped by center', async () => {
+  test('should return consumption data grouped by center with OPEX fields', async () => {
     const mockMovements = [
       {
         id_movimiento: 1,
@@ -33,8 +33,8 @@ describe('dashboardController.consumption', () => {
         id_producto: 1,
         cantidad: -5,
         fecha_hora: new Date('2026-06-01T10:00:00Z'),
-        producto: { id_producto: 1, nombre_producto: 'Lejía 2L', unidad_medida: 'unidades' },
-        centro: { id_centro: 1, nombre_centro: 'CEIP San Juan' },
+        producto: { id_producto: 1, nombre_producto: 'Lejía 2L', unidad_medida: 'unidades', coste_unitario: 1.5 },
+        centro: { id_centro: 1, nombre_centro: 'CEIP San Juan', presupuesto_mensual: 200.0 },
         usuario: { id_usuario: 1, nombre: 'Carlos López' },
       },
       {
@@ -44,8 +44,8 @@ describe('dashboardController.consumption', () => {
         id_producto: 2,
         cantidad: -3,
         fecha_hora: new Date('2026-06-02T10:00:00Z'),
-        producto: { id_producto: 2, nombre_producto: 'Fregasuelos 1L', unidad_medida: 'unidades' },
-        centro: { id_centro: 1, nombre_centro: 'CEIP San Juan' },
+        producto: { id_producto: 2, nombre_producto: 'Fregasuelos 1L', unidad_medida: 'unidades', coste_unitario: 3.0 },
+        centro: { id_centro: 1, nombre_centro: 'CEIP San Juan', presupuesto_mensual: 200.0 },
         usuario: { id_usuario: 1, nombre: 'Carlos López' },
       },
     ];
@@ -56,13 +56,23 @@ describe('dashboardController.consumption', () => {
 
     expect(res.statusCode).toBe(200);
     const data = JSON.parse(res._getData());
-    expect(data.total_consumo).toBe(8);
+    // OPEX fields
+    expect(data.total_consumo_unidades).toBe(8);
+    // Lejía: 5*1.5=7.5, Fregasuelos: 3*3.0=9.0 => total 16.5
+    expect(data.total_gasto_euros).toBe(16.5);
     expect(data.total_movimientos).toBe(2);
     expect(data.resumen_por_centro).toHaveLength(1);
     expect(data.resumen_por_centro[0].centro.nombre_centro).toBe('CEIP San Juan');
-    expect(data.resumen_por_centro[0].total_consumo).toBe(8);
+    expect(data.resumen_por_centro[0].total_consumo_unidades).toBe(8);
+    expect(data.resumen_por_centro[0].gasto_total_euros).toBe(16.5);
+    expect(data.resumen_por_centro[0].presupuesto_mensual).toBe(200.0);
+    // 16.5/200*100 = 8.25%
+    expect(data.resumen_por_centro[0].porcentaje_consumido).toBe(8.25);
     expect(data.resumen_por_centro[0].productos).toHaveLength(2);
     expect(data.movimientos).toHaveLength(2);
+    // Each movement should have gasto_euros
+    expect(data.movimientos[0].gasto_euros).toBe(7.5);
+    expect(data.movimientos[1].gasto_euros).toBe(9.0);
   });
 
   test('should filter by centro query param', async () => {
@@ -120,7 +130,8 @@ describe('dashboardController.consumption', () => {
 
     expect(res.statusCode).toBe(200);
     const data = JSON.parse(res._getData());
-    expect(data.total_consumo).toBe(0);
+    expect(data.total_consumo_unidades).toBe(0);
+    expect(data.total_gasto_euros).toBe(0);
     expect(data.total_movimientos).toBe(0);
     expect(data.resumen_por_centro).toEqual([]);
     expect(data.movimientos).toEqual([]);
@@ -157,8 +168,8 @@ describe('dashboardController.consumption', () => {
         id_producto: 1,
         cantidad: -5,
         fecha_hora: new Date(),
-        producto: { id_producto: 1, nombre_producto: 'Lejía 2L', unidad_medida: 'unidades' },
-        centro: { id_centro: 1, nombre_centro: 'CEIP San Juan' },
+        producto: { id_producto: 1, nombre_producto: 'Lejía 2L', unidad_medida: 'unidades', coste_unitario: 1.5 },
+        centro: { id_centro: 1, nombre_centro: 'CEIP San Juan', presupuesto_mensual: 200.0 },
         usuario: { id_usuario: 1, nombre: 'Carlos López' },
       },
       {
@@ -168,8 +179,8 @@ describe('dashboardController.consumption', () => {
         id_producto: 1,
         cantidad: -10,
         fecha_hora: new Date(),
-        producto: { id_producto: 1, nombre_producto: 'Lejía 2L', unidad_medida: 'unidades' },
-        centro: { id_centro: 2, nombre_centro: 'IES La Plana' },
+        producto: { id_producto: 1, nombre_producto: 'Lejía 2L', unidad_medida: 'unidades', coste_unitario: 1.5 },
+        centro: { id_centro: 2, nombre_centro: 'IES La Plana', presupuesto_mensual: 500.0 },
         usuario: { id_usuario: 2, nombre: 'María García' },
       },
     ];
@@ -180,7 +191,9 @@ describe('dashboardController.consumption', () => {
 
     const data = JSON.parse(res._getData());
     expect(data.resumen_por_centro).toHaveLength(2);
-    expect(data.total_consumo).toBe(15);
+    expect(data.total_consumo_unidades).toBe(15);
+    // 5*1.5 + 10*1.5 = 7.5 + 15 = 22.5
+    expect(data.total_gasto_euros).toBe(22.5);
   });
 
   test('should return 500 on database error', async () => {

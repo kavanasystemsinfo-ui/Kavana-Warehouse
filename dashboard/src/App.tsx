@@ -5,6 +5,9 @@ import { Dashboard } from './pages/Dashboard'
 import { Alerts } from './pages/Alerts'
 import { Asignaciones } from './pages/Asignaciones'
 import { Inventario } from './pages/Inventario'
+import { Deviations } from './pages/Deviations'
+import { Incidents } from './pages/Incidents'
+import { Notifications } from './pages/Notifications'
 import { Layout } from './components/Layout'
 import { getStoredUser } from './lib/api'
 
@@ -24,9 +27,16 @@ export default function App() {
     window.addEventListener('storage', checkUser)
     // Also poll on focus to catch login redirects
     window.addEventListener('focus', checkUser)
+
+    const handleUnauthorized = () => {
+      setCurrentUser(null)
+    }
+    window.addEventListener('auth:unauthorized', handleUnauthorized)
+
     return () => {
       window.removeEventListener('storage', checkUser)
       window.removeEventListener('focus', checkUser)
+      window.removeEventListener('auth:unauthorized', handleUnauthorized)
     }
   }, [])
 
@@ -56,6 +66,9 @@ export default function App() {
         <Route path="alerts" element={<Alerts />} />
         <Route path="asignaciones" element={<Asignaciones />} />
         <Route path="inventario" element={<Inventario />} />
+        <Route path="deviations" element={<Deviations />} />
+        <Route path="incidents" element={<Incidents />} />
+        <Route path="notifications" element={<Notifications />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

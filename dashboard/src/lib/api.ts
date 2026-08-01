@@ -1,4 +1,4 @@
-// Kavana CleanOps Dashboard — API Client
+// Kavana CleanStock Dashboard — API Client
 // Handles JWT auth, refresh token rotation
 
 const BASE_URL = '/api/v1'
@@ -49,17 +49,23 @@ export interface Asignacion {
 }
 
 export interface ConsumptionData {
-  total_consumo: number
+  total_consumo_unidades: number
+  total_gasto_euros: number
   total_movimientos: number
   resumen_por_centro: Array<{
-    centro: { id_centro: number; nombre_centro: string }
-    total_consumo: number
+    centro: { id_centro: number; nombre_centro: string; presupuesto_mensual: number }
+    presupuesto_mensual: number
+    total_consumo_unidades: number
+    gasto_total_euros: number
     movimientos: number
+    porcentaje_consumido: number
     productos: Array<{
       id_producto: number
       nombre_producto: string
       unidad_medida: string
+      coste_unitario: number
       cantidad: number
+      gasto_euros: number
     }>
   }>
   movimientos: Array<{
@@ -69,8 +75,9 @@ export interface ConsumptionData {
     id_usuario: number
     cantidad: number
     fecha_hora: string
-    producto: { id_producto: number; nombre_producto: string; unidad_medida: string }
-    centro: { id_centro: number; nombre_centro: string }
+    gasto_euros: number
+    producto: { id_producto: number; nombre_producto: string; unidad_medida: string; coste_unitario: number }
+    centro: { id_centro: number; nombre_centro: string; presupuesto_mensual: number }
     usuario: { id_usuario: number; nombre: string }
   }>
 }
@@ -158,13 +165,30 @@ export async function apiFetch<T>(
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  let res = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers })
+  let res: Response
+  try {
+    res = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers })
+  } catch (error) {
+    throw new Error('Error de conexión. Por favor, inténtalo de nuevo cuando tengas cobertura.')
+  }
 
-  if (res.status === 401 && getRefreshToken()) {
-    const refreshed = await tryRefresh()
+  if (res.status === 401) {
+    let refreshed = false
+    if (getRefreshToken()) {
+      refreshed = await tryRefresh()
+    }
     if (refreshed) {
       headers['Authorization'] = `Bearer ${getAccessToken()}`
-      res = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers })
+      try {
+        res = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers })
+      } catch (error) {
+        throw new Error('Error de conexión. Por favor, inténtalo de nuevo cuando tengas cobertura.')
+      }
+    } else {
+      clearTokens()
+      localStorage.setItem('auth_error', 'Su sesión ha expirado. Por favor, inicie sesión de nuevo.')
+      window.dispatchEvent(new Event('auth:unauthorized'))
+      throw new Error('Su sesión ha expirado. Por favor, inicie sesión de nuevo.')
     }
   }
 
@@ -311,4 +335,122 @@ export async function getProductos(): Promise<Producto[]> {
     }
   }
   return productos
+}
+
+// --- Deviations ---
+export interface DeviationItem {
+  centro: { id_centro: number; nombre_centro: string }
+  producto: { id_producto: number; nombre_producto: string; unidad_medida: string; coste_unitario: number }
+  consumo_teorico: number
+  consumo_real: number
+  desviacion: number
+  porcentaje_consumido: number
+  coste_desviacion: number
+  estado: 'exceso' | 'infraconsumo' | 'normal'
+}
+
+export interface DeviationsData {
+  mes: string
+  total_desviaciones: number
+  desviaciones: DeviationItem[]
+}
+
+export async function getDeviations(filters?: { centro?: number; mes?: string }): Promise<DeviationsData> {
+  const params = new URLSearchParams()
+  if (filters?.centro) params.set('centro', String(filters.centro))
+  if (filters?.mes) params.set('mes', filters.mes)
+  const qs = params.toString()
+  return apiFetch<DeviationsData>(`/dashboard/deviations${qs ? `?${qs}` : ''}`)
+}
+
+// --- Incidencias ---
+export interface Incidencia {
+  id_incidencia: number
+  id_centro: number
+  id_usuario: number
+  categoria: string
+  titulo: string
+  descripcion: string
+  foto_url: string | null
+  estado: string
+  fecha_creacion: string
+  centro: { id_centro: number; nombre_centro: string }
+  usuario: { id_usuario: number; nombre: string }
+}
+
+export async function getIncidencias(filters?: { centro?: number; estado?: string; categoria?: string }): Promise<{ total: number; incidencias: Incidencia[] }> {
+  const params = new URLSearchParams()
+  if (filters?.centro) params.set('centro', String(filters.centro))
+  if (filters?.estado) params.set('estado', filters.estado)
+  if (filters?.categoria) params.set('categoria', filters.categoria)
+  const qs = params.toString()
+  return apiFetch(`/incidencias${qs ? `?${qs}` : ''}`)
+}
+
+export async function updateIncidencia(id: number, data: { estado: string }): Promise<{ message: string; incidencia: Incidencia }> {
+  return apiFetch(`/incidencias/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+}
+
+// --- Purchases ---
+export interface PurchaseProposal {
+  fecha_generacion: string
+  total_articulos: number
+  total_unidades: number
+  total_coste_estimado: number
+  propuestas: Array<{
+    centro: { id_centro: number; nombre_centro: string }
+    producto: { id_producto: number; nombre_producto: string; unidad_medida: string; coste_unitario: number }
+    stock_actual: number
+    stock_minimo: number
+    deficit: number
+    cantidad_pedido: number
+    coste_estimado: number
+  }>
+}
+
+export async function getPurchaseProposal(centroId?: number): Promise<PurchaseProposal> {
+  const qs = centroId ? `?centro=${centroId}` : ''
+  return apiFetch<PurchaseProposal>(`/purchases/proposal${qs}`)
+}
+
+// --- Notifications ---
+export interface Notificacion {
+  id_notificacion: number
+  id_usuario: number
+  titulo: string
+  mensaje: string
+  leida: boolean
+  fecha_creacion: string
+}
+
+export interface ReglaNotificacion {
+  id_regla: number
+  id_supervisor: number
+  id_centro: number | null
+  id_operario: number | null
+  id_producto: number | null
+  activa: boolean
+  centro: { id_centro: number; nombre_centro: string } | null
+  operario: { id_usuario: number; nombre: string } | null
+  producto: { id_producto: number; nombre_producto: string } | null
+}
+
+export async function getNotifications(): Promise<{ notificaciones: Notificacion[] }> {
+  return apiFetch('/notifications')
+}
+
+export async function markNotificationRead(id: number): Promise<{ success: boolean }> {
+  return apiFetch(`/notifications/${id}/read`, { method: 'PUT' })
+}
+
+export async function getNotificationRules(): Promise<{ reglas: ReglaNotificacion[] }> {
+  return apiFetch('/notifications/rules')
+}
+
+export async function createNotificationRule(data: { id_centro?: number; id_operario?: number; id_producto?: number }): Promise<{ message: string; regla: ReglaNotificacion }> {
+  return apiFetch('/notifications/rules', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function deleteNotificationRule(id: number): Promise<{ success: boolean }> {
+  return apiFetch(`/notifications/rules/${id}`, { method: 'DELETE' })
 }

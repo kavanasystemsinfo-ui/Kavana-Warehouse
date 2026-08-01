@@ -71,9 +71,9 @@ export function Dashboard() {
       {/* Stats */}
       <div className="stats-grid">
         <div className="stat-card primary">
-          <span className="stat-label">Consumo Total</span>
-          <span className="stat-value">{consumption?.total_consumo ?? 0}</span>
-          <span className="stat-sub">unidades consumidas</span>
+          <span className="stat-label">Gasto OPEX Total</span>
+          <span className="stat-value">{consumption?.total_gasto_euros ?? 0} €</span>
+          <span className="stat-sub">{consumption?.total_consumo_unidades ?? 0} unidades consumidas</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Movimientos</span>
@@ -137,7 +137,10 @@ export function Dashboard() {
                   producto: p.nombre_producto,
                   unidad: p.unidad_medida,
                   cantidad_consumida: p.cantidad,
-                  total_consumo_centro: g.total_consumo,
+                  gasto_euros: p.gasto_euros,
+                  total_consumo_centro_unidades: g.total_consumo_unidades,
+                  gasto_total_centro_euros: g.gasto_total_euros,
+                  porcentaje_presupuesto: g.porcentaje_consumido,
                   movimientos: g.movimientos,
                 }))
               )
@@ -153,7 +156,9 @@ export function Dashboard() {
               <thead>
                 <tr>
                   <th>Centro</th>
-                  <th>Total Consumo</th>
+                  <th>Presupuesto</th>
+                  <th>Gasto OPEX</th>
+                  <th>Unidades</th>
                   <th>Movimientos</th>
                   <th>Productos</th>
                 </tr>
@@ -162,12 +167,29 @@ export function Dashboard() {
                 {consumption.resumen_por_centro.map((grupo) => (
                   <tr key={grupo.centro.id_centro}>
                     <td><strong>{grupo.centro.nombre_centro}</strong></td>
-                    <td>{grupo.total_consumo}</td>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span>{grupo.presupuesto_mensual} €</span>
+                        <div style={{ width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div 
+                            style={{ 
+                              width: `${Math.min(100, grupo.porcentaje_consumido)}%`, 
+                              height: '100%', 
+                              background: grupo.porcentaje_consumido > 90 ? 'var(--danger)' : grupo.porcentaje_consumido > 75 ? 'var(--warning)' : 'var(--primary)',
+                              transition: 'width 0.3s ease'
+                            }} 
+                          />
+                        </div>
+                        <small style={{ fontSize: '11px', color: 'var(--gray-500)' }}>{grupo.porcentaje_consumido}% consumido</small>
+                      </div>
+                    </td>
+                    <td style={{ fontWeight: 600 }}>{grupo.gasto_total_euros} €</td>
+                    <td>{grupo.total_consumo_unidades}</td>
                     <td>{grupo.movimientos}</td>
                     <td>
                       {grupo.productos.map((p) => (
                         <span key={p.id_producto} className="badge badge-info" style={{ marginRight: '0.25rem', marginBottom: '0.25rem' }}>
-                          {p.nombre_producto}: {p.cantidad}
+                          {p.nombre_producto}: {p.cantidad} ({p.gasto_euros} €)
                         </span>
                       ))}
                     </td>
@@ -192,6 +214,7 @@ export function Dashboard() {
                 centro: m.centro.nombre_centro,
                 producto: m.producto.nombre_producto,
                 cantidad: m.cantidad,
+                gasto_euros: m.gasto_euros,
                 usuario: m.usuario.nombre,
               }))
               exportToCsv('movimientos', rows)
@@ -209,6 +232,7 @@ export function Dashboard() {
                   <th>Centro</th>
                   <th>Producto</th>
                   <th>Cantidad</th>
+                  <th>Gasto</th>
                   <th>Usuario</th>
                 </tr>
               </thead>
@@ -219,6 +243,7 @@ export function Dashboard() {
                     <td>{m.centro.nombre_centro}</td>
                     <td>{m.producto.nombre_producto}</td>
                     <td style={{ color: 'var(--danger)' }}>{m.cantidad}</td>
+                    <td style={{ color: 'var(--danger)', fontWeight: 600 }}>{m.gasto_euros} €</td>
                     <td>{m.usuario.nombre}</td>
                   </tr>
                 ))}

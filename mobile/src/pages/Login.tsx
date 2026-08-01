@@ -1,7 +1,7 @@
-// Kavana CleanOps Mobile — Login Page
+// Kavana CleanStock Mobile — Login Page
 // 3-click flow step 1: Enter credentials
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { login } from '../lib/api'
 import './Login.css'
 
@@ -14,6 +14,14 @@ export function Login({ onLoginSuccess }: LoginProps) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const expiredError = localStorage.getItem('auth_error')
+    if (expiredError) {
+      setError(expiredError)
+      localStorage.removeItem('auth_error')
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,8 +42,8 @@ export function Login({ onLoginSuccess }: LoginProps) {
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <img src="/logo.png" alt="Kavana CleanOps" className="login-logo" />
-          <h1>Kavana CleanOps</h1>
+          <img src="/logo.png" alt="Kavana CleanStock" className="login-logo" />
+          <h1>Kavana CleanStock</h1>
           <p className="login-subtitle">Control de Stock — Limpiador</p>
         </div>
 

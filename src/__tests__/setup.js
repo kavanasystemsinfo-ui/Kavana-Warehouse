@@ -12,6 +12,13 @@ jest.mock('../lib/logger', () => ({
   debug: jest.fn(),
 }));
 
+// Mock socket to prevent noise in tests
+jest.mock('../lib/socket', () => ({
+  emitStockConsumed: jest.fn(),
+  emitStockRestocked: jest.fn(),
+  createSocketServer: jest.fn(),
+}));
+
 // Manual mock for Prisma
 const mockPrisma = {
   usuario: {
@@ -54,6 +61,30 @@ const mockPrisma = {
     create: jest.fn(),
     update: jest.fn(),
     deleteMany: jest.fn(),
+  },
+  // --- Enterprise Modules (Hito 6) ---
+  consumoTeorico: {
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    upsert: jest.fn(),
+  },
+  incidencia: {
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+  },
+  reglaNotificacion: {
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    delete: jest.fn(),
+  },
+  notificacion: {
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    update: jest.fn(),
   },
   $transaction: jest.fn((queries) => Promise.all(queries)),
 };

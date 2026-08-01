@@ -1,5 +1,5 @@
 // =============================================================================
-// Kavana CleanOps — Express Server Entry Point
+// Kavana CleanStock — Express Server Entry Point
 // =============================================================================
 
 const http = require('http');
@@ -24,12 +24,51 @@ const TOKEN_CLEANUP_INTERVAL = 6 * 60 * 60 * 1000; // cada 6 horas
 // Middleware Chain
 // ---------------------------------------------------------------------------
 app.use(helmet());                                          // Security headers
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));  // CORS
+
+// Redirección HTTPS en producción
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    if (req.headers['x-forwarded-proto'] !== 'https') {
+      return res.redirect(`https://${req.headers.host}${req.url}`);
+    }
+    next();
+  });
+}
+
+// Configuración de CORS dinámica
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+  : [];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Si no hay origen (ej. apps móviles o herramientas locales como curl)
+    if (!origin) return callback(null, true);
+
+    // Si se permite el comodín global '*'
+    if (allowedOrigins.includes('*')) {
+      return callback(null, true);
+    }
+
+    // En desarrollo, si no hay orígenes configurados se permite
+    if (process.env.NODE_ENV !== 'production' && allowedOrigins.length === 0) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('No permitido por CORS'));
+  },
+  credentials: true,
+}));
+
 app.use(express.json());                                    // Body parsing
 
 // Swagger UI documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customSiteTitle: 'Kavana CleanOps API Docs',
+  customSiteTitle: 'Kavana CleanStock API Docs',
   customCss: '.swagger-ui .topbar { display: none }',
 }));
 
@@ -88,14 +127,14 @@ createSocketServer(server);
 // Start Server
 // ---------------------------------------------------------------------------
 server.listen(PORT, () => {
-  logger.info(`[Kavana CleanOps] Server running on http://localhost:${PORT}`);
-  logger.info(`[Kavana CleanOps] Socket.IO ready for real-time connections`);
-  logger.info(`[Kavana CleanOps] Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.info(`[Kavana CleanStock] Server running on http://localhost:${PORT}`);
+  logger.info(`[Kavana CleanStock] Socket.IO ready for real-time connections`);
+  logger.info(`[Kavana CleanStock] Environment: ${process.env.NODE_ENV || 'development'}`);
 
   // Programar limpieza periódica de refresh tokens expirados
   cleanupExpiredTokens(); // Ejecutar al inicio
   setInterval(cleanupExpiredTokens, TOKEN_CLEANUP_INTERVAL);
-  logger.info(`[Kavana CleanOps] Token cleanup scheduled every ${TOKEN_CLEANUP_INTERVAL / 60000} minutes`);
+  logger.info(`[Kavana CleanStock] Token cleanup scheduled every ${TOKEN_CLEANUP_INTERVAL / 60000} minutes`);
 });
 
 module.exports = app;

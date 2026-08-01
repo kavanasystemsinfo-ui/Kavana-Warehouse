@@ -1,10 +1,10 @@
-// Kavana CleanOps Mobile — IndexedDB Offline Cache
+// Kavana CleanStock Mobile — IndexedDB Offline Cache
 // Uses 'idb' library for a promise-based IndexedDB wrapper
 
 import { openDB } from 'idb'
 import type { DBSchema, IDBPDatabase } from 'idb'
 
-const DB_NAME = 'kavana-cleanops-offline'
+const DB_NAME = 'kavana-cleanstock-offline'
 const DB_VERSION = 3
 
 interface InventoryItem {
@@ -33,7 +33,7 @@ interface CachedCentro {
   synced_at: number
 }
 
-interface CleanOpsDB extends DBSchema {
+interface CleanStockDB extends DBSchema {
   inventory: {
     key: string
     value: InventoryItem
@@ -49,15 +49,15 @@ interface CleanOpsDB extends DBSchema {
   }
 }
 
-let dbPromise: Promise<IDBPDatabase<CleanOpsDB>> | null = null
+let dbPromise: Promise<IDBPDatabase<CleanStockDB>> | null = null
 
 function centroKey(idCentro: number, idProducto: number): string {
   return `${idCentro}-${idProducto}`
 }
 
-function getDB(): Promise<IDBPDatabase<CleanOpsDB>> {
+function getDB(): Promise<IDBPDatabase<CleanStockDB>> {
   if (!dbPromise) {
-    dbPromise = openDB<CleanOpsDB>(DB_NAME, DB_VERSION, {
+    dbPromise = openDB<CleanStockDB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion) {
         // Delete existing stores to ensure clean schema
         if (db.objectStoreNames.contains('inventory')) {
@@ -147,7 +147,7 @@ export async function addPendingConsumption(
   await db.add('pending_consumptions', {
     offline_id: offlineId,
     id_producto: idProducto,
-    cantidad: -Math.abs(cantidad),
+    cantidad: Math.abs(cantidad),
     created_at: Date.now(),
     synced: false,
   })

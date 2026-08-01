@@ -1,5 +1,5 @@
 # =============================================================================
-# Kavana CleanOps — Dashboard Dockerfile (Vite + React + nginx)
+# Kavana CleanStock — Dashboard Dockerfile (Vite + React + nginx)
 # Build context: ./dashboard/
 # Multi-stage: build → nginx serve
 # =============================================================================

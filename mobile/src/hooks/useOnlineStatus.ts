@@ -1,4 +1,4 @@
-// Kavana CleanOps Mobile — useOnlineStatus hook
+// Kavana CleanStock Mobile — useOnlineStatus hook
 // Detects online/offline state and triggers sync when back online
 
 import { useState, useEffect } from 'react'

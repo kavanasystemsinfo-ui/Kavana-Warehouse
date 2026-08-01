@@ -20,11 +20,14 @@ let io = null;
 // ---------------------------------------------------------------------------
 // createSocketServer — Crea y configura el servidor Socket.IO
 //   Se llama desde server.js con el http.Server ya creado.
-// ---------------------------------------------------------------------------
 function createSocketServer(httpServer) {
+  const allowedOrigins = process.env.CORS_ORIGIN
+    ? (process.env.CORS_ORIGIN.includes(',') ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim()) : process.env.CORS_ORIGIN)
+    : '*';
+
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.CORS_ORIGIN || '*',
+      origin: allowedOrigins,
       methods: ['GET', 'POST'],
       credentials: true,
     },

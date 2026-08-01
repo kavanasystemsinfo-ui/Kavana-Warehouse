@@ -1,5 +1,5 @@
 // =============================================================================
-// Kavana CleanOps — Prisma Schema v1.0.0
+// Kavana CleanStock — Prisma Schema v1.0.0
 // Provider: PostgreSQL 16
 // =============================================================================
 
@@ -26,6 +26,10 @@ model Usuario {
 
   asignaciones       AsignacionPersonal[]
   registroMovimientos RegistroMovimiento[]
+  incidencias        Incidencia[]
+  reglasComoOperario ReglaNotificacion[] @relation("ReglaOperario")
+  reglasComoSupervisor ReglaNotificacion[] @relation("ReglaSupervisor")
+  notificaciones     Notificacion[]
 
   tokensExpirados    RefreshToken[]
 
@@ -39,11 +43,15 @@ model Usuario {
 model Centro {
   id_centro     Int       @id @default(autoincrement())
   nombre_centro String    @db.VarChar(150)
-  direccion     String?   @db.VarChar(255)
+  direccion           String?   @db.VarChar(255)
+  presupuesto_mensual Float     @default(0.0) // Límite de coste mensual (ej. 300.00 €)
 
-  asignaciones       AsignacionPersonal[]
-  inventarioCentros  InventarioCentro[]
+  asignaciones        AsignacionPersonal[]
+  inventarioCentros   InventarioCentro[]
   registroMovimientos RegistroMovimiento[]
+  consumosTeoricos    ConsumoTeorico[]
+  incidencias         Incidencia[]
+  reglasNotificacion  ReglaNotificacion[]
 
   @@map("centros")
 }
@@ -55,11 +63,14 @@ model Centro {
 model Producto {
   id_producto       Int     @id @default(autoincrement())
   nombre_producto   String  @db.VarChar(100)
-  unidad_medida     String  @default("unidades") @db.VarChar(20)
-  stock_minimo_alerta Int   @default(5)
+  unidad_medida       String  @default("unidades") @db.VarChar(20)
+  stock_minimo_alerta Int     @default(5)
+  coste_unitario      Float   @default(0.0) // Coste de adquisición (ej. 1.50 €)
 
-  inventarioCentros  InventarioCentro[]
+  inventarioCentros   InventarioCentro[]
   registroMovimientos RegistroMovimiento[]
+  consumosTeoricos    ConsumoTeorico[]
+  reglasNotificacion  ReglaNotificacion[]
 
   @@map("productos")
 }
@@ -141,4 +152,78 @@ model RegistroMovimiento {
 
   @@index([id_centro, fecha_hora], name: "idx_movimientos_centro_fecha")
   @@map("registro_movimientos")
+}
+
+// =============================================================================
+// Model: ConsumoTeorico
+// Descripción: Cantidad estándar mensual asignada a un centro por producto
+// =============================================================================
+model ConsumoTeorico {
+  id_centro        Int
+  id_producto      Int
+  cantidad_teorica Int // Cantidad mensual permitida
+
+  centro   Centro   @relation(fields: [id_centro], references: [id_centro], onDelete: Cascade)
+  producto Producto @relation(fields: [id_producto], references: [id_producto], onDelete: Cascade)
+
+  @@id([id_centro, id_producto])
+  @@map("consumo_teorico")
+}
+
+// =============================================================================
+// Model: Incidencia
+// Descripción: Reporte de averías o problemas en las instalaciones
+// =============================================================================
+model Incidencia {
+  id_incidencia  Int      @id @default(autoincrement())
+  id_centro      Int
+  id_usuario     Int
+  categoria      String   @db.VarChar(50) // "limpieza" | "fontaneria" | "electricidad" | "cerrajeria" | "otros"
+  titulo         String   @db.VarChar(100)
+  descripcion    String   @db.Text
+  foto_url       String?
+  estado         String   @default("pendiente") @db.VarChar(20) // "pendiente" | "en_proceso" | "resuelta"
+  fecha_creacion DateTime @default(now())
+
+  centro  Centro  @relation(fields: [id_centro], references: [id_centro], onDelete: Cascade)
+  usuario Usuario @relation(fields: [id_usuario], references: [id_usuario])
+
+  @@map("incidencias")
+}
+
+// =============================================================================
+// Model: ReglaNotificacion
+// Descripción: Configuración de alertas de consumo para el supervisor
+// =============================================================================
+model ReglaNotificacion {
+  id_regla       Int     @id @default(autoincrement())
+  id_supervisor  Int     // Quién recibe la notificación
+  id_centro      Int?    // Opcional: Filtrar por centro
+  id_operario    Int?    // Opcional: Filtrar por limpiador específico
+  id_producto    Int?    // Opcional: Filtrar por producto específico
+  activa         Boolean @default(true)
+
+  supervisor Usuario  @relation("ReglaSupervisor", fields: [id_supervisor], references: [id_usuario], onDelete: Cascade)
+  centro     Centro?  @relation(fields: [id_centro], references: [id_centro], onDelete: Cascade)
+  operario   Usuario? @relation("ReglaOperario", fields: [id_operario], references: [id_usuario], onDelete: Cascade)
+  producto   Producto? @relation(fields: [id_producto], references: [id_producto], onDelete: Cascade)
+
+  @@map("reglas_notificacion")
+}
+
+// =============================================================================
+// Model: Notificacion
+// Descripción: Historial de notificaciones enviadas a supervisores
+// =============================================================================
+model Notificacion {
+  id_notificacion Int      @id @default(autoincrement())
+  id_usuario      Int      // Supervisor que recibe la notificación
+  titulo          String   @db.VarChar(100)
+  mensaje         String   @db.Text
+  leida           Boolean  @default(false)
+  fecha_creacion  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+
+  @@map("notificaciones")
 }

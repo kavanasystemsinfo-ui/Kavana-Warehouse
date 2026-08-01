@@ -1,5 +1,5 @@
 {
-  "name": "kavana-cleanops",
+  "name": "kavana-cleanstock",
   "version": "1.0.0",
   "description": "SaaS de Control de Stock para el sector limpieza - Gestión de inventario distribuido",
   "main": "src/server.js",
@@ -25,7 +25,7 @@
     "kavana",
     "control-stock"
   ],
-  "author": "Kavana CleanOps",
+  "author": "Kavana CleanStock",
   "license": "MIT",
   "prisma": {
     "seed": "node prisma/seed.js"

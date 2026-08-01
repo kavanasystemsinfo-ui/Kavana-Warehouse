@@ -61,7 +61,7 @@ const refreshSchema = z.object({
 // --- Stock ---
 const consumeStockSchema = z.object({
   id_producto: z.number().int().positive('id_producto debe ser un entero positivo.'),
-  cantidad: z.number().int().negative('cantidad debe ser negativa para consumo.'),
+  cantidad: z.number().int().positive('cantidad debe ser un entero positivo para consumo.'),
   id_centro: z.number().int().positive().optional(),
 });
 
