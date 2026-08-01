@@ -61,14 +61,13 @@ export function Login({ onLogin }: LoginProps) {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label" htmlFor="email">Usuario o correo</label>
+            <label className="form-label" htmlFor="email">Usuario</label>
             <input
               id="email"
               className="form-input"
               type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="warehouse"
               required
               autoFocus
             />
