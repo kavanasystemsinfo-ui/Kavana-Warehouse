@@ -490,13 +490,31 @@ describe('GET /api/v1/dashboard/costes', () => {
   });
 
   it('el coste por centro viene de movimientos reales, no del conteo físico', async () => {
+    // Inserta un movimiento de consumo de HOY para que el mes en curso tenga
+    // datos (en CI la BD es fresca y no hay histórico de meses previos).
+    const centro = await prisma.centro.findFirst({
+      where: { id_cliente: (await prisma.usuario.findUnique({ where: { username: 'warehouse' } })).id_cliente },
+    });
+    const producto = await prisma.producto.findFirst();
+    const usuario = await prisma.usuario.findUnique({ where: { username: 'warehouse' } });
+    if (centro && producto && usuario) {
+      await prisma.registroMovimiento.create({
+        data: {
+          id_usuario: usuario.id_usuario,
+          id_centro: centro.id_centro,
+          id_producto: producto.id_producto,
+          cantidad: -10,
+          tipo: 'movimiento',
+          fecha_hora: new Date(),
+        },
+      });
+    }
+
     const res = await request(app)
       .get('/api/v1/dashboard/costes')
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
-    // Todos los centros del cliente deben tener movimientos (el seed histórico
-    // generó consumos en los 10 centros). Ninguno debería quedar a 0 por
-    // falta de stock_fisico (bug del conteo físico).
+    // El centro con el movimiento de hoy debe tener coste > 0
     const conMovimientos = res.body.centros.filter((c) => c.coste_material > 0);
     expect(conMovimientos.length).toBeGreaterThan(0);
     // Y ningún centro debe superar el 2000% (cifra desmesurada del bug)
