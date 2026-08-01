@@ -51,8 +51,6 @@ EXPOSE 3000
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Startup script that runs migrations then starts server
-COPY --chown=appuser:nodejs start.sh /app/start.sh
-RUN chmod +x /app/start.sh
-
-CMD ["/app/start.sh"]
+# Arranque directo (las migraciones se aplican manualmente, nunca en el start:
+# correr `prisma migrate deploy` aquí rompía los deploys del Hito 7)
+CMD ["node", "src/server.js"]

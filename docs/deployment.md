@@ -136,13 +136,12 @@ Para que cualquier visitante pruebe la app sin contaminar los datos compartidos:
   aparecen solas) y repone los lunes. La demo "vive" en el tiempo: los costes
   del mes suben solos. Idempotente (no duplica si ya se simuló hoy).
 
-## Migración futura a Serverless
+## Notas de arquitectura descartada
 
-Si el proyecto crece y se necesita escalar sin VPS, el código ya está preparado:
+Durante el Hito 7 se consideraron opciones que quedaron descartadas y cuyo código
+se eliminó del repo en la limpieza de 2026-08-01:
 
-- **API**: `api/index.js` con `serverless-http` (Express → Vercel)
-- **DB**: Se puede migrar a Supabase (proyecto creado, SQL de migración disponible)
-- **Frontends**: Build estático Vite, desplegable en Vercel
-- **Config**: `vercel.json` con rutas y build script
-
-Ver `supabase-migrate.sh` para el procedimiento.
+- **API serverless en Vercel** (`api/index.js` con `serverless-http`): descartada, la API corre en Render como Web Service
+- **Railway** (`railway.json`): descartado por límites del free tier
+- **Supabase** (`supabase-migrate.sh`): descartado por incompatibilidad IPv4/IPv6 con Render free; se usa Neon
+- **App móvil** (`mobile/`, Dockerfile.mobile): eliminada, la visión actual es solo gestión de stock web
