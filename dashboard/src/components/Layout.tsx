@@ -26,10 +26,6 @@ export function Layout() {
             <span className="sidebar-link-icon">📊</span>
             Dashboard
           </NavLink>
-          <NavLink to="/alerts" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
-            <span className="sidebar-link-icon">🔔</span>
-            Alertas
-          </NavLink>
           <NavLink to="/empleados" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
             <span className="sidebar-link-icon">👥</span>
             Empleados
@@ -38,25 +34,13 @@ export function Layout() {
             <span className="sidebar-link-icon">🏢</span>
             Centros
           </NavLink>
-          <NavLink to="/asignaciones" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
-            <span className="sidebar-link-icon">👥</span>
-            Asignaciones
-          </NavLink>
           <NavLink to="/inventario" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
             <span className="sidebar-link-icon">📦</span>
             Inventario
           </NavLink>
-          <NavLink to="/deviations" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
-            <span className="sidebar-link-icon">📈</span>
-            Desviaciones
-          </NavLink>
           <NavLink to="/incidents" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
             <span className="sidebar-link-icon">🛠️</span>
             Incidencias
-          </NavLink>
-          <NavLink to="/notifications" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
-            <span className="sidebar-link-icon">📬</span>
-            Notificaciones
           </NavLink>
         </nav>
         <div className="sidebar-footer">

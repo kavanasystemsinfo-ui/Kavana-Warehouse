@@ -139,6 +139,8 @@ model InventarioCentro {
   id_centro      Int
   id_producto    Int
   cantidad_actual Int @default(0)
+  stock_minimo   Int    @default(0)
+  fecha_actualizacion DateTime @default(now()) @db.Timestamptz()
 
   centro  Centro  @relation(fields: [id_centro], references: [id_centro])
   producto Producto @relation(fields: [id_producto], references: [id_producto])

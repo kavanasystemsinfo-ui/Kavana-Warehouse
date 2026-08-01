@@ -1,32 +1,14 @@
 {
   "name": "kavana-cleanstock",
   "version": "1.0.0",
-  "description": "SaaS de Control de Stock para el sector limpieza - Gestión de inventario distribuido",
+  "description": "SaaS de Control de Stock para el sector limpieza",
   "main": "src/server.js",
   "scripts": {
-    "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "test": "jest --no-cache",
-    "test:coverage": "jest --no-cache --coverage",
     "prisma:generate": "npx prisma generate",
-    "prisma:migrate": "npx prisma migrate dev",
-    "prisma:seed": "node prisma/seed.js",
-    "docker:db": "docker-compose up -d",
-    "docker:db:stop": "docker-compose down",
-    "mobile:dev": "cd mobile && npm run dev",
-    "mobile:build": "cd mobile && npm run build",
-    "dashboard:dev": "cd dashboard && npm run dev",
-    "dashboard:build": "cd dashboard && npm run build"
+    "prisma:seed": "node prisma/seed.js"
   },
-  "keywords": [
-    "inventario",
-    "stock",
-    "limpieza",
-    "kavana",
-    "control-stock"
-  ],
-  "author": "Kavana CleanStock",
-  "license": "MIT",
   "prisma": {
     "seed": "node prisma/seed.js"
   },
@@ -36,21 +18,12 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^9.0.3",
-    "serverless-http": "^3.2.0",
-    "socket.io": "^4.8.3",
-    "swagger-jsdoc": "^6.3.0",
-    "swagger-ui-express": "^5.0.1",
-    "web-push": "^3.6.7",
-    "winston": "^3.19.0",
-    "zod": "^4.4.3"
+    "nodemailer": "^9.0.3"
   },
   "devDependencies": {
     "jest": "^29.7.0",
     "node-mocks-http": "^1.17.2",
-    "nodemon": "^3.1.9",
     "prisma": "^6.6.0",
     "supertest": "^7.1.0"
   }

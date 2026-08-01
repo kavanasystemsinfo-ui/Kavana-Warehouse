@@ -65,9 +65,9 @@ services:
       - "3000:3000"
     networks:
       - kavana-net
-    # Health check via Express /health endpoint
+    # Health check via Express /api/v1/health endpoint
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/health"]
       interval: 10s
       timeout: 5s
       start_period: 40s

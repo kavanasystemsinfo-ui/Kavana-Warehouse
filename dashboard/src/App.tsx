@@ -3,12 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
-import { Alerts } from './pages/Alerts'
-import { Asignaciones } from './pages/Asignaciones'
 import { Inventario } from './pages/Inventario'
-import { Deviations } from './pages/Deviations'
 import { Incidents } from './pages/Incidents'
-import { Notifications } from './pages/Notifications'
 import { Empleados } from './pages/Empleados'
 import { Centros } from './pages/Centros'
 import { getStoredUser } from './lib/api'
@@ -65,12 +61,8 @@ export default function App() {
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="alerts" element={<Alerts />} />
-        <Route path="asignaciones" element={<Asignaciones />} />
         <Route path="inventario" element={<Inventario />} />
-        <Route path="deviations" element={<Deviations />} />
         <Route path="incidents" element={<Incidents />} />
-        <Route path="notifications" element={<Notifications />} />
         <Route path="empleados" element={<Empleados />} />
         <Route path="centros" element={<Centros />} />
       </Route>

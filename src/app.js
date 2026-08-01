@@ -59,6 +59,67 @@ app.get('/api/v1/dashboard', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Dashboard — Consumption data (frontend)
+app.get('/api/v1/dashboard/consumption', auth, async (req, res) => {
+  try {
+    const { centro, producto, desde, hasta } = req.query;
+    // Return basic consumption data
+    const movs = await prisma.$queryRawUnsafe(`
+      SELECT rm.*, p.nombre_producto, p.unidad_medida, p.coste_unitario,
+             c.nombre_centro, u.nombre as usuario_nombre
+      FROM registro_movimientos rm
+      JOIN productos p ON rm.id_producto = p.id_producto
+      JOIN centros c ON rm.id_centro = c.id_centro
+      JOIN usuarios u ON rm.id_usuario = u.id_usuario
+      WHERE rm.cantidad < 0
+      ORDER BY rm.fecha_hora DESC LIMIT 50
+    `);
+    const total = movs.reduce((s, m) => s + Math.abs(Number(m.cantidad)), 0);
+    const totalEuro = movs.reduce((s, m) => s + (Math.abs(Number(m.cantidad)) * Number(m.coste_unitario || 0)), 0);
+    res.json({
+      total_consumo_unidades: total,
+      total_gasto_euros: Math.round(totalEuro * 100) / 100,
+      total_movimientos: movs.length,
+      resumen_por_centro: [],
+      movimientos: movs.map(m => ({
+        id_movimiento: m.id_movimiento,
+        fecha_hora: m.fecha_hora,
+        centro: { id_centro: m.id_centro, nombre_centro: m.nombre_centro },
+        producto: { id_producto: m.id_producto, nombre_producto: m.nombre_producto, unidad_medida: m.unidad_medida },
+        cantidad: m.cantidad,
+        gasto_euros: Math.round(Math.abs(Number(m.cantidad)) * Number(m.coste_unitario || 0) * 100) / 100,
+        usuario: { nombre: m.usuario_nombre }
+      }))
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Dashboard — Alerts (frontend)
+app.get('/api/v1/dashboard/alerts', auth, async (req, res) => {
+  try {
+    const criticas = await prisma.$queryRawUnsafe(`
+      SELECT ic.*, p.nombre_producto, c.nombre_centro
+      FROM inventario_centros ic
+      JOIN productos p ON ic.id_producto = p.id_producto
+      JOIN centros c ON ic.id_centro = c.id_centro
+      WHERE ic.cantidad_actual <= 0
+      ORDER BY c.nombre_centro
+    `);
+    const advertencias = await prisma.$queryRawUnsafe(`
+      SELECT ic.*, p.nombre_producto, c.nombre_centro
+      FROM inventario_centros ic
+      JOIN productos p ON ic.id_producto = p.id_producto
+      JOIN centros c ON ic.id_centro = c.id_centro
+      WHERE ic.cantidad_actual > 0 AND ic.cantidad_actual <= ic.stock_minimo AND ic.stock_minimo > 0
+      ORDER BY c.nombre_centro
+    `);
+    res.json({
+      criticas: criticas.map(c => ({ id: c.id_centro + '-' + c.id_producto, centro: c.nombre_centro, producto: c.nombre_producto, cantidad_actual: c.cantidad_actual })),
+      advertencias: advertencias.map(a => ({ id: a.id_centro + '-' + a.id_producto, centro: a.nombre_centro, producto: a.nombre_producto, cantidad_actual: a.cantidad_actual }))
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ----- CATEGORIAS -----
 app.get('/api/v1/categorias', auth, async (req, res) => {
   try { 
@@ -79,7 +140,7 @@ app.get('/api/v1/productos', auth, async (req, res) => {
     const where = {};
     if (search) where.nombre = { contains: search, mode: 'insensitive' };
     if (categoria) where.id_categoria = parseInt(categoria);
-    const prods = await prisma.producto.findMany({ where, include: { categoria: true }, orderBy: { nombre: 'asc' } });
+    const prods = await prisma.producto.findMany({ where, include: { categoria: true }, orderBy: { nombre_producto: 'asc' } });
     res.json({ productos: prods });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -113,6 +174,23 @@ app.post('/api/v1/empleados', auth, supervisorOnly, async (req, res) => {
     const hash = await bcrypt.hash(password || 'cleanstock', 12);
     const u = await prisma.usuario.create({ data: { nombre, email, password_hash: hash, numero_empleado, id_centro, rol: 'limpiador' } });
     res.json({ empleado: u });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Centro activo del usuario logueado (app empleado)
+app.get('/api/v1/asignaciones/active', auth, async (req, res) => {
+  try {
+    const now = new Date();
+    const asignacion = await prisma.asignacionPersonal.findFirst({
+      where: {
+        id_usuario: req.user.id_usuario,
+        fecha_inicio: { lte: now },
+        OR: [{ fecha_fin: null }, { fecha_fin: { gte: now } }]
+      },
+      include: { centro: true }
+    });
+    if (!asignacion) return res.status(404).json({ error: 'No tienes un centro asignado' });
+    res.json({ asignacion: { centro: asignacion.centro } });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -150,6 +228,63 @@ app.post('/api/v1/inventario/reponer', auth, supervisorOnly, async (req, res) =>
       create: { id_centro, id_producto, cantidad_actual: cantidad }
     });
     res.json({ message: 'Repuesto' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Stock inventory con productos (para frontend getProductos)
+app.get('/api/v1/stock/inventory', auth, async (req, res) => {
+  try {
+    const { centro } = req.query;
+    let sql = `SELECT ic.id_centro, ic.id_producto, ic.cantidad_actual,
+               c.nombre_centro,
+               p.id_producto as prod_id, p.nombre_producto, p.unidad_medida, p.stock_minimo_alerta, p.coste_unitario, p.id_categoria
+               FROM inventario_centros ic
+               JOIN centros c ON ic.id_centro = c.id_centro
+               JOIN productos p ON ic.id_producto = p.id_producto`;
+    if (centro) sql += ` WHERE ic.id_centro = ${parseInt(centro)}`;
+    sql += ` ORDER BY p.nombre_producto`;
+    const items = await prisma.$queryRawUnsafe(sql);
+    const result = items.map(i => ({
+      id_centro: i.id_centro,
+      id_producto: i.id_producto,
+      cantidad_actual: i.cantidad_actual,
+      centro: { nombre_centro: i.nombre_centro },
+      producto: {
+        id_producto: i.prod_id,
+        nombre_producto: i.nombre_producto,
+        unidad_medida: i.unidad_medida,
+        stock_minimo_alerta: i.stock_minimo_alerta,
+        coste_unitario: i.coste_unitario,
+        id_categoria: i.id_categoria
+      }
+    }));
+    res.json({ inventario: result });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Consumir stock (app empleado)
+app.post('/api/v1/stock/consume', auth, async (req, res) => {
+  try {
+    const { id_producto, cantidad } = req.body;
+    if (!id_producto || !cantidad || cantidad <= 0) {
+      return res.status(400).json({ error: 'Producto y cantidad requeridos' });
+    }
+    const now = new Date();
+    const asignacion = await prisma.asignacionPersonal.findFirst({
+      where: { id_usuario: req.user.id_usuario, fecha_inicio: { lte: now }, OR: [{ fecha_fin: null }, { fecha_fin: { gte: now } }] }
+    });
+    if (!asignacion) return res.status(400).json({ error: 'No tienes un centro asignado' });
+    const id_centro = asignacion.id_centro;
+    const inv = await prisma.inventarioCentro.findUnique({ where: { id_centro_id_producto: { id_centro, id_producto } } });
+    if (!inv || inv.cantidad_actual < cantidad) return res.status(400).json({ error: 'Stock insuficiente' });
+    await prisma.inventarioCentro.update({ where: { id_centro_id_producto: { id_centro, id_producto } }, data: { cantidad_actual: inv.cantidad_actual - cantidad } });
+    const mov = await prisma.registroMovimiento.create({ data: { id_centro, id_producto, id_usuario: req.user.id_usuario, cantidad: -Math.abs(cantidad) } });
+    const updated = await prisma.inventarioCentro.findUnique({ where: { id_centro_id_producto: { id_centro, id_producto } }, include: { producto: true } });
+    res.json({
+      message: 'Consumo registrado',
+      inventario: { id_centro, id_producto, cantidad_actual: updated.cantidad_actual, producto: { id_producto: updated.producto.id_producto, nombre_producto: updated.producto.nombre_producto, unidad_medida: updated.producto.unidad_medida, stock_minimo_alerta: updated.producto.stock_minimo_alerta } },
+      movimiento: { id_movimiento: mov.id_movimiento, cantidad: mov.cantidad, fecha_hora: mov.fecha_hora }
+    });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
