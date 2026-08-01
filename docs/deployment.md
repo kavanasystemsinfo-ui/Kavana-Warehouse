@@ -98,7 +98,7 @@ certbot renew --dry-run
 ### Actualizar la aplicación
 
 ```bash
-cd /root/clean_ops
+cd /root/clean-stock
 git pull
 docker compose up -d --build
 ```
@@ -116,8 +116,9 @@ docker builder prune -f
 
 | Email | Rol | Contraseña |
 |---|---|---|
-| `admin@kavana.com` | Admin | CleanStock2026! |
-| `supervisor@kavana.com` | Supervisor | CleanStock2026! |
+| `supervisor.demo@cleanstock.com` | Supervisor demo (Zaira García) | `demo1234` |
+| `admin@kavana.com` | Admin | `CleanStock2026!` |
+| `supervisor@kavana.com` | Supervisor | `CleanStock2026!` |
 
 > El rol `limpiador` existe en el modelo de datos (`Usuario.rol`) para trazabilidad de
 > asignación a centros, **pero no tiene credenciales de acceso a ninguna app**.

@@ -2,7 +2,7 @@ name: kavana-cleanstock
 
 # =============================================================================
 # Kavana CleanStock — Full Stack Deployment
-# Services: API + PostgreSQL + Dashboard + Mobile PWA
+# Services: API + PostgreSQL + Dashboard
 # =============================================================================
 
 services:

@@ -5,8 +5,6 @@
 > **Versión actual:** 1.1 (backend monolítico, dashboard web responsive)
 > **Última actualización:** 2026-07-16
 > **⚠️ Nota:** Este documento refleja el código que realmente corre en producción.
->   Los módulos aspiracionales (Socket.IO, Zod, Swagger, separación en controladores)
->   están documentados como planificados, no como implementados.
 >   **Rediseño de visión de negocio (2026-07-16):** los limpiadores NO usan ninguna app.
 >   El consumo lo registra el supervisor o personal adecuado desde el dashboard web.
 
@@ -181,13 +179,9 @@ clean-stock/
 
 ## 6. Futuro planificado (NO implementado hoy)
 
-- **Socket.IO** para alertas en tiempo real
-- **Separación en controladores modulares** (stockController, incidenciaController, etc.)
 - **Documentación OpenAPI / Swagger**
-- **Validación Zod** en los handlers
 - **Refresh token wireado** al login (tabla existe)
 - **Notificaciones CRUD** (tablas existen)
-- **Reevaluar app móvil del limpiador** — descartada en el rediseño de 2026-07-16;
-  solo se reconsideraría si hay adopción masiva y el supervisor delega el registro
+- **Reevaluar app móvil del limpiador** — descartada en el rediseño de 2026-07-16; solo se reconsideraría si hay adopción masiva y el supervisor delega el registro
 
 > Ver `docs/internal_roadmap.md` (versión honesta) para el detalle de lo hecho vs. lo planificado.

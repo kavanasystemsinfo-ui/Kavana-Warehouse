@@ -24,13 +24,15 @@ CleanStock permite a supervisores y personal de control ver qué producto se ha 
 
 | Capa | Tecnología |
 |------|------------|
-| **Frontend** | React + Vite + TypeScript (dashboard supervisor) |
+| **Frontend** | React + Vite + TypeScript + Socket.io (dashboard supervisor) |
 | **Backend** | Node.js + Express + Prisma ORM |
 | **Database** | PostgreSQL 16 (Docker) |
-| **Auth** | JWT + bcrypt |
+| **Auth** | JWT + bcrypt + Zod (validación centralizada) |
 | **Email** | Nodemailer + Gmail SMTP |
 | **Infra** | Docker Compose + nginx + Let's Encrypt |
 | **Hosting** | VPS Hetzner (2 vCPU, 3.7 GB RAM) |
+| **CI/CD** | GitHub Actions (tests + Postgres en cada push) |
+| **Tests** | Jest + Supertest (26 tests de integración) |
 
 ---
 
@@ -85,6 +87,13 @@ JWT_SECRET=*** <kavanasystems.info@gmail.com>
 |--------|------|-------------|
 | `POST` | `/api/v1/auth/login` | Login (email o username) |
 | `POST` | `/api/v1/auth/register-empresa` | Registro empresa + email credenciales |
+
+### Demo
+| Email | Contraseña | Rol |
+|-------|-----------|-----|
+| `supervisor.demo@cleanstock.com` | `demo1234` | Supervisor (Zaira García, client `Limpiezas Valencia Centro`) |
+| `admin@kavana.com` | `CleanStock2026!` | Admin del sistema |
+| `supervisor@kavana.com` | `CleanStock2026!` | Supervisor general |
 
 ### Dashboard (supervisor)
 | Método | Ruta | Descripción |
