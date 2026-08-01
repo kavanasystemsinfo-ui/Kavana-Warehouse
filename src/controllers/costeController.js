@@ -36,23 +36,37 @@ async function getCostes(req, res) {
 
     const centros = await prisma.centro.findMany({
       where: { id_cliente: idCliente },
-      include: { inventarioCentros: { include: { producto: true } } },
+      select: { id_centro: true, nombre_centro: true, presupuesto_mensual: true },
     });
+
+    // Gasto real del MES EN CURSO por centro: suma de consumos (cantidad < 0)
+    // desde registro_movimientos. Ya NO se usa la diferencia stock_fisico,
+    // que daba cifras desmesuradas (centros con conteo físico viejo) o 0
+    // (centros sin conteo físico).
+    const inicioMes = new Date();
+    inicioMes.setDate(1);
+    inicioMes.setHours(0, 0, 0, 0);
+    const movs = await prisma.registroMovimiento.findMany({
+      where: {
+        cantidad: { lt: 0 },
+        fecha_hora: { gte: inicioMes },
+        centro: { id_cliente: idCliente },
+      },
+      select: { id_centro: true, cantidad: true, producto: { select: { coste_unitario: true } } },
+    });
+
+    const costePorCentro = new Map();
+    for (const m of movs) {
+      const coste = Math.abs(Number(m.cantidad)) * Number(m.producto?.coste_unitario || 0);
+      costePorCentro.set(m.id_centro, (costePorCentro.get(m.id_centro) || 0) + coste);
+    }
 
     let totalCoste = 0;
     let totalPresupuesto = 0;
     const lista = [];
 
     for (const c of centros) {
-      let coste = 0;
-      for (const inv of c.inventarioCentros) {
-        // Solo contamos si hay conteo físico (si no, no hay base de consumo)
-        if (inv.stock_fisico === null) continue;
-        const consumido = inv.cantidad_actual - inv.stock_fisico;
-        if (consumido <= 0) continue; // sobra o igual → no es coste perdido
-        coste += consumido * (inv.producto.coste_unitario || 0);
-      }
-      coste = Math.round(coste * 100) / 100;
+      const coste = Math.round((costePorCentro.get(c.id_centro) || 0) * 100) / 100;
       const presu = c.presupuesto_mensual || 0;
       const pct = presu > 0 ? Math.round((coste / presu) * 100) : null;
       const diferencia = presu > 0 ? Math.round((presu - coste) * 100) / 100 : null;

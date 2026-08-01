@@ -14,10 +14,11 @@ const prisma = new PrismaClient();
 const EMPRESA_DEMO = 'Limpiezas Valencia Centro, S.L.';
 
 // Centros adicionales (los 4 del seed base + 3 nuevos = 7)
+// Presupuestos realistas: consumo medio ~3.600€/mes por centro
 const CENTROS_NUEVOS = [
-  { nombre: 'Hospital General Universitario', presu: 180, dir: 'Av. Tres Cruces, 2, Valencia' },
-  { nombre: 'Oficinas Parque Empresarial', presu: 120, dir: 'C/ de la Reina, Parque Empresarial Táctica, Paterna' },
-  { nombre: 'Colegio Público Cervantes', presu: 60, dir: 'C/ Cervantes, 12, Valencia' },
+  { nombre: 'Hospital General Universitario', presu: 3650, dir: 'Av. Tres Cruces, 2, Valencia' },
+  { nombre: 'Oficinas Parque Empresarial', presu: 3600, dir: 'C/ de la Reina, Parque Empresarial Táctica, Paterna' },
+  { nombre: 'Colegio Público Cervantes', presu: 3400, dir: 'C/ Cervantes, 12, Valencia' },
 ];
 
 // Productos adicionales (catálogo más amplio para una empresa grande)

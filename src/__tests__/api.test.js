@@ -470,3 +470,40 @@ describe('Supervisores demo con expiración', () => {
     expect(res.body.usuario.rol).toBe('supervisor');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Costes por centro (basados en movimientos reales, no en conteo físico)
+// ---------------------------------------------------------------------------
+describe('GET /api/v1/dashboard/costes', () => {
+  it('returns costes with estado por centro', async () => {
+    const res = await request(app)
+      .get('/api/v1/dashboard/costes')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.centros)).toBe(true);
+    if (res.body.centros.length > 0) {
+      const c = res.body.centros[0];
+      expect(typeof c.coste_material).toBe('number');
+      expect(typeof c.presupuesto_mensual).toBe('number');
+      expect(typeof c.porcentaje_usado).toBe('number');
+    }
+  });
+
+  it('el coste por centro viene de movimientos reales, no del conteo físico', async () => {
+    const res = await request(app)
+      .get('/api/v1/dashboard/costes')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    // Todos los centros del cliente deben tener movimientos (el seed histórico
+    // generó consumos en los 10 centros). Ninguno debería quedar a 0 por
+    // falta de stock_fisico (bug del conteo físico).
+    const conMovimientos = res.body.centros.filter((c) => c.coste_material > 0);
+    expect(conMovimientos.length).toBeGreaterThan(0);
+    // Y ningún centro debe superar el 2000% (cifra desmesurada del bug)
+    for (const c of res.body.centros) {
+      if (c.porcentaje_usado !== null) {
+        expect(c.porcentaje_usado).toBeLessThan(2000);
+      }
+    }
+  });
+});

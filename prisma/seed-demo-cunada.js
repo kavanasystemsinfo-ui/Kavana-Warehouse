@@ -40,12 +40,14 @@ async function main() {
 
   const idCliente = cliente.id_cliente;
 
-  // 2. Centros (sus centros reales) — con presupuesto mensual distinto para la demo
+  // 2. Centros (sus centros reales) — presupuesto mensual realista (~3.600€/mes
+  //    de consumo medio; los presupuestos antiguos de 15-100€ eran irreales
+  //    para el histórico de 3 meses generado por seed-historico.js)
   const centrosDef = [
-    { nombre: 'Diputación de Valencia', presu: 100, dir: 'Calle de la Diputación, Valencia' },
-    { nombre: 'Beneficencia', presu: 25, dir: 'Calle de la Beneficencia, Valencia' },
-    { nombre: 'Plaza de Toros', presu: 15, dir: 'Plaza de Toros, Valencia' },
-    { nombre: 'Museo Bellas Artes', presu: 50, dir: 'C/ San Pío V, Valencia (Museo de Bellas Artes)' },
+    { nombre: 'Diputación de Valencia', presu: 3800, dir: 'Calle de la Diputación, Valencia' },
+    { nombre: 'Beneficencia', presu: 3500, dir: 'Calle de la Beneficencia, Valencia' },
+    { nombre: 'Plaza de Toros', presu: 3700, dir: 'Plaza de Toros, Valencia' },
+    { nombre: 'Museo Bellas Artes', presu: 3600, dir: 'C/ San Pío V, Valencia (Museo de Bellas Artes)' },
   ];
   const centros = {};
   for (const def of centrosDef) {
