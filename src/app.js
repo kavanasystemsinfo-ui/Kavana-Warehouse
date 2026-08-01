@@ -187,6 +187,29 @@ app.post('/api/v1/productos', auth, supervisorOnly, async (req, res) => {
   try { const p = await prisma.producto.create({ data: req.body }); res.json({ producto: p }); }
   catch(e) { res.status(500).json({ error: e.message }); }
 });
+app.put('/api/v1/productos/:id', auth, supervisorOnly, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const data = {};
+    if (req.body.nombre_producto !== undefined) data.nombre_producto = req.body.nombre_producto;
+    if (req.body.unidad_medida !== undefined) data.unidad_medida = req.body.unidad_medida;
+    if (req.body.coste_unitario !== undefined) data.coste_unitario = Number(req.body.coste_unitario);
+    if (req.body.stock_minimo_alerta !== undefined) data.stock_minimo_alerta = Number(req.body.stock_minimo_alerta);
+    const p = await prisma.producto.update({ where: { id_producto: id }, data });
+    res.json({ producto: p });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/v1/productos/:id', auth, supervisorOnly, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const usos = await prisma.inventarioCentro.count({ where: { id_producto: id } });
+    if (usos > 0) {
+      return res.status(409).json({ error: `No se puede borrar: el producto está en ${usos} centro(s). Quítalo de los centros primero.` });
+    }
+    await prisma.producto.delete({ where: { id_producto: id } });
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
 // ----- CENTROS -----
 app.get('/api/v1/centros', auth, async (req, res) => {

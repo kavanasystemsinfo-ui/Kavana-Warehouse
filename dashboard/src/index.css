@@ -644,4 +644,47 @@ tr:hover td {
   }
 }
 
+/* --- Guía de ayuda contextual --- */
+.guia-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+.guia-contenido {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--gray-800);
+}
+.guia-contenido h3 {
+  color: var(--gray-900);
+  font-size: 1rem;
+  margin: 1.1rem 0 0.4rem;
+}
+.guia-contenido h3:first-child {
+  margin-top: 0;
+}
+.guia-contenido p {
+  margin: 0 0 0.6rem;
+}
+.guia-contenido ul {
+  margin: 0 0 0.6rem;
+  padding-left: 1.25rem;
+}
+.guia-contenido li {
+  margin-bottom: 0.35rem;
+}
+.guia-contenido strong {
+  color: var(--gray-900);
+}
+.guia-contenido .guia-ejemplo {
+  background: var(--gray-50);
+  border-left: 3px solid var(--primary);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  margin: 0.5rem 0;
+  font-size: 0.88rem;
+}
+
 /* v2: detalle centro en tarjetas (force rebuild hash) */

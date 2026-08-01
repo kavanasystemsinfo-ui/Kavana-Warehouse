@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getDeviations, getCentros, guardarConteo, resetDemo, type DeviationsData, type Centro, type DeviationItem } from '../lib/api'
+import { GuiaAyuda } from '../components/GuiaAyuda'
 
 export function Deviations() {
   const [data, setData] = useState<DeviationsData | null>(null)
@@ -106,6 +107,24 @@ export function Deviations() {
         <button className="btn btn-outline" onClick={limpiarDemo} disabled={guardando}>
           🧹 Limpiar datos demo
         </button>
+        <GuiaAyuda titulo="Control de Mermas">
+          <p>Esta pantalla controla las <strong>mermas</strong>: la diferencia entre lo que dice el almacén que hay y lo que hay realmente.</p>
+          <h3>¿Qué es una merma?</h3>
+          <p>Es el material que <strong>falta</strong> sin explicación. Si el sistema dice que hay 50 rollos y al contar físicamente solo hay 30, hay una merma de 20 rollos.</p>
+          <h3>¿Qué ves?</h3>
+          <ul>
+            <li><strong>Stock registrado:</strong> lo que el programa cree que hay.</li>
+            <li><strong>Stock físico:</strong> lo que contaste realmente.</li>
+            <li><strong>Diferencia:</strong> la merma (registrado menos físico). Si es positiva, falta material.</li>
+          </ul>
+          <h3>¿Cómo contar?</h3>
+          <p>Pulsa <strong>"Contar"</strong> en una fila, escribe cuánto hay físicamente y guarda. La diferencia se calcula sola.</p>
+          <h3>¿Botón 🧹 Limpiar datos demo?</h3>
+          <p>Solo sirve para la demostración: borra los datos de ejemplo y deja la pantalla en blanco para empezar de cero.</p>
+          <div className="guia-ejemplo">
+            💡 <strong>Ejemplo:</strong> Plaza de Toros tiene registrado 50 rollos y físico 30 → diferencia 20 rollos de merma.
+          </div>
+        </GuiaAyuda>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getEmpleados, createEmpleado, getCentros, type Empleado } from '../lib/api'
+import { GuiaAyuda } from '../components/GuiaAyuda'
 
 export function Empleados() {
   const [empleados, setEmpleados] = useState<Empleado[]>([])
@@ -47,6 +48,20 @@ export function Empleados() {
             {centros.map((c: any) => <option key={c.id_centro} value={c.id_centro}>{c.nombre_centro || c.nombre}</option>)}
           </select>
           <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ Nuevo Empleado</button>
+          <GuiaAyuda titulo="Empleados">
+            <p>Aquí ves <strong>todos tus empleados</strong> y a qué centro pertenece cada uno.</p>
+            <h3>¿Qué ves en la tabla?</h3>
+            <ul>
+              <li><strong>Nombre y email:</strong> datos de contacto del empleado.</li>
+              <li><strong>Nº Empleado:</strong> un número que se le asigna a cada persona (para identificarla rápido).</li>
+              <li><strong>Centro:</strong> el lugar donde trabaja.</li>
+              <li><strong>Estado:</strong> si está activo o de baja.</li>
+            </ul>
+            <h3>¿Cómo filtrar por centro?</h3>
+            <p>Usa el desplegable de arriba a la derecha (<strong>"Todos los centros"</strong>). Elige un centro y solo verás a sus empleados.</p>
+            <h3>¿Cómo añadir un empleado?</h3>
+            <p>Pulsa <strong>"+ Nuevo Empleado"</strong>, rellena nombre, email, centro y su número. Se guarda al momento.</p>
+          </GuiaAyuda>
         </div>
       </div>
       {msg && <div className={`alert ${msg.includes('Error') ? 'alert-danger' : 'alert-success'}`}>{msg}</div>}

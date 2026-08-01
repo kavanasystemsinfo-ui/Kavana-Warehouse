@@ -48,6 +48,7 @@ export interface Producto {
   id_producto: number
   nombre_producto: string
   unidad_medida: string
+  coste_unitario: number
   stock_minimo_alerta: number
 }
 
@@ -384,16 +385,59 @@ export async function resolverIncidencia(id: number): Promise<any> {
 }
 
 export async function getProductos(): Promise<Producto[]> {
-  const inv = await getInventory()
-  const seen = new Set<number>()
-  const productos: Producto[] = []
-  for (const item of inv) {
-    if (!seen.has(item.producto.id_producto)) {
-      seen.add(item.producto.id_producto)
-      productos.push(item.producto)
-    }
-  }
-  return productos
+  // Catálogo plano: todos los tipos de producto, sin importar centros
+  const res = await apiFetch<{ productos: Producto[] }>('/productos')
+  return res.productos || []
+}
+
+// Catálogo completo de productos (todos, no solo los asignados a centros)
+export async function getCatalogoProductos(): Promise<Producto[]> {
+  const res = await apiFetch<{ productos: Producto[] }>('/productos')
+  return res.productos || []
+}
+
+// Editar un producto del catálogo
+export async function updateProducto(id: number, data: {
+  nombre_producto?: string
+  unidad_medida?: string
+  coste_unitario?: number
+  stock_minimo_alerta?: number
+}): Promise<{ producto: Producto }> {
+  return apiFetch(`/productos/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+// Borrar un producto del catálogo (bloqueado si está en algún centro)
+export async function deleteProducto(id: number): Promise<{ ok: boolean }> {
+  return apiFetch(`/productos/${id}`, { method: 'DELETE' })
+}
+
+// Crear un producto nuevo en el catálogo global
+export async function createProducto(data: {
+  nombre_producto: string
+  unidad_medida: string
+  coste_unitario: number
+  stock_minimo_alerta: number
+}): Promise<{ producto: Producto }> {
+  return apiFetch<{ producto: Producto }>('/productos', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+// Añadir (o actualizar) un producto en el inventario de un centro
+export async function addProductoCentro(data: {
+  id_centro: number
+  id_producto: number
+  cantidad_actual: number
+  stock_minimo?: number
+}): Promise<any> {
+  return apiFetch('/inventario', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
 }
 
 // --- Deviations (mermas de inventario: registrado vs físico) ---

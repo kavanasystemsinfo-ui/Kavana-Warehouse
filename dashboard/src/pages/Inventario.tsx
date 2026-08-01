@@ -1,179 +1,136 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import {
-  getInventory, restock, getCentros, getPurchaseProposal,
-  type InventarioItem, type Centro,
+  getProductos, getPurchaseProposal,
+  createProducto, updateProducto, deleteProducto,
+  type Producto,
 } from '../lib/api'
-import {
-  connect, disconnect, subscribe,
-  joinCentro, leaveCentro,
-  type StockConsumedPayload, type StockRestockedPayload,
-} from '../lib/socket'
 import { exportToCsv } from '../lib/csv'
+import { GuiaAyuda } from '../components/GuiaAyuda'
 
 export function Inventario() {
-  const [inventory, setInventory] = useState<InventarioItem[]>([])
-  const [centros, setCentros] = useState<Centro[]>([])
+  const [productos, setProductos] = useState<Producto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [filtroCentro, setFiltroCentro] = useState('')
 
-  // Real-time toast notification
-  const [notification, setNotification] = useState<{
-    type: 'consumed' | 'restocked'
-    message: string
-  } | null>(null)
+  // Modal nuevo producto
+  const [showNuevo, setShowNuevo] = useState(false)
+  const [npNombre, setNpNombre] = useState('')
+  const [npUnidad, setNpUnidad] = useState('unidades')
+  const [npCoste, setNpCoste] = useState('')
+  const [npMinimo, setNpMinimo] = useState('')
+  const [npLoading, setNpLoading] = useState(false)
+  const [npError, setNpError] = useState('')
 
-  // Restock modal
-  const [showRestock, setShowRestock] = useState(false)
-  const [restockCentro, setRestockCentro] = useState('')
-  const [restockProducto, setRestockProducto] = useState('')
-  const [restockCantidad, setRestockCantidad] = useState(1)
-  const [restockLoading, setRestockLoading] = useState(false)
-  const [restockError, setRestockError] = useState('')
+  // Modal editar producto
+  const [showEdit, setShowEdit] = useState(false)
+  const [editId, setEditId] = useState<number | null>(null)
+  const [editNombre, setEditNombre] = useState('')
+  const [editUnidad, setEditUnidad] = useState('unidades')
+  const [editCoste, setEditCoste] = useState('')
+  const [editMinimo, setEditMinimo] = useState('')
+  const [editLoading, setEditLoading] = useState(false)
+  const [editError, setEditError] = useState('')
 
-  // Ref para evitar doble conexión en modo Strict
-  const socketInitialized = useRef(false)
+  // Borrar
+  const [borrando, setBorrando] = useState<number | null>(null)
 
   const loadData = async () => {
     setLoading(true)
     setError('')
     try {
-      const [invData, centrosData] = await Promise.all([
-        getInventory(filtroCentro ? Number(filtroCentro) : undefined),
-        getCentros(),
-      ])
-      setInventory(invData)
-      setCentros(centrosData)
+      const prods = await getProductos()
+      setProductos(prods)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar inventario')
+      setError(err instanceof Error ? err.message : 'Error al cargar productos')
     } finally {
       setLoading(false)
     }
   }
 
-  // --------------------------------------------------------------------------
-  // Socket.IO: Conexión y suscripción a eventos en tiempo real
-  // --------------------------------------------------------------------------
-  useEffect(() => {
-    // Conectar al servidor Socket.IO
-    const socket = connect()
+  useEffect(() => { loadData() }, [])
 
-    if (!socket) {
-      // No hay token — probablemente no autenticado
-      return
-    }
-
-    // Suscribirse a eventos de consumo
-    const unsubConsumed = subscribe('stock:consumed', (raw) => {
-      const payload = raw as StockConsumedPayload
-      const cantidad = Math.abs(payload.cantidad)
-
-      // Mostrar notificación toast
-      setNotification({
-        type: 'consumed',
-        message: `${payload.usuario.nombre} consumió ${cantidad} de ${payload.nombre_producto} en centro #${payload.id_centro}`,
-      })
-
-      // Actualizar el inventario local sin recargar toda la página
-      setInventory((prev) =>
-        prev.map((item) =>
-          item.id_centro === payload.id_centro && item.id_producto === payload.id_producto
-            ? { ...item, cantidad_actual: payload.cantidad_actual }
-            : item
-        )
-      )
-    })
-
-    // Suscribirse a eventos de reposición
-    const unsubRestocked = subscribe('stock:restocked', (raw) => {
-      const payload = raw as StockRestockedPayload
-
-      setNotification({
-        type: 'restocked',
-        message: `${payload.usuario.nombre} repuso ${payload.cantidad} de ${payload.nombre_producto} en centro #${payload.id_centro}`,
-      })
-
-      // Actualizar el inventario local
-      setInventory((prev) =>
-        prev.map((item) =>
-          item.id_centro === payload.id_centro && item.id_producto === payload.id_producto
-            ? { ...item, cantidad_actual: payload.cantidad_actual }
-            : item
-        )
-      )
-    })
-
-    // Unirse al room global (todos los centros — supervisores ven todo)
-    // Si hay un filtro de centro activo, unirse solo a ese centro
-    if (filtroCentro) {
-      joinCentro(Number(filtroCentro))
-    }
-
-    // Limpiar notificación después de 4 segundos
-    const notifTimer = setTimeout(() => setNotification(null), 4000)
-
-    return () => {
-      clearTimeout(notifTimer)
-      unsubConsumed()
-      unsubRestocked()
-      if (filtroCentro) {
-        leaveCentro(Number(filtroCentro))
-      }
-      disconnect()
-      socketInitialized.current = false
-    }
-  }, [filtroCentro])
-
-  // Auto-limpiar notificación cuando cambia
-  useEffect(() => {
-    if (notification) {
-      const timer = setTimeout(() => setNotification(null), 4000)
-      return () => clearTimeout(timer)
-    }
-  }, [notification])
-
-  // Cargar datos al inicio o cuando cambia el filtro
-  useEffect(() => {
-    loadData()
-  }, [filtroCentro])
-
-  const openRestock = () => {
-    setRestockCentro('')
-    setRestockProducto('')
-    setRestockCantidad(1)
-    setRestockError('')
-    setShowRestock(true)
+  const openNuevo = () => {
+    setNpNombre(''); setNpUnidad('unidades'); setNpCoste(''); setNpMinimo(''); setNpError('')
+    setShowNuevo(true)
   }
 
-  const handleRestock = async (e: React.FormEvent) => {
+  const handleCrear = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!restockCentro || !restockProducto || restockCantidad < 1) {
-      setRestockError('Debe completar todos los campos.')
-      return
-    }
-    setRestockLoading(true)
-    setRestockError('')
+    if (!npNombre.trim()) { setNpError('Escribe el nombre del producto.'); return }
+    const coste = parseFloat(npCoste)
+    const minimo = parseInt(npMinimo) || 0
+    if (isNaN(coste) || coste < 0) { setNpError('El coste debe ser un número válido.'); return }
+    setNpLoading(true); setNpError('')
     try {
-      await restock({
-        id_centro: Number(restockCentro),
-        id_producto: Number(restockProducto),
-        cantidad: restockCantidad,
+      await createProducto({
+        nombre_producto: npNombre.trim(),
+        unidad_medida: npUnidad,
+        coste_unitario: coste,
+        stock_minimo_alerta: minimo,
       })
-      setSuccess(`Reposición de ${restockCantidad} unidades registrada.`)
-      setShowRestock(false)
+      setSuccess(`"${npNombre.trim()}" creado en el catálogo.`)
+      setShowNuevo(false)
       loadData()
-    } catch (err) {
-      setRestockError(err instanceof Error ? err.message : 'Error al reponer')
+    } catch (err: any) {
+      setNpError(err?.message || 'Error al crear el producto.')
     } finally {
-      setRestockLoading(false)
+      setNpLoading(false)
+    }
+  }
+
+  const openEdit = (p: Producto) => {
+    setEditId(p.id_producto)
+    setEditNombre(p.nombre_producto)
+    setEditUnidad(p.unidad_medida)
+    setEditCoste(String(p.coste_unitario))
+    setEditMinimo(String(p.stock_minimo_alerta ?? 0))
+    setEditError('')
+    setShowEdit(true)
+  }
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editId) return
+    const coste = parseFloat(editCoste)
+    const minimo = parseInt(editMinimo) || 0
+    if (isNaN(coste) || coste < 0) { setEditError('El coste debe ser un número válido.'); return }
+    setEditLoading(true); setEditError('')
+    try {
+      await updateProducto(editId, {
+        nombre_producto: editNombre.trim(),
+        unidad_medida: editUnidad,
+        coste_unitario: coste,
+        stock_minimo_alerta: minimo,
+      })
+      setSuccess('Producto actualizado.')
+      setShowEdit(false)
+      loadData()
+    } catch (err: any) {
+      setEditError(err?.message || 'Error al editar el producto.')
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
+  const handleDelete = async (p: Producto) => {
+    if (!confirm(`¿Borrar "${p.nombre_producto}" del catálogo?`)) return
+    setBorrando(p.id_producto)
+    try {
+      await deleteProducto(p.id_producto)
+      setSuccess(`"${p.nombre_producto}" borrado.`)
+      loadData()
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo borrar.')
+    } finally {
+      setBorrando(null)
     }
   }
 
   const handleGenerateProposal = async () => {
     try {
       setLoading(true)
-      const proposal = await getPurchaseProposal(filtroCentro ? Number(filtroCentro) : undefined)
+      const proposal = await getPurchaseProposal()
       if (proposal.propuestas.length === 0) {
         setSuccess('No hay productos por debajo del stock mínimo. No se requiere compra.')
         setTimeout(() => setSuccess(''), 4000)
@@ -186,7 +143,7 @@ export function Inventario() {
         'Stock Mínimo': p.stock_minimo,
         'Déficit': p.deficit,
         'Cantidad a Pedir': p.cantidad_pedido,
-        'Coste Estimado (€)': p.coste_estimado
+        'Coste Estimado (€)': p.coste_estimado,
       }))
       exportToCsv(`propuesta-compra-${new Date().toISOString().split('T')[0]}`, rows)
       setSuccess(`Propuesta exportada. Coste total estimado: ${proposal.total_coste_estimado} €`)
@@ -198,16 +155,11 @@ export function Inventario() {
     }
   }
 
-  const availableProducts = inventory
-    .filter((item) => !restockCentro || item.id_centro === Number(restockCentro))
-    .map((item) => item.producto)
-    .filter((p, i, arr) => arr.findIndex((x) => x.id_producto === p.id_producto) === i)
-
-  if (loading && inventory.length === 0) {
+  if (loading && productos.length === 0) {
     return (
       <div className="loading">
         <div className="spinner" />
-        Cargando inventario...
+        Cargando catálogo...
       </div>
     )
   }
@@ -215,89 +167,66 @@ export function Inventario() {
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">Inventario</h1>
+        <h1 className="page-title">Catálogo de Productos</h1>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button className="btn btn-outline" onClick={handleGenerateProposal}>
             📥 Propuesta de Compra
           </button>
-          <button className="btn btn-primary" onClick={openRestock}>
-            + Reponer Stock
+          <button className="btn btn-primary" onClick={openNuevo}>
+            ➕ Nuevo Producto
           </button>
+          <GuiaAyuda titulo="Catálogo de Productos">
+            <p>Esta pantalla es el <strong>catálogo general</strong> de tu empresa: la lista de <strong>tipos de productos</strong> que existen (guantes, lejía, papel...).</p>
+            <p><strong>No</strong> es el stock por centro. Aquí solo defines qué productos hay, su unidad, su coste y el stock mínimo de referencia.</p>
+            <h3>➕ Nuevo Producto</h3>
+            <p>Crea un tipo de producto nuevo que no exista todavía.</p>
+            <h3>✏️ Editar</h3>
+            <p>Cambia el nombre, la unidad, el coste o el mínimo de un producto.</p>
+            <h3>🗑️ Borrar</h3>
+            <p>Elimina un producto del catálogo. Solo se puede si <strong>no está en ningún centro</strong>. Si lo usa un centro, quítalo de ese centro primero (pestaña Centros).</p>
+            <h3>📥 Propuesta de Compra</h3>
+            <p>Mira qué productos de todos los centros están por debajo de su mínimo y cuánto comprar, con el coste estimado. Se descarga en CSV.</p>
+            <div className="guia-ejemplo">
+              💡 Para añadir un producto al almacén de un edificio concreto, ve a la pestaña <strong>Centros</strong>, despliega el centro y pulsa <strong>"➕ Añadir producto"</strong>.
+            </div>
+          </GuiaAyuda>
         </div>
       </div>
-
-      {/* Real-time notification toast */}
-      {notification && (
-        <div className={`alert ${notification.type === 'consumed' ? 'alert-warning' : 'alert-success'}`}
-          style={{ animation: 'slideIn 0.3s ease-out' }}>
-          <strong>
-            {notification.type === 'consumed' ? '📦 Consumo' : '📥 Reposición'}
-          </strong>
-          : {notification.message}
-        </div>
-      )}
 
       {error && <div className="alert alert-danger">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
 
-      {/* Filter */}
-      <div className="card">
-        <div className="filters-bar">
-          <div className="form-group">
-            <label className="form-label">Filtrar por centro</label>
-            <select className="form-select" value={filtroCentro} onChange={(e) => setFiltroCentro(e.target.value)}>
-              <option value="">Todos los centros</option>
-              {centros.map((c) => (
-                <option key={c.id_centro} value={c.id_centro}>{c.nombre_centro}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Inventory Table */}
       <div className="card">
         <div className="table-container">
           <table>
             <thead>
               <tr>
-                <th>Centro</th>
                 <th>Producto</th>
                 <th>Unidad</th>
-                <th>Stock Actual</th>
-                <th>Stock Mínimo</th>
-                <th>Estado</th>
+                <th>Coste unitario (€)</th>
+                <th>Stock mínimo ref.</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
-              {inventory.map((item) => {
-                const isLow = item.cantidad_actual <= item.producto.stock_minimo_alerta
-                const isCritical = item.cantidad_actual <= 0
-                return (
-                  <tr key={`${item.id_centro}-${item.id_producto}`}>
-                    <td><strong>{item.centro?.nombre_centro}</strong></td>
-                    <td>{item.producto.nombre_producto}</td>
-                    <td>{item.producto.unidad_medida}</td>
-                    <td style={{ fontWeight: 600, color: isCritical ? 'var(--danger)' : isLow ? 'var(--warning)' : 'inherit' }}>
-                      {item.cantidad_actual}
-                    </td>
-                    <td>{item.producto.stock_minimo_alerta}</td>
-                    <td>
-                      {isCritical ? (
-                        <span className="badge badge-danger">Crítico</span>
-                      ) : isLow ? (
-                        <span className="badge badge-warning">Bajo</span>
-                      ) : (
-                        <span className="badge badge-success">Normal</span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-              {inventory.length === 0 && (
+              {productos.map((p) => (
+                <tr key={p.id_producto}>
+                  <td><strong>{p.nombre_producto}</strong></td>
+                  <td>{p.unidad_medida}</td>
+                  <td>{p.coste_unitario}</td>
+                  <td>{p.stock_minimo_alerta ?? '—'}</td>
+                  <td style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn btn-sm btn-outline" onClick={() => openEdit(p)}>✏️ Editar</button>
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(p)} disabled={borrando === p.id_producto}>
+                      {borrando === p.id_producto ? '...' : '🗑️'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {productos.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray-500)' }}>
-                    No hay inventario disponible.
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray-500)' }}>
+                    No hay productos en el catálogo. Pulsa "➕ Nuevo Producto" para crear el primero.
                   </td>
                 </tr>
               )}
@@ -306,41 +235,94 @@ export function Inventario() {
         </div>
       </div>
 
-      {/* Restock Modal */}
-      {showRestock && (
-        <div className="modal-overlay" onClick={() => setShowRestock(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal-title">Reponer Stock</h2>
-            {restockError && <div className="alert alert-danger">{restockError}</div>}
-            <form onSubmit={handleRestock}>
+      {/* Modal: Nuevo Producto */}
+      {showNuevo && (
+        <div className="modal-overlay" onClick={() => setShowNuevo(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+            <div className="modal-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>➕ Nuevo Producto</span>
+              <button type="button" className="btn btn-outline" style={{ padding: '0.25rem 0.6rem' }} onClick={() => setShowNuevo(false)}>✕</button>
+            </div>
+            {npError && <div className="alert alert-danger">{npError}</div>}
+            <form onSubmit={handleCrear}>
               <div className="form-group">
-                <label className="form-label">Centro</label>
-                <select className="form-select" value={restockCentro} onChange={(e) => { setRestockCentro(e.target.value); setRestockProducto('') }} required>
-                  <option value="">Seleccionar centro...</option>
-                  {centros.map((c) => (
-                    <option key={c.id_centro} value={c.id_centro}>{c.nombre_centro}</option>
-                  ))}
-                </select>
+                <label className="form-label">Nombre del producto *</label>
+                <input className="form-input" value={npNombre} onChange={(e) => setNpNombre(e.target.value)} placeholder="Ej: Guantes de latex (par)" required />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-group">
+                  <label className="form-label">Unidad</label>
+                  <select className="form-select" value={npUnidad} onChange={(e) => setNpUnidad(e.target.value)}>
+                    <option value="unidades">unidades</option>
+                    <option value="rollos">rollos</option>
+                    <option value="litros">litros</option>
+                    <option value="pares">pares</option>
+                    <option value="paquetes">paquetes</option>
+                    <option value="cajas">cajas</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Coste unitario (€)</label>
+                  <input className="form-input" type="number" step="0.01" min="0" value={npCoste} onChange={(e) => setNpCoste(e.target.value)} placeholder="0.00" />
+                </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Producto</label>
-                <select className="form-select" value={restockProducto} onChange={(e) => setRestockProducto(e.target.value)} required>
-                  <option value="">Seleccionar producto...</option>
-                  {availableProducts.map((p) => (
-                    <option key={p.id_producto} value={p.id_producto}>{p.nombre_producto}</option>
-                  ))}
-                </select>
+                <label className="form-label">Stock mínimo de referencia</label>
+                <input className="form-input" type="number" min="0" value={npMinimo} onChange={(e) => setNpMinimo(e.target.value)} placeholder="0" />
+              </div>
+              <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>
+                💡 El producto se guarda en el catálogo general. Para usarlo en un centro, ve a <strong>Centros</strong> y añádelo desde el detalle.
+              </p>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-outline" onClick={() => setShowNuevo(false)}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" disabled={npLoading}>
+                  {npLoading ? 'Creando...' : 'Crear producto'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Editar Producto */}
+      {showEdit && (
+        <div className="modal-overlay" onClick={() => setShowEdit(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+            <div className="modal-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>✏️ Editar Producto</span>
+              <button type="button" className="btn btn-outline" style={{ padding: '0.25rem 0.6rem' }} onClick={() => setShowEdit(false)}>✕</button>
+            </div>
+            {editError && <div className="alert alert-danger">{editError}</div>}
+            <form onSubmit={handleEdit}>
+              <div className="form-group">
+                <label className="form-label">Nombre del producto *</label>
+                <input className="form-input" value={editNombre} onChange={(e) => setEditNombre(e.target.value)} required />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-group">
+                  <label className="form-label">Unidad</label>
+                  <select className="form-select" value={editUnidad} onChange={(e) => setEditUnidad(e.target.value)}>
+                    <option value="unidades">unidades</option>
+                    <option value="rollos">rollos</option>
+                    <option value="litros">litros</option>
+                    <option value="pares">pares</option>
+                    <option value="paquetes">paquetes</option>
+                    <option value="cajas">cajas</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Coste unitario (€)</label>
+                  <input className="form-input" type="number" step="0.01" min="0" value={editCoste} onChange={(e) => setEditCoste(e.target.value)} />
+                </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Cantidad</label>
-                <input className="form-input" type="number" min="1" value={restockCantidad} onChange={(e) => setRestockCantidad(Number(e.target.value))} required />
+                <label className="form-label">Stock mínimo de referencia</label>
+                <input className="form-input" type="number" min="0" value={editMinimo} onChange={(e) => setEditMinimo(e.target.value)} />
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn btn-outline" onClick={() => setShowRestock(false)}>
-                  Cancelar
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={restockLoading}>
-                  {restockLoading ? 'Reponiendo...' : 'Reponer'}
+                <button type="button" className="btn btn-outline" onClick={() => setShowEdit(false)}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" disabled={editLoading}>
+                  {editLoading ? 'Guardando...' : 'Guardar cambios'}
                 </button>
               </div>
             </form>

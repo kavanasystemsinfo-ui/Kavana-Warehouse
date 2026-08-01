@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getCostes, setPresupuesto, type CostesData, type CosteCentro } from '../lib/api'
+import { GuiaAyuda } from '../components/GuiaAyuda'
 
 export function Costes() {
   const [data, setData] = useState<CostesData | null>(null)
@@ -61,6 +62,26 @@ export function Costes() {
           <h1 className="page-title">💶 Coste por Centro</h1>
           <span className="stat-sub">Material consumido vs. lo que quieres gastar — {data?.mes}</span>
         </div>
+        <GuiaAyuda titulo="Costes por Centro">
+          <p>Esta pantalla te dice <strong>cuánto dinero de material se ha gastado en cada centro</strong> y si te pasas de lo que quieres gastar.</p>
+          <h3>¿Qué ves?</h3>
+          <ul>
+            <li><strong>Coste del mes:</strong> dinero en material que el centro ha consumido (lo que se ha usado de lo que había en el almacén).</li>
+            <li><strong>Tu presupuesto:</strong> la cantidad que tú has decidido gastar al mes en ese centro.</li>
+            <li><strong>Barra de color:</strong>
+              <ul>
+                <li>🟢 <strong>Verde</strong> — vas controlado, gastas menos de lo presupuestado.</li>
+                <li>🟡 <strong>Ámbar</strong> — vas justo, te acercas al límite.</li>
+                <li>🔴 <strong>Rojo</strong> — <strong>te pasas</strong> del presupuesto. Aquí pone cuántos euros te has pasado.</li>
+              </ul>
+            </li>
+          </ul>
+          <h3>¿Cómo cambiar tu presupuesto?</h3>
+          <p>Cada tarjeta tiene un botón <strong>"Fijar presupuesto"</strong>. Escribe cuánto quieres gastar al mes en ese centro y pulsa guardar. La barra se actualiza al momento.</p>
+          <div className="guia-ejemplo">
+            💡 <strong>Ejemplo:</strong> si Plaza de Toros tiene un presupuesto de 15 € y la barra sale 🔴 "Te pasas en 1,57 €", sube el presupuesto a 20 € y ya saldrá verde.
+          </div>
+        </GuiaAyuda>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}

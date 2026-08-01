@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getConsumption, getAlerts, getCentros, getProductos, type ConsumptionData, type AlertsData, type Centro, type Producto } from '../lib/api'
 import { exportToCsv } from '../lib/csv'
+import { GuiaAyuda } from '../components/GuiaAyuda'
 
 export function Dashboard() {
   const [consumption, setConsumption] = useState<ConsumptionData | null>(null)
@@ -64,6 +65,21 @@ export function Dashboard() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Dashboard de Consumo</h1>
+        <GuiaAyuda titulo="Dashboard">
+          <p>Esta es la <strong>pantalla principal</strong> con el resumen de todo: cuánto se gasta, alertas y consumo por centro.</p>
+          <h3>¿Qué ves arriba?</h3>
+          <ul>
+            <li><strong>Gasto OPEX Total:</strong> dinero total en material de limpieza este mes.</li>
+            <li><strong>Coste por Centro:</strong> cuánto se gasta en cada lugar.</li>
+            <li><strong>Mermas Totales:</strong> material que falta sin explicación (ver pantalla de Mermas para el detalle).</li>
+          </ul>
+          <h3>¿Las tablas de abajo?</h3>
+          <ul>
+            <li><strong>Consumo por centro:</strong> qué centro gasta más.</li>
+            <li><strong>Alertas de stock:</strong> productos que están por debajo de su mínimo (rojo = crítico, ámbar = aviso).</li>
+          </ul>
+          <p>Puedes filtrar por centro y mes, y descargar los datos en CSV con el botón de descarga.</p>
+        </GuiaAyuda>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}

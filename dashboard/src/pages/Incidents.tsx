@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getIncidencias, updateIncidencia, getCentros, type Incidencia, type Centro } from '../lib/api'
+import { GuiaAyuda } from '../components/GuiaAyuda'
 
 const CATEGORIAS = [
   { value: '', label: 'Todas' },
@@ -90,6 +91,22 @@ export function Incidents() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Incidencias en Instalaciones</h1>
+        <GuiaAyuda titulo="Incidencias">
+          <p>Aquí puedes <strong>reportar problemas</strong> en cualquier centro (una avería, un material roto, un brillo que falta...).</p>
+          <h3>¿Qué ves?</h3>
+          <ul>
+            <li><strong>Tarjetas de resumen:</strong> cuántas incidencias hay pendientes, en proceso o resueltas.</li>
+            <li><strong>Lista de incidencias:</strong> cada una con su centro, categoría, título y estado.</li>
+          </ul>
+          <h3>¿Cómo reportar una incidencia?</h3>
+          <ol>
+            <li>Pulsa <strong>"+ Nueva Incidencia"</strong>.</li>
+            <li>Elige el centro, la categoría y escribe qué pasa.</li>
+            <li>Guarda. Aparece como <strong>pendiente</strong>.</li>
+          </ol>
+          <h3>¿Cómo cambiar el estado?</h3>
+          <p>En cada incidencia hay un desplegable para marcarla <strong>en proceso</strong> o <strong>resuelta</strong>.</p>
+        </GuiaAyuda>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
