@@ -124,6 +124,32 @@ docker builder prune -f
 > El rol `limpiador` existe en el modelo de datos (`Usuario.rol`) para trazabilidad de
 > asignación a centros, **pero no tiene credenciales de acceso a ninguna app**.
 
+## Despliegue actual (2026-08-01)
+
+Arquitectura en producción, desacoplada y sin coste:
+
+```
+warehouse.kavanasystems.com  (DNS → Vercel)
+        │
+        ├── /            → Vercel (dashboard estático, CDN)
+        └── /api/*       → rewrite → Render Web Service
+                                │
+                                └── Neon PostgreSQL (serverless)
+```
+
+| Capa | Proveedor | Detalle |
+|------|-----------|---------|
+| **Frontend** | Vercel | `dashboard/`, build Vite, dominio `warehouse.kavanasystems.com` |
+| **API** | Render (free) | Web Service `kavana-warehouse-api`, `node src/server.js` |
+| **BD** | Neon (free) | PostgreSQL serverless, región Frankfurt, proyecto `kavana-cleanstock` |
+
+- **Build Command (Render)**: `npm install && npx prisma generate`
+- **Start Command (Render)**: `node src/server.js` (sin migrate en arranque)
+- **Health Check (Render)**: `/api/v1/health`
+- **Env vars (Render)**: `DATABASE_URL` (Neon), `JWT_SECRET`, `CORS_ORIGIN`
+- **Antiduerme**: cron local cada 10 min hace ping a `/api/v1/health` (el free tier de Render duerme a los ~15 min de inactividad)
+- **Migraciones**: se aplican manualmente con `npx prisma migrate deploy` contra Neon (nunca en el start command, eso rompía el Hito 7)
+
 ## Migración futura a Serverless
 
 Si el proyecto crece y se necesita escalar sin VPS, el código ya está preparado:
