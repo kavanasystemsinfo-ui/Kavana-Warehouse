@@ -76,10 +76,13 @@ const superAdminOnly = (req, res, next) => {
 app.post('/api/v1/auth/login', validate(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
-    // Buscar por email o username
-    const u = email.includes('@')
-      ? await prisma.usuario.findUnique({ where: { email } })
-      : await prisma.usuario.findFirst({ where: { username: email } });
+    // Buscar por email o username. El username se normaliza a minúsculas:
+    // los teclados móviles autocapitalizan la primera letra y el login debe
+    // funcionar igual (warehouse == Warehouse).
+    const normalized = email.trim();
+    const u = normalized.includes('@')
+      ? await prisma.usuario.findUnique({ where: { email: normalized } })
+      : await prisma.usuario.findFirst({ where: { username: normalized.toLowerCase() } });
     if (!u || !(await bcrypt.compare(password, u.password_hash))) return res.status(401).json({ error: 'Credenciales invalidas' });
     const token = jwt.sign({ id_usuario: u.id_usuario, email: u.email, rol: u.rol, is_super_admin: u.is_super_admin, id_cliente: u.id_cliente }, JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '2h' });
     res.json({ token, usuario: { id_usuario: u.id_usuario, nombre: u.nombre, email: u.email, username: u.username, rol: u.rol, is_super_admin: u.is_super_admin } });
@@ -588,6 +591,31 @@ app.get('/api/v1/asignaciones/active', auth, async (req, res) => {
     });
     if (!asignaciones.length) return res.status(404).json({ error: 'No tienes centros asignados' });
     res.json({ centros: asignaciones.map(a => a.centro) });
+  } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
+});
+
+// Lista de responsables del cliente con sus centros asignados (página Responsables)
+app.get('/api/v1/asignaciones/users', auth, supervisorOnly, async (req, res) => {
+  try {
+    const idCliente = req.user.id_cliente;
+    if (!idCliente) return res.status(403).json({ error: 'Sin empresa asociada' });
+    const usuarios = await prisma.usuario.findMany({
+      where: { id_cliente: idCliente, rol: { in: ['responsable', 'supervisor', 'oficina'] } },
+      include: {
+        asignaciones: { include: { centro: true }, where: { fecha_fin: null } },
+      },
+      orderBy: { nombre: 'asc' },
+    });
+    res.json({
+      usuarios: usuarios.map(u => ({
+        id_usuario: u.id_usuario,
+        nombre: u.nombre,
+        email: u.email,
+        rol: u.rol,
+        telefono: u.telefono,
+        centros_asignados: u.asignaciones.map(a => ({ id_centro: a.centro.id_centro, nombre_centro: a.centro.nombre_centro })),
+      })),
+    });
   } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 

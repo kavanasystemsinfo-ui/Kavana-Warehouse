@@ -42,6 +42,14 @@ describe('POST /api/v1/auth/login', () => {
     expect(res.body.usuario.rol).toBe('oficina');
     token = res.body.token;
   });
+
+  it('accepts username with uppercase (autocapitalización móvil)', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: 'Warehouse', password: 'kavana' });
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBeTruthy();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -157,6 +165,16 @@ describe('GET /api/v1/empleados', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.empleados)).toBe(true);
+  });
+});
+
+describe('GET /api/v1/asignaciones/users', () => {
+  it('returns responsables list (lo usa la página Responsables)', async () => {
+    const res = await request(app)
+      .get('/api/v1/asignaciones/users')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.usuarios)).toBe(true);
   });
 });
 
