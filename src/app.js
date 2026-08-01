@@ -83,7 +83,9 @@ app.post('/api/v1/auth/login', validate(loginSchema), async (req, res) => {
     const u = normalized.includes('@')
       ? await prisma.usuario.findUnique({ where: { email: normalized } })
       : await prisma.usuario.findFirst({ where: { username: normalized.toLowerCase() } });
-    if (!u || !(await bcrypt.compare(password, u.password_hash))) return res.status(401).json({ error: 'Credenciales invalidas' });
+    // La contraseña se trimmea: los teclados móviles (autocomplete) añaden
+    // espacios al pulsar siguiente/sugerencia, y en el campo de puntos no se ve.
+    if (!u || !(await bcrypt.compare(password.trim(), u.password_hash))) return res.status(401).json({ error: 'Credenciales invalidas' });
     const token = jwt.sign({ id_usuario: u.id_usuario, email: u.email, rol: u.rol, is_super_admin: u.is_super_admin, id_cliente: u.id_cliente }, JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '2h' });
     res.json({ token, usuario: { id_usuario: u.id_usuario, nombre: u.nombre, email: u.email, username: u.username, rol: u.rol, is_super_admin: u.is_super_admin } });
   } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }

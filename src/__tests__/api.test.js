@@ -50,6 +50,14 @@ describe('POST /api/v1/auth/login', () => {
     expect(res.status).toBe(200);
     expect(res.body.token).toBeTruthy();
   });
+
+  it('trims trailing space from password (autocomplete del teclado móvil)', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: 'warehouse', password: 'kavana ' });
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBeTruthy();
+  });
 });
 
 // ---------------------------------------------------------------------------
