@@ -61,9 +61,10 @@ export function Login({ onLogin }: LoginProps) {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label" htmlFor="email">Usuario</label>
+            <label className="form-label" htmlFor="usuario">Usuario</label>
             <input
-              id="email"
+              id="usuario"
+              name="usuario"
               className="form-input"
               type="text"
               value={email}
