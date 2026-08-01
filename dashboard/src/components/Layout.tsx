@@ -38,6 +38,10 @@ export function Layout() {
             <span className="sidebar-link-icon">⚠️</span>
             Desviaciones
           </NavLink>
+          <NavLink to="/costes" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
+            <span className="sidebar-link-icon">💶</span>
+            Costes por centro
+          </NavLink>
           <NavLink to="/inventario" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
             <span className="sidebar-link-icon">📦</span>
             Inventario

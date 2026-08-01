@@ -4,6 +4,7 @@ import { getEmpleados, createEmpleado, getCentros, type Empleado } from '../lib/
 export function Empleados() {
   const [empleados, setEmpleados] = useState<Empleado[]>([])
   const [centros, setCentros] = useState<any[]>([])
+  const [filtroCentro, setFiltroCentro] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [msg, setMsg] = useState('')
@@ -32,11 +33,21 @@ export function Empleados() {
 
   if (loading) return <div className="loading"><div className="spinner" />Cargando empleados...</div>
 
+  const empleadosFiltrados = filtroCentro
+    ? empleados.filter(e => (e as any).asignaciones?.[0]?.centro?.id_centro === Number(filtroCentro))
+    : empleados;
+
   return (
     <div>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="page-title">👥 Empleados</h1>
-        <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ Nuevo Empleado</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <select className="form-select" value={filtroCentro} onChange={e => setFiltroCentro(e.target.value)} style={{ minWidth: 200 }}>
+            <option value="">Todos los centros</option>
+            {centros.map((c: any) => <option key={c.id_centro} value={c.id_centro}>{c.nombre_centro || c.nombre}</option>)}
+          </select>
+          <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ Nuevo Empleado</button>
+        </div>
       </div>
       {msg && <div className={`alert ${msg.includes('Error') ? 'alert-danger' : 'alert-success'}`}>{msg}</div>}
 
@@ -91,16 +102,16 @@ export function Empleados() {
               </tr>
             </thead>
             <tbody>
-              {empleados.length === 0 ? (
-                <tr><td colSpan={5} style={{ color: '#9ca3af' }}>No hay empleados registrados</td></tr>
+              {empleadosFiltrados.length === 0 ? (
+                <tr><td colSpan={5} style={{ color: '#9ca3af' }}>No hay empleados en este centro</td></tr>
               ) : (
-                empleados.map(e => (
+                empleadosFiltrados.map(e => (
                   <tr key={e.id_usuario}>
                     <td><strong>{e.nombre} {e.apellidos || ''}</strong></td>
                     <td>{e.email}</td>
                     <td>{e.numero_empleado || '—'}</td>
-                    <td>{(e as any).centro?.nombre_centro || '—'}</td>
-                    <td><span className="badge badge-info">{e.estado}</span></td>
+                    <td>{(e as any).asignaciones?.[0]?.centro?.nombre_centro || '—'}</td>
+                    <td><span className={`badge ${e.estado === 'activo' ? 'badge-success' : 'badge-secondary'}`}>{e.estado}</span></td>
                   </tr>
                 ))
               )}

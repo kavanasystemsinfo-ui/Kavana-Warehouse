@@ -28,6 +28,7 @@ model Usuario {
   id_cliente    Int?                              // NULL para super admin
   is_super_admin Boolean  @default(false)
   telefono      String?
+  numero_empleado String?   // ID interno/matrícula del empleado (p.ej. 100-500)
 
   cliente           Cliente? @relation(fields: [id_cliente], references: [id_cliente])
   asignaciones       AsignacionPersonal[]

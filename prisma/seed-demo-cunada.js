@@ -40,23 +40,26 @@ async function main() {
 
   const idCliente = cliente.id_cliente;
 
-  // 2. Centros (sus centros reales)
+  // 2. Centros (sus centros reales) — con presupuesto mensual distinto para la demo
   const centrosDef = [
-    'Diputación de Valencia',
-    'Beneficencia',
-    'Plaza de Toros',
-    'Museo Bellas Artes',
+    { nombre: 'Diputación de Valencia', presu: 100, dir: 'Calle de la Diputación, Valencia' },
+    { nombre: 'Beneficencia', presu: 25, dir: 'Calle de la Beneficencia, Valencia' },
+    { nombre: 'Plaza de Toros', presu: 15, dir: 'Plaza de Toros, Valencia' },
+    { nombre: 'Museo Bellas Artes', presu: 50, dir: 'C/ San Pío V, Valencia (Museo de Bellas Artes)' },
   ];
   const centros = {};
-  for (const nombre of centrosDef) {
+  for (const def of centrosDef) {
+    const nombre = def.nombre;
     let c = await prisma.centro.findFirst({ where: { nombre_centro: nombre, id_cliente: idCliente } });
     if (!c) {
       c = await prisma.centro.create({
-        data: { nombre_centro: nombre, direccion: 'Valencia', presupuesto_mensual: 1500, id_cliente: idCliente },
+        data: { nombre_centro: nombre, direccion: def.dir, presupuesto_mensual: def.presu, id_cliente: idCliente },
       });
-      console.log('  ✓ Centro creado:', c.nombre_centro);
+      console.log('  ✓ Centro creado:', c.nombre_centro, `(presu ${def.presu}€)`);
     } else {
-      console.log('  • Centro ya existe:', c.nombre_centro);
+      // Actualiza el presupuesto y la dirección por si cambiaron en el seed
+      c = await prisma.centro.update({ where: { id_centro: c.id_centro }, data: { presupuesto_mensual: def.presu, direccion: def.dir } });
+      console.log('  • Centro ya existe:', c.nombre_centro, `(presu ${def.presu}€)`);
     }
     centros[nombre] = c.id_centro;
   }
@@ -123,25 +126,59 @@ async function main() {
     });
     console.log('  ✓ Supervisor creado (Zaira García)');
   }
-  const operarios = [
-    { nombre: 'María L.', centro: 'Diputación de Valencia' },
-    { nombre: 'José P.', centro: 'Beneficencia' },
-    { nombre: 'Lucía R.', centro: 'Plaza de Toros' },
-    { nombre: 'Antonio M.', centro: 'Museo Bellas Artes' },
-  ];
-  for (const op of operarios) {
-    const email = op.nombre.toLowerCase().replace(/[^a-z.]/g, '') + '@cleanstock.com';
-    let u = await prisma.usuario.findFirst({ where: { email } });
-    if (!u) {
-      u = await prisma.usuario.create({
-        data: { nombre: op.nombre, email, username: op.nombre.split(' ')[0].toLowerCase(), password_hash: pw, rol: 'limpiador', id_cliente: idCliente },
-      });
-      await prisma.asignacionPersonal.create({
-        data: { id_usuario: u.id_usuario, id_centro: centros[op.centro], fecha_inicio: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-      });
-      console.log('  ✓ Operario creado:', op.nombre, '→', op.centro);
+  // 5b. Empleados (5-10 por centro) — email normal, teléfono, nº empleado 100-500
+  const nombres = ['María', 'José', 'Lucía', 'Antonio', 'Carmen', 'David', 'Ana', 'Carlos', 'Pedro', 'Laura', 'Miguel', 'Sara', 'Javier', 'Elena', 'Francisco', 'Marta', 'Manuel', 'Paula', 'Diego', 'Raquel', 'Álvaro', 'Nuria', 'Pablo', 'Cristina', 'Sergio', 'Beatriz', 'Rubén', 'Patricia', 'Ángel', 'Mónica'];
+  const apellidos = ['López', 'Pérez', 'Romero', 'Muñoz', 'Torres', 'Ferrer', 'García', 'Sánchez', 'Martín', 'Ruiz', 'Jiménez', 'Moreno', 'Álvarez', 'Díaz', 'Suárez', 'Vidal', 'Castro', 'Ortega', 'Ramos', 'Iglesias', 'Molina', 'Serrano', 'Navarro', 'Gil', 'Reyes', 'Cano', 'Cruz', 'Mendoza', 'Prieto', 'Marín'];
+  const dominios = ['gmail.com', 'hotmail.com', 'outlook.com'];
+  const centrosNombres = Object.keys(centros); // 4 centros
+  let telefonoSeq = 600123000;
+  let empSeq = 500; // base para nº empleado y username único
+
+  // Cuenta existentes por centro para no duplicar al reejecutar el seed
+  const existentesPorCentro = {};
+  for (const cn of centrosNombres) {
+    const c = await prisma.centro.findUnique({ where: { id_centro: centros[cn] }, include: { asignaciones: { where: { fecha_fin: null }, select: { id_usuario: true } } } });
+    existentesPorCentro[cn] = c?.asignaciones?.length || 0;
+  }
+
+  for (const cn of centrosNombres) {
+    const quiere = 5 + Math.floor(Math.random() * 6); // 5..10 objetivo
+    const falta = Math.max(0, quiere - (existentesPorCentro[cn] || 0));
+    for (let i = 0; i < falta; i++) {
+      const nombre = nombres[Math.floor(Math.random() * nombres.length)];
+      const apellido = apellidos[Math.floor(Math.random() * apellidos.length)];
+      const full = `${nombre} ${apellido}`;
+      const dom = dominios[Math.floor(Math.random() * dominios.length)];
+      const ne = ++empSeq; // nº empleado y sufijo único
+      const email = `${nombre.toLowerCase()}.${apellido.toLowerCase()}${ne}@${dom}`;
+      const username = `${nombre.toLowerCase()}.${apellido.toLowerCase()}.${ne}`;
+      const telefono = String(++telefonoSeq);
+      try {
+        const u = await prisma.usuario.upsert({
+          where: { email },
+          update: {},
+          create: {
+            nombre: full,
+            email,
+            username,
+            password_hash: pw,
+            rol: 'limpiador',
+            id_cliente: idCliente,
+            telefono,
+            numero_empleado: String(ne),
+          },
+        });
+        // Asigna al centro si no tiene asignación activa
+        const ya = await prisma.asignacionPersonal.findFirst({ where: { id_usuario: u.id_usuario, id_centro: centros[cn], fecha_fin: null } });
+        if (!ya) {
+          await prisma.asignacionPersonal.create({ data: { id_usuario: u.id_usuario, id_centro: centros[cn], fecha_inicio: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } });
+        }
+      } catch (err) {
+        console.warn('  ⚠️ No se pudo crear', full, '→', err.message.split('\n')[0]);
+      }
     }
   }
+  console.log('  ✓ Empleados generados (5-10 por centro)');
 
   console.log('\n✅ Demo lista. Login encargada: supervisor.demo@cleanstock.com / demo1234');
   console.log('   Centros: Diputación, Beneficencia, Plaza de Toros, Museo Bellas Artes');

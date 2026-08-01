@@ -345,6 +345,13 @@ export async function getCentros(): Promise<Centro[]> {
   return res.centros
 }
 
+export async function updateCentro(id: number, data: Partial<{ nombre_centro: string; direccion: string; presupuesto_mensual: number }>): Promise<{ centro: Centro }> {
+  return apiFetch<{ centro: Centro }>(`/centros/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
 export async function createCentro(data: { nombre: string; direccion?: string; telefono?: string }): Promise<{ centro: Centro }> {
   return apiFetch('/centros', { method: 'POST', body: JSON.stringify(data) })
 }
@@ -473,6 +480,34 @@ export interface PurchaseProposal {
 export async function getPurchaseProposal(centroId?: number): Promise<PurchaseProposal> {
   const qs = centroId ? `?centro=${centroId}` : ''
   return apiFetch<PurchaseProposal>(`/purchases/proposal${qs}`)
+}
+
+// --- Costes por centro (Fase 2) ---
+export interface CosteCentro {
+  centro: { id_centro: number; nombre_centro: string }
+  coste_material: number
+  presupuesto_mensual: number
+  porcentaje_usado: number | null
+  diferencia: number | null
+  estado: 'verde' | 'ambar' | 'rojo' | 'sin_presupuesto'
+}
+
+export interface CostesData {
+  mes: string
+  total_coste: number
+  total_presupuesto: number
+  centros: CosteCentro[]
+}
+
+export async function getCostes(): Promise<CostesData> {
+  return apiFetch<CostesData>('/dashboard/costes')
+}
+
+export async function setPresupuesto(idCentro: number, valor: number): Promise<{ ok: boolean; presupuesto_mensual: number }> {
+  return apiFetch<{ ok: boolean; presupuesto_mensual: number }>(`/centros/${idCentro}/presupuesto`, {
+    method: 'POST',
+    body: JSON.stringify({ presupuesto_mensual: valor }),
+  })
 }
 
 // --- Notifications ---

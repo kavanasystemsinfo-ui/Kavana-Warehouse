@@ -129,6 +129,11 @@ app.post('/api/v1/inventario/:id_centro/:id_producto/conteo', auth, deviationCon
 const purchaseController = require('./controllers/purchaseController');
 app.get('/api/v1/purchases/proposal', auth, purchaseController.getProposal);
 
+// Costes por centro (Fase 2: control de coste vs presupuesto)
+const costeController = require('./controllers/costeController');
+app.get('/api/v1/dashboard/costes', auth, costeController.getCostes);
+app.post('/api/v1/centros/:id_centro/presupuesto', auth, costeController.setPresupuesto);
+
 // Reset de datos de demostración (solo borra clientes marcados es_demo)
 app.post('/api/v1/demo/reset', auth, async (req, res) => {
   try {
@@ -186,27 +191,73 @@ app.post('/api/v1/productos', auth, supervisorOnly, async (req, res) => {
 // ----- CENTROS -----
 app.get('/api/v1/centros', auth, async (req, res) => {
   try {
-    const centros = await prisma.centro.findMany({ orderBy: { nombre_centro: 'asc' }, include: { _count: { select: { asignaciones: true, inventarioCentros: true } } } });
+    const usuario = req.user;
+    let idCliente = usuario?.id_cliente;
+    if (!idCliente && usuario?.id_usuario) {
+      const u = await prisma.usuario.findUnique({ where: { id_usuario: usuario.id_usuario } });
+      idCliente = u?.id_cliente;
+    }
+    const centros = await prisma.centro.findMany({
+      where: idCliente ? { id_cliente: idCliente } : {},
+      orderBy: { nombre_centro: 'asc' },
+      include: {
+        _count: { select: { asignaciones: true, inventarioCentros: true } },
+        asignaciones: { where: { fecha_fin: null }, include: { usuario: { select: { nombre: true, rol: true, telefono: true, numero_empleado: true, email: true } } } },
+        inventarioCentros: { include: { producto: { select: { nombre_producto: true, unidad_medida: true, coste_unitario: true } } } },
+      },
+    });
     res.json({ centros });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/v1/centros', auth, supervisorOnly, async (req, res) => {
   try { const c = await prisma.centro.create({ data: req.body }); res.json({ centro: c }); }
   catch(e) { res.status(500).json({ error: e.message }); }
 });
+app.put('/api/v1/centros/:id', auth, supervisorOnly, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const data = {};
+    if (req.body.nombre_centro !== undefined) data.nombre_centro = req.body.nombre_centro;
+    if (req.body.direccion !== undefined) data.direccion = req.body.direccion;
+    if (req.body.presupuesto_mensual !== undefined) data.presupuesto_mensual = Number(req.body.presupuesto_mensual);
+    const c = await prisma.centro.update({ where: { id_centro: id }, data });
+    res.json({ centro: c });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
 // ----- EMPLEADOS -----
 app.get('/api/v1/empleados', auth, supervisorOnly, async (req, res) => {
   try {
-    const emps = await prisma.usuario.findMany({ where: { rol: 'limpiador' }, include: { asignaciones: { include: { centro: true }, where: { fecha_fin: null } } }, orderBy: { nombre: 'asc' } });
+    const usuario = req.user;
+    let idCliente = usuario?.id_cliente;
+    if (!idCliente && usuario?.id_usuario) {
+      const u = await prisma.usuario.findUnique({ where: { id_usuario: usuario.id_usuario } });
+      idCliente = u?.id_cliente;
+    }
+    const emps = await prisma.usuario.findMany({
+      where: { rol: 'limpiador', id_cliente: idCliente ?? undefined },
+      include: { asignaciones: { include: { centro: true }, where: { fecha_fin: null } } },
+      orderBy: { nombre: 'asc' },
+    });
     res.json({ empleados: emps });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/v1/empleados', auth, supervisorOnly, async (req, res) => {
   try {
     const { nombre, email, password, numero_empleado, id_centro } = req.body;
+    if (!nombre || !email) return res.status(400).json({ error: 'Nombre y email obligatorios' });
     const hash = await bcrypt.hash(password || 'cleanstock', 12);
-    const u = await prisma.usuario.create({ data: { nombre, email, password_hash: hash, numero_empleado, id_centro, rol: 'limpiador' } });
+    let idCliente = req.user?.id_cliente;
+    if (!idCliente && req.user?.id_usuario) {
+      const u = await prisma.usuario.findUnique({ where: { id_usuario: req.user.id_usuario } });
+      idCliente = u?.id_cliente;
+    }
+    const u = await prisma.usuario.create({
+      data: { nombre, email, password_hash: hash, numero_empleado, id_cliente: idCliente, rol: 'limpiador' },
+    });
+    if (id_centro) {
+      await prisma.asignacionPersonal.create({ data: { id_usuario: u.id_usuario, id_centro, fecha_inicio: new Date() } });
+    }
     res.json({ empleado: u });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

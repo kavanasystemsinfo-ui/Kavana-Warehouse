@@ -422,3 +422,65 @@ El dashboard exporta datos en formato CSV con BOM UTF-8 para compatibilidad con 
 - `useOnlineStatus` hook detecta cambios de conectividad vía eventos `online`/`offline` del navegador
 - La DB se llama `kavana_cleanstock` en PostgreSQL 16 dentro de Docker
 - El esquema de tests se compone de 6 suites con **92 tests totales**, usando mocks de Prisma y logger
+
+---
+
+## Hito 8 — Reenfoque Demo Cuñada (Zaira García) + Fase 2 Costes + Módulo Empleados
+
+> **Contexto:** La demo se reorientó del modelo enterprise (consumo teórico) al caso real de la cuñada Zaira García (Limpiezas Valencia Centro, S.L.). El modelo de control es por **mermas** (stock registrado vs. stock físico contado por la encargada), NO consumo teórico. El proyecto corre en el VPS (no en Neon/Render/Vercel como decía el Hito 7).
+
+### ✅ Completado
+
+- [x] **Modelo de mermas** (`prisma/schema.prisma`):
+  - `InventarioCentro.stock_fisico Int?` — conteo real de la encargada
+  - `Cliente.es_demo Boolean @default(false)` — flag para reset de demo
+  - Eliminadas columnas muertas `stock_maximo` y `tipo` (db push --accept-data-loss)
+- [x] **Control de Mermas** (`src/controllers/deviationController.js` + `Deviations.tsx`):
+  - Merma = `cantidad_actual` (registrado) − `stock_fisico` (físico contado)
+  - Botón "Contar" + modal para registrar conteo físico (`POST /api/v1/inventario/:id_centro/:id_producto/conteo`)
+  - Botón "🧹 Limpiar datos demo" (`POST /api/v1/demo/reset` — borra `es_demo`)
+- [x] **Fase 2 — Costes por Centro** (`src/controllers/costeController.js` + `Costes.tsx`):
+  - `GET /api/v1/dashboard/costes` — coste = Σ (cantidad_actual − stock_fisico) × coste_unitario por centro
+  - `POST /api/v1/centros/:id/presupuesto` — fijar presupuesto mensual por centro
+  - Tarjetas por centro: coste mes, presupuesto, % usado (verde/ámbar/rojo), "te pasas en X €"
+  - Presupuestos demo: Diputación 100€, Beneficencia 25€, Plaza de Toros 15€ (107% rojo), Museo 50€
+- [x] **Propuesta de Compras** (`src/controllers/purchaseController.js`):
+  - `GET /api/v1/purchases/proposal` — por `stock_minimo` (no por mermas): cantidad_pedido = max(0, min×2 − actual), coste_estimado
+  - Botón en Inventario → exporta CSV
+- [x] **Edición de Centros** (`PUT /api/v1/centros/:id` + modal en `Centros.tsx`):
+  - Edita nombre, dirección y presupuesto
+- [x] **Acordeón de Centros** (`Centros.tsx`):
+  - Clic en fila despliega empleados (nombre, rol, nº, 📞, ✉️) + productos (reg/fís)
+  - Flecha ▸/▾ indicadora + hover
+- [x] **Módulo Empleados** (Fase final — 2026-07-16):
+  - Seed regenera 33 empleados (5-10 por centro), emails gmail/hotmail/outlook, teléfono, nº empleado aleatorio 100-500
+  - Borrados los empleados basura (`@kavana.com`, `id_cliente = null`, rol limpiador)
+  - `GET /api/v1/empleados` filtra por `id_cliente` del usuario logueado (no trae huérfanos)
+  - `POST /api/v1/empleados` usa `id_cliente` del logueado + crea `asignacionPersonal` con `id_centro`
+  - Tabla de Empleados muestra Centro (corregido: backend manda `nombre_centro`, no `nombre`)
+  - **Filtro por centro** en la tabla de Empleados (select frontend, datos ya cargados)
+
+### 🐛 Bugs corregidos en el proceso
+- kavana-api unhealthy por llave desbalanceada en `app.js` línea 205 (el `select` de asignaciones no cerraba `include`/`asignaciones`) → `node --check` lo detectó
+- Empleados basura (`@kavana.com`) salían porque `/empleados` no filtraba por cliente → añadido filtro `id_cliente`
+- Seed duplicaba empleados (corridas múltiples) → hecho idempotente con `username` único (`nombre.apellido.ne`) + `upsert` por email
+- CSS de detalle de centro no se aplicaba en cliente → nginx cacheaba assets 1 año → cambiado a `Cache-Control: no-cache` en `/assets/`
+- Filtro de centros en Empleados salía en blanco → leía `c.nombre` pero backend manda `nombre_centro`
+
+### Estado de la Demo (credenciales)
+```
+URL:        https://cleanstock.kavanasystems.com/
+Login:      supervisor.demo@cleanstock.com / demo1234
+Empresa:    Limpiezas Valencia Centro, S.L. (es_demo = true)
+Centros:    Diputación de Valencia, Beneficencia, Plaza de Toros, Museo Bellas Artes
+Empleados:  33 (5-10 por centro)
+Mermas:     Plaza de Toros — papel: reg 50 / fís 30 (falta 20)
+Costes:     Plaza de Toros 🔴 107% del presupuesto (15€)
+Compras:    Beneficencia — lejía: reg 22 / min 30 → propuesta 38 u (57€)
+```
+
+### ⚠️ Notas de despliegue
+- El dashboard usa nginx con `Cache-Control: no-cache` en `/assets/` (evita CSS viejo en cliente durante la demo)
+- El `start.sh` del API ejecuta migraciones + seed en Render, pero en el VPS el seed se corre manual
+- `seed.js` redirige a `prisma/seed-demo-cunada.js` (la demo de la cuñada)
+- El VPS tiene cronjob de mantenimiento diario 06:00 UTC (prune -a SIN --volumes)
