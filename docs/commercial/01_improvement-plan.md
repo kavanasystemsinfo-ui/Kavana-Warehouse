@@ -1,6 +1,6 @@
 # Plan de Implementación: Mejoras Enterprise — KAVANA WAREHOUSE
 
-> **Estado:** Parcialmente implementado (actualizado 2026-07-16 con datos reales del código en producción)
+> **Estado:** Parcialmente implementado (actualizado 2026-08-01 con datos reales del código en producción)
 > **⚠️ Versión anterior marcaba todo como ✅ IMPLEMENTADO. Esta versión refleja lo que realmente existe.**
 > Los módulos A (Costes), B (Desviaciones), C (Incidencias backend) y D (Compras) están en producción.
 > El módulo E (Notificaciones) y las conexiones en tiempo real son planificados.
@@ -41,7 +41,7 @@ Permite alertar cuando se detecta material faltante (merma).
 
 ---
 
-## Módulo C: Reporte de Incidencias en la Instalación ✅ BACKEND IMPLEMENTADO / ⏳ FRONTEND MÓVIL PENDIENTE
+## Módulo C: Reporte de Incidencias en la Instalación ✅ BACKEND IMPLEMENTADO / ⏳ UI COMPLETA
 
 Los **supervisores o personal de control** reportan averías (fontanería, electricidad, etc.) y les dan seguimiento desde el dashboard.
 
@@ -96,7 +96,7 @@ Se intentó implementar pero la página de Notificaciones no está enrutada en e
 
 | Tipo | Estado | Notas |
 |------|--------|-------|
-| **Tests automatizados** (Jest) | ✅ 26 tests | Cubren auth, CRUD, scoping multi-tenant (SECURITY), escritura |
+| **Tests automatizados** (Jest) | ✅ 35 tests | Cubren auth, CRUD, scoping multi-tenant (SECURITY), escritura, supervisores demo |
 | Tests para incidencias | ❌ No cubiertos específicamente | Las rutas de incidencias existen pero sin test dedicado |
 | Tests para desviaciones | ❌ No cubiertos | El controlador existe, sin test |
 | Tests para propuestas de compra | ❌ No cubiertos | El controlador existe, sin test |

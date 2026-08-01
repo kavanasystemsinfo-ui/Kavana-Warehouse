@@ -1,253 +1,114 @@
 # KAVANA WAREHOUSE
 
-> **Sistema de Gestión de Almacenes (WMS) multi-tenant diseñado para organizaciones que necesitan controlar inventario, movimientos y trazabilidad entre múltiples centros y ubicaciones.**
+> **Control de stock multi-tenant para empresas de limpieza con múltiples centros. Consumo por centro, alertas de stock bajo y control de presupuesto en una sola plataforma.**
 
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)
-![Node.js](https://img.shields.io/badge/Node.js-22-339933?logo=node.js)
+![Node.js](https://img.shields.io/badge/Node.js-20-339933?logo=node.js)
 ![Express](https://img.shields.io/badge/Express-API-lightgrey)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)
-![Tests](https://img.shields.io/badge/Tests-26-success)
+![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma)
+![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript)
+![Tests](https://img.shields.io/badge/Tests-35-success)
 ![License](https://img.shields.io/badge/License-MIT-success)
 
 ---
 
-# Visión General
+## ⚡ 30 Segundos
 
-**Kavana Warehouse** es una plataforma SaaS para la gestión de almacenes, inventario y trazabilidad de stock desarrollada como parte del ecosistema **Kavana Systems**.
+Kavana Warehouse es una plataforma web para empresas de limpieza que operan en varios centros (colegios, oficinas, hospitales). La oficina sabe qué producto se consume en cada centro, cuándo baja de stock y cuánto se gasta respecto al presupuesto mensual. Nació del problema real de una empresa de limpieza de Valencia que no sabía cuánto material gastaba cada centro.
 
-La aplicación permite centralizar el control de materiales distribuidos entre múltiples centros, almacenes o ubicaciones, proporcionando visibilidad en tiempo real sobre existencias, movimientos y consumo.
-
-La demostración pública utiliza como escenario una empresa de limpieza profesional, aunque la arquitectura ha sido diseñada para adaptarse a cualquier organización que necesite gestionar inventario distribuido.
+La demo pública simula una empresa viva con 3 meses de histórico (10 centros, 31 productos, ~31.000 movimientos) y evoluciona sola cada día.
 
 ---
 
-# Problema
-
-En muchas organizaciones el control de inventario continúa realizándose mediante hojas de cálculo, procesos manuales o aplicaciones desconectadas.
-
-Esto dificulta conocer:
-
-- Stock disponible en cada centro.
-- Movimientos entre almacenes.
-- Consumo real de materiales.
-- Necesidades de reposición.
-- Historial y trazabilidad del inventario.
-
----
-
-# Solución
-
-Kavana Warehouse centraliza toda la gestión del inventario en una única plataforma mediante:
-
-- Gestión multi-almacén.
-- Inventarios físicos.
-- Entradas y salidas de material.
-- Transferencias entre ubicaciones.
-- Dashboard operativo.
-- Gestión de usuarios y permisos.
-- Arquitectura multi-tenant.
-- API REST.
-- Despliegue mediante Docker.
-
----
-
-# Arquitectura
+## 🏗️ Arquitectura
 
 ```
-          Operarios / Supervisores
+          Oficina / Supervisor
                     │
                     ▼
-
-          Aplicación Web (React)
-
+          Dashboard web (React 19)
                     │
-
+                    ▼
             API REST (Express)
-
                     │
-
-        JWT Authentication + RBAC
-
+            JWT + RBAC (2 roles)
                     │
-
               Prisma ORM
-
                     │
-
-            PostgreSQL 16
-
-                    │
-
-       Shared Schema + client_id
+            PostgreSQL 16 (Neon)
 ```
 
-La plataforma implementa una arquitectura **Shared Schema Multi-Tenant**, donde todos los clientes comparten la misma base de datos manteniendo el aislamiento lógico mediante `client_id`.
+- **Multi-tenant shared schema**: aislamiento lógico por `client_id` en todas las queries.
+- **Despliegue**: frontend en Vercel, API en Render, BD en Neon (serverless).
+- **Demo viva**: un cron diario simula el consumo de los limpiadores (baja el stock, suben los costes, aparecen alertas solas).
 
 ---
 
-# Stack Tecnológico
+## 🧠 Decisiones clave
 
-### Frontend
-
-- React
-- Vite
-- TypeScript
-- Tailwind CSS
-
-### Backend
-
-- Node.js
-- Express
-- Prisma ORM
-
-### Base de datos
-
-- PostgreSQL 16
-
-### Infraestructura
-
-- Docker
-- Docker Compose
-- GitHub Actions
-- VPS Linux
-
-### Seguridad
-
-- JWT Authentication
-- Refresh Tokens
-- Role Based Access Control (RBAC)
+| Decisión | Alternativas | Elegida | Por qué |
+|----------|-------------|---------|---------|
+| Multi-tenancy | Schema-per-tenant, RLS | Shared schema + `client_id` | Simple y suficiente para el dominio (ver `docs/adr/001`) |
+| Roles | 4 roles, app móvil | 2 roles: `oficina` + `supervisor` | La app evolucionó a gestión de stock pura; menos roles, menos fricción |
+| BD | Supabase, VPS | Neon serverless | IPv4 nativo, compatible con Render free |
+| API | Serverless Vercel, Railway | Render Web Service | Build ligero (JS puro), free tier |
+| Migraciones | En el start | Manuales | `migrate deploy` en el arranque rompía los deploys |
 
 ---
 
-# Funcionalidades
-
-- Gestión de productos.
-- Gestión de almacenes.
-- Inventarios físicos.
-- Movimientos de stock.
-- Transferencias entre centros.
-- Gestión de usuarios.
-- Roles y permisos.
-- Dashboard para supervisores.
-- Arquitectura multi-tenant.
-- API REST.
-
----
-
-# Decisiones de Ingeniería
-
-| Decisión | Solución adoptada | Motivo |
-|----------|-------------------|--------|
-| Multi-tenancy | Shared Schema + `client_id` | Simplicidad y escalabilidad |
-| ORM | Prisma | Productividad y tipado |
-| Backend | Express | Ligero y suficiente para el dominio |
-| Autenticación | JWT | Arquitectura stateless |
-| Infraestructura | Docker | Entornos reproducibles |
-
-Las decisiones de arquitectura completas están documentadas mediante ADRs en:
-
-```
-docs/adr/
-```
-
----
-
-# Estado del Proyecto
+## 📊 Estado
 
 | Funcionalidad | Estado |
 |--------------|:------:|
-| Multi-tenant | ✅ |
-| Gestión de almacenes | ✅ |
-| Inventarios | ✅ |
-| Dashboard | ✅ |
-| Roles y permisos | ✅ |
-| Docker | ✅ |
-| CI/CD | ✅ |
-| Tests automatizados | ✅ |
-| Informes exportables | 🚧 |
-| Aplicación móvil dedicada | 🚧 |
+| Login por usuario o email (tolerante a mayúsculas/espacios) | ✅ |
+| Dashboard con KPIs y evolución mensual | ✅ |
+| Gestión de centros, productos e inventario | ✅ |
+| Costes por centro vs presupuesto | ✅ |
+| Alertas de stock bajo | ✅ |
+| Desviaciones (stock registrado vs físico) | ✅ |
+| Recuentos físicos del supervisor | ✅ |
+| Propuesta de compra | ✅ |
+| Incidencias | ✅ |
+| Supervisores demo (caducan a las 24h) | ✅ |
+| Multi-tenant verificado con tests | ✅ |
+| CI/CD (GitHub Actions) | ✅ |
+| 35 tests automatizados | ✅ |
+| App móvil | ❌ Descartada (gestión de stock web) |
 
 ---
 
-# Documentación
+## 📚 Documentación
 
 | Documento | Descripción |
 |-----------|-------------|
 | `docs/adr/` | Architecture Decision Records |
-| `docs/commercial/` | Documentación funcional |
-| `docs/technical/` | Documentación técnica |
-| `docs/HISTORY.md` | Historial del proyecto |
-| `docs/METRICS.md` | Métricas de calidad |
-| `docs/SECURITY.md` | Consideraciones de seguridad |
+| `docs/technical/` | Arquitectura, despliegue, auditoría, roadmap |
+| `docs/commercial/` | Documentación de producto y plan de mejoras |
+| `docs/deployment.md` | Despliegue real (Vercel + Render + Neon) y credenciales demo |
 
 ---
 
-# Ejecución Local
+## 🚀 Cómo ejecutar
 
 ```bash
-cp .env.example .env
-
-docker compose up -d
-
+cp .env.example .env       # configura DATABASE_URL, JWT_SECRET
+docker compose up -d       # levanta db + api + dashboard
 npm install
-
-npm test
+npx prisma migrate deploy  # aplica migraciones (nunca en el start)
+npm test                   # 35 tests
 ```
 
 ---
 
-# Demo
+## 🌐 Demo
 
-🌐 **Landing**
-
-https://warehouse.kavanasystems.com
-
-🖥️ **Aplicación**
-
-https://warehouse.kavanasystems.com/app
+- **Landing portfolio**: https://www.kavanasystems.com/warehouse/
+- **Aplicación**: https://warehouse.kavanasystems.com
+- **Usuario demo**: `warehouse` · **Contraseña**: `kavana`
 
 ---
 
-# Roadmap
+## 📄 Licencia
 
-Próximas líneas de evolución:
-
-- Informes exportables.
-- Códigos QR.
-- Lectura de códigos de barras.
-- Sincronización offline.
-- Aplicación móvil dedicada.
-- Predicción de consumo mediante IA.
-
----
-
-# Ecosistema Kavana Systems
-
-Este proyecto forma parte del ecosistema **Kavana Systems**, una colección de aplicaciones empresariales desarrolladas siguiendo el **Kavana Engineering Standard (KES)**.
-
-- Manufacturing (MES)
-- Warehouse (WMS)
-- RouteFleet (Fleet Management)
-
-Todos los proyectos comparten la misma filosofía de arquitectura, documentación y calidad de ingeniería.
-
----
-
-# Aviso
-
-Este proyecto forma parte de mi portfolio profesional y tiene como objetivo demostrar conocimientos de arquitectura de software, desarrollo full stack y construcción de aplicaciones SaaS siguiendo prácticas modernas de ingeniería.
-
-No representa un producto comercial implantado en clientes reales.
-
----
-
-# Autor
-
-Desarrollado por **Jorge Adán Rodríguez**
-
-**Founder · Kavana Systems**
-
-Software Architect · Full Stack Developer · AI Product Engineer
-
-🌐 https://www.kavanasystems.com
+MIT © 2026 [Jorge Adán Rodríguez](https://www.kavanasystems.com) · Kavana Systems

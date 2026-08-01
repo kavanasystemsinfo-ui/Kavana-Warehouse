@@ -12,11 +12,10 @@ export interface AuthResponse {
 export interface Usuario {
   id_usuario: number
   nombre: string
-  apellidos?: string
   email: string
-  rol: 'limpiador' | 'supervisor'
-  estado: string
-  numero_empleado?: string
+  username?: string | null
+  rol: string
+  is_super_admin?: boolean
 }
 
 export interface Categoria {
@@ -70,15 +69,6 @@ export interface InventarioItem {
   centro?: Centro
 }
 
-export interface Asignacion {
-  id_asignacion: number
-  id_usuario: number
-  id_centro: number
-  fecha_inicio: string
-  fecha_fin: string | null
-  usuario?: { id_usuario: number; nombre: string; email: string; rol: string }
-  centro?: { id_centro: number; nombre_centro: string }
-}
 
 export interface ConsumptionData {
   total_consumo_unidades: number
@@ -307,73 +297,11 @@ export async function getAlerts(): Promise<AlertsData> {
   return apiFetch<AlertsData>('/dashboard/alerts')
 }
 
-// --- Asignaciones ---
-export async function getAsignaciones(): Promise<Asignacion[]> {
-  const res = await apiFetch<{ asignaciones: Asignacion[] }>('/asignaciones')
-  return res.asignaciones
-}
-
-export async function createAsignacion(data: {
-  id_usuario: number
-  id_centro: number
-  fecha_inicio: string
-  fecha_fin?: string | null
-}): Promise<Asignacion> {
-  const res = await apiFetch<{ asignacion: Asignacion }>('/asignaciones', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  })
-  return res.asignacion
-}
-
-export async function updateAsignacion(
-  id: number,
-  data: {
-    id_centro?: number
-    fecha_inicio?: string
-    fecha_fin?: string | null
-  }
-): Promise<Asignacion> {
-  const res = await apiFetch<{ asignacion: Asignacion }>(`/asignaciones/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  })
-  return res.asignacion
-}
-
 // --- Stock ---
 export async function getInventory(centroId?: number): Promise<InventarioItem[]> {
   const qs = centroId ? `?centro=${centroId}` : ''
   const res = await apiFetch<{ inventario: InventarioItem[] }>(`/stock/inventory${qs}`)
   return res.inventario
-}
-
-export async function restock(data: {
-  id_centro: number
-  id_producto: number
-  cantidad: number
-}): Promise<{ message: string }> {
-  return apiFetch('/stock/restock', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  })
-}
-
-export async function registerUser(data: {
-  nombre: string
-  email: string
-  password: string
-  rol: 'limpiador' | 'supervisor' | 'admin'
-}): Promise<{ message: string; usuario: Usuario }> {
-  return apiFetch('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  })
-}
-
-export async function getUsuarios(): Promise<{ id_usuario: number; nombre: string; email: string; rol: string }[]> {
-  const res = await apiFetch<{ usuarios: { id_usuario: number; nombre: string; email: string; rol: string }[] }>('/asignaciones/users')
-  return res.usuarios
 }
 
 export async function getCentros(): Promise<Centro[]> {
@@ -578,46 +506,6 @@ export async function setPresupuesto(idCentro: number, valor: number): Promise<{
 }
 
 // --- Notifications ---
-export interface Notificacion {
-  id_notificacion: number
-  id_usuario: number
-  titulo: string
-  mensaje: string
-  leida: boolean
-  fecha_creacion: string
-}
-
-export interface ReglaNotificacion {
-  id_regla: number
-  id_supervisor: number
-  id_centro: number | null
-  id_operario: number | null
-  id_producto: number | null
-  activa: boolean
-  centro: { id_centro: number; nombre_centro: string } | null
-  operario: { id_usuario: number; nombre: string } | null
-  producto: { id_producto: number; nombre_producto: string } | null
-}
-
-export async function getNotifications(): Promise<{ notificaciones: Notificacion[] }> {
-  return apiFetch('/notifications')
-}
-
-export async function markNotificationRead(id: number): Promise<{ success: boolean }> {
-  return apiFetch(`/notifications/${id}/read`, { method: 'PUT' })
-}
-
-export async function getNotificationRules(): Promise<{ reglas: ReglaNotificacion[] }> {
-  return apiFetch('/notifications/rules')
-}
-
-export async function createNotificationRule(data: { id_centro?: number; id_operario?: number; id_producto?: number }): Promise<{ message: string; regla: ReglaNotificacion }> {
-  return apiFetch('/notifications/rules', { method: 'POST', body: JSON.stringify(data) })
-}
-
-export async function deleteNotificationRule(id: number): Promise<{ success: boolean }> {
-  return apiFetch(`/notifications/rules/${id}`, { method: 'DELETE' })
-}
 // --- Responsables de centro (supervisor) ---
 export interface Responsable {
   id_usuario: number
