@@ -1,8 +1,8 @@
 # Deployment Guide — Kavana CleanStock
 
 > **Target:** DevOps, IT Operations
-> **Version:** 4.1.0 (actualizado 2026-07-16, post-rediseño de visión de negocio)
-> **Last Updated:** 2026-07-16
+> **Version:** 4.2.0 (actualizado 2026-07-20, modelo de responsables de centro)
+> **Last Updated:** 2026-07-20
 
 ---
 
@@ -33,10 +33,10 @@
                                 └────────────┘
 ```
 
-> **Nota de alcance (2026-07-16):** El proyecto **no tiene app móvil del limpiador**.
-> El registro de consumos lo hace el **supervisor o personal de control** desde el dashboard
-> web (responsive, accesible desde el móvil del encargado). La carpeta `mobile/` existe
-> en el repo pero **no se despliega** (es código legacy del enfoque anterior).
+> **Nota de alcance (2026-07-20):** El proyecto **tiene app móvil del responsable de centro**
+> (`mobile/`, PWA React, puerto 4000). El responsable hace **recuento físico** del stock de sus
+> centros asignados. Los limpiadores NO usan app (modelo descartado). El supervisor registra
+> consumos desde el dashboard web. Ver `docs/ESTADO_ACTUAL_CLEANSTOCK.md`.
 
 | Componente | Plataforma | Coste |
 |---|---|---|
@@ -82,6 +82,7 @@ server {
 | Ruta | Servicio interno | Puerto |
 |---|---|---|
 | `https://cleanstock.kavanasystems.com/` | Dashboard supervisor (web, responsive) | :4001 |
+| `https://cleanstock.kavanasystems.com/mobile/` | App responsable de centro (PWA) | :4000 |
 | `https://cleanstock.kavanasystems.com/api/v1/*` | API REST | :3000 |
 
 > No hay ruta `/empleado/` en producción. El registro de consumos se hace desde el dashboard.

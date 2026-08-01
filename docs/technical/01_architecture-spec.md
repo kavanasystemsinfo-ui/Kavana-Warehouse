@@ -5,8 +5,9 @@
 > **Versión actual:** 1.1 (backend monolítico, dashboard web responsive)
 > **Última actualización:** 2026-07-16
 > **⚠️ Nota:** Este documento refleja el código que realmente corre en producción.
->   **Rediseño de visión de negocio (2026-07-16):** los limpiadores NO usan ninguna app.
->   El consumo lo registra el supervisor o personal adecuado desde el dashboard web.
+>   **Cambio de modelo (2026-07-20):** los limpiadores NO usan app. El **responsable de centro**
+>   (personal de confianza del cliente) usa la **app móvil** para hacer **recuento físico** del stock.
+>   El supervisor mantiene el control desde el dashboard web. Ver `docs/ESTADO_ACTUAL_CLEANSTOCK.md`.
 
 ---
 
@@ -20,6 +21,9 @@ para **detectar mermas y sobrecostes por centro**.
 **Alcance de usuario:**
 - ✅ **Supervisor / personal de control:** registra consumos, repone stock, gestiona centros
   empleados e incidencias desde el dashboard web (responsive, accesible desde móvil).
+  **Crea responsables de centro y les asigna centros.**
+- ✅ **Responsable de centro:** usa la **app móvil** para hacer **recuento físico** del stock
+  de sus centros asignados (setea la cantidad real por producto).
 - ❌ **Limpiador:** NO usa ninguna app. Figura en el modelo de datos (`Usuario.rol='limpiador'`,
   `AsignacionPersonal`) solo para trazabilidad de quién está asignado a qué centro.
 - ✅ **Admin:** gestiona empresas cliente y ve estadísticas del SaaS.
