@@ -1,4 +1,4 @@
-// Kavana CleanStock — Deviation Controller (modelo de MERMAS de inventario)
+// KAVANA WAREHOUSE — Deviation Controller (modelo de MERMAS de inventario)
 // Compara stock REGISTRADO (cantidad_actual) vs stock FÍSICO (conteo de la encargada).
 //   desviacion = cantidad_actual - stock_fisico
 //     > 0  → Falta material (se llevaron / perdieron)        → estado "falta"

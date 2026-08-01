@@ -1,9 +1,9 @@
 @echo off
-title Subir Repositorio a GitHub (Kavana CleanStock)
+title Subir Repositorio a GitHub (KAVANA WAREHOUSE)
 color 0B
 
 echo ========================================================
-echo   Subida automatica a GitHub: Kavana CleanStock
+echo   Subida automatica a GitHub: KAVANA WAREHOUSE
 echo   Repositorio: kavanasystemsinfo-ui/clean_ops
 echo   Rama: main
 echo ========================================================

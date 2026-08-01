@@ -48,7 +48,7 @@ export function Layout() {
           <div className="sidebar-logo">
             <img src="/logo.png" alt="Kavana" style={{ width: '36px', height: '36px', borderRadius: '8px' }} />
             <div>
-              <h1>CleanStock</h1>
+              <h1>KAVANA WAREHOUSE</h1>
               <span>Panel de Supervisor</span>
             </div>
           </div>

@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'logo.png'],
       manifest: {
-        name: 'Kavana CleanStock — Limpiador',
-        short_name: 'CleanStock',
+        name: 'KAVANA WAREHOUSE — Limpiador',
+        short_name: 'KAVANA WAREHOUSE',
         description: 'Control de stock para personal de limpieza',
         theme_color: '#0098fd',
         background_color: '#ffffff',

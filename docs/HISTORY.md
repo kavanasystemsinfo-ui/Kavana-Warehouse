@@ -1,4 +1,4 @@
-# 📜 Historia del Proyecto — CleanStock
+# 📜 Historia del Proyecto — KAVANA WAREHOUSE
 
 *Evolución, decisiones y aprendizajes desde la idea hasta la producción.*
 
@@ -65,7 +65,7 @@
 - `.kavanasystems.com` como dominio principal
 
 **Resultado:**
-- ✅ **Live:** `https://cleanstock.kavanasystems.com`
+- ✅ **Live:** `https://warehouse.kavanasystems.com`
 - ✅ Landing + registro + dashboard + admin
 - ✅ Docker Compose completo (BD + backend + frontend)
 - ✅ Railway.json (preparado para migración futura a serverless)

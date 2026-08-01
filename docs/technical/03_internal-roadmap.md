@@ -1,4 +1,4 @@
-# Roadmap Interno — CleanStock (versión honesta)
+# Roadmap Interno — KAVANA WAREHOUSE (versión honesta)
 
 > **Propósito:** Control de estado real del proyecto.
 > **⚠️ NOTA:** Este documento reemplaza la versión anterior (2026-06-06) que marcaba como

@@ -1,4 +1,4 @@
-# Seguridad — CleanStock
+# Seguridad — KAVANA WAREHOUSE
 
 ## Gestión de Secretos
 

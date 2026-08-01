@@ -9,7 +9,7 @@ export function Empleados() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [msg, setMsg] = useState('')
-  const [form, setForm] = useState({ nombre: '', apellidos: '', email: '', password: 'cleanstock', numero_empleado: '', id_centro: 0 })
+  const [form, setForm] = useState({ nombre: '', apellidos: '', email: '', password: 'kavanawarehouse', numero_empleado: '', id_centro: 0 })
 
   const load = async () => {
     try {
@@ -27,7 +27,7 @@ export function Empleados() {
       await createEmpleado({ ...form, id_centro: form.id_centro || centros[0]?.id_centro })
       setShowForm(false)
       setMsg('Empleado creado')
-      setForm({ nombre: '', apellidos: '', email: '', password: 'cleanstock', numero_empleado: '', id_centro: 0 })
+      setForm({ nombre: '', apellidos: '', email: '', password: 'kavanawarehouse', numero_empleado: '', id_centro: 0 })
       load()
     } catch (e: any) { setMsg(e.message) }
   }

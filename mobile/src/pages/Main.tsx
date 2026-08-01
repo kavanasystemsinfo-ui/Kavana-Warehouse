@@ -1,4 +1,4 @@
-// Kavana CleanStock Mobile — Main Dashboard (Responsable de centro)
+// KAVANA WAREHOUSE Mobile — Main Dashboard (Responsable de centro)
 // Flujo: Login → Elegir centro → Recuento físico (set cantidad real) → Confirmar
 // El recuento actualiza el stock real del Dashboard y registra el histórico.
 
@@ -210,7 +210,7 @@ export function Main({ onLogout }: MainProps) {
       <header className="main-header">
         <div className="header-top">
           <div>
-            <h1 className="header-title">Kavana CleanStock</h1>
+            <h1 className="header-title">KAVANA WAREHOUSE</h1>
             <p className="header-user">
               {user?.nombre} — {user?.rol}
             </p>

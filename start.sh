@@ -1,8 +1,8 @@
 #!/bin/sh
-echo "[Kavana CleanStock] Running Prisma migrations..."
+echo "[KAVANA WAREHOUSE] Running Prisma migrations..."
 npx prisma migrate deploy
-echo "[Kavana CleanStock] Ensuring logs directory exists..."
+echo "[KAVANA WAREHOUSE] Ensuring logs directory exists..."
 mkdir -p /app/logs
 chown -R appuser:nodejs /app/logs
-echo "[Kavana CleanStock] Starting server..."
+echo "[KAVANA WAREHOUSE] Starting server..."
 exec node src/server.js
