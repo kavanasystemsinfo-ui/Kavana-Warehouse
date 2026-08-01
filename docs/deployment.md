@@ -131,6 +131,10 @@ Para que cualquier visitante pruebe la app sin contaminar los datos compartidos:
 - Un cron diario (`cleanup_warehouse_supervisores.sh`) borra los expirados
 - La empresa ficticia con 3 meses de histórico (`seed-historico.js`) es la base
   que todos ven al entrar con `warehouse` / `kavana`
+- **Simulación diaria** (`prisma/simulate-daily.js` + cron 06:00): cada día
+  genera consumos realistas de los limpiadores, baja el stock (las alertas
+  aparecen solas) y repone los lunes. La demo "vive" en el tiempo: los costes
+  del mes suben solos. Idempotente (no duplica si ya se simuló hoy).
 
 ## Migración futura a Serverless
 
