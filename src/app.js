@@ -8,8 +8,9 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient, Prisma } = require('@prisma/client');
 const logger = require('./lib/logger');
+const { validate, loginSchema, centroSchema, categoríaSchema } = require('./middleware/validate');
 
 const app = express();
 app.set('trust proxy', true);
@@ -69,7 +70,7 @@ const superAdminOnly = (req, res, next) => {
 };
 
 // ----- AUTH -----
-app.post('/api/v1/auth/login', async (req, res) => {
+app.post('/api/v1/auth/login', validate(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
     // Buscar por email o username
@@ -90,8 +91,18 @@ app.get('/api/v1/dashboard', auth, async (req, res) => {
     const tp = await prisma.producto.count();
     const tc = await prisma.centro.count({ where: filtro });
     const te = await prisma.usuario.count({ where: { rol: 'limpiador', ...(idCliente ? { id_cliente: idCliente } : {}) } });
-    const bs = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as c FROM inventario_centros ic JOIN centros c ON ic.id_centro = c.id_centro WHERE ic.cantidad_actual <= ic.stock_minimo AND ic.stock_minimo > 0 ${idCliente ? `AND c.id_cliente = ${Number(idCliente)}` : ''}`);
-    const ch = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as c FROM registro_movimientos rm JOIN centros c ON rm.id_centro = c.id_centro WHERE rm.fecha_hora >= CURRENT_DATE ${idCliente ? `AND c.id_cliente = ${Number(idCliente)}` : ''}`);
+    const bs = await prisma.$queryRaw`
+      SELECT COUNT(*) as c FROM inventario_centros ic
+      JOIN centros c ON ic.id_centro = c.id_centro
+      WHERE ic.cantidad_actual <= ic.stock_minimo AND ic.stock_minimo > 0
+      ${idCliente ? Prisma.sql`AND c.id_cliente = ${idCliente}` : Prisma.empty}
+    `;
+    const ch = await prisma.$queryRaw`
+      SELECT COUNT(*) as c FROM registro_movimientos rm
+      JOIN centros c ON rm.id_centro = c.id_centro
+      WHERE rm.fecha_hora >= CURRENT_DATE
+      ${idCliente ? Prisma.sql`AND c.id_cliente = ${idCliente}` : Prisma.empty}
+    `;
     res.json({ totalProductos: tp, totalCentros: tc, totalEmpleados: te, bajoStock: parseInt(bs[0]?.c||0), consumosHoy: parseInt(ch[0]?.c||0), topConsumos: [] });
   } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
@@ -100,17 +111,30 @@ app.get('/api/v1/dashboard', auth, async (req, res) => {
 app.get('/api/v1/dashboard/consumption', auth, async (req, res) => {
   try {
     const idCliente = req.user.id_cliente;
-    const filtro = idCliente ? ` AND c.id_cliente = ${Number(idCliente)}` : '';
-    const movs = await prisma.$queryRawUnsafe(`
-      SELECT rm.*, p.nombre_producto, p.unidad_medida, p.coste_unitario,
-             c.nombre_centro, u.nombre as usuario_nombre
-      FROM registro_movimientos rm
-      JOIN productos p ON rm.id_producto = p.id_producto
-      JOIN centros c ON rm.id_centro = c.id_centro
-      JOIN usuarios u ON rm.id_usuario = u.id_usuario
-      WHERE rm.cantidad < 0${filtro}
-      ORDER BY rm.fecha_hora DESC LIMIT 50
-    `);
+    let movs;
+    if (idCliente) {
+      movs = await prisma.$queryRaw`
+        SELECT rm.*, p.nombre_producto, p.unidad_medida, p.coste_unitario,
+               c.nombre_centro, u.nombre as usuario_nombre
+        FROM registro_movimientos rm
+        JOIN productos p ON rm.id_producto = p.id_producto
+        JOIN centros c ON rm.id_centro = c.id_centro
+        JOIN usuarios u ON rm.id_usuario = u.id_usuario
+        WHERE rm.cantidad < 0 AND c.id_cliente = ${idCliente}
+        ORDER BY rm.fecha_hora DESC LIMIT 50
+      `;
+    } else {
+      movs = await prisma.$queryRaw`
+        SELECT rm.*, p.nombre_producto, p.unidad_medida, p.coste_unitario,
+               c.nombre_centro, u.nombre as usuario_nombre
+        FROM registro_movimientos rm
+        JOIN productos p ON rm.id_producto = p.id_producto
+        JOIN centros c ON rm.id_centro = c.id_centro
+        JOIN usuarios u ON rm.id_usuario = u.id_usuario
+        WHERE rm.cantidad < 0
+        ORDER BY rm.fecha_hora DESC LIMIT 50
+      `;
+    }
     const total = movs.reduce((s, m) => s + Math.abs(Number(m.cantidad)), 0);
     const totalEuro = movs.reduce((s, m) => s + (Math.abs(Number(m.cantidad)) * Number(m.coste_unitario || 0)), 0);
     res.json({
@@ -135,23 +159,42 @@ app.get('/api/v1/dashboard/consumption', auth, async (req, res) => {
 app.get('/api/v1/dashboard/alerts', auth, async (req, res) => {
   try {
     const idCliente = req.user.id_cliente;
-    const filtro = idCliente ? ` AND c.id_cliente = ${Number(idCliente)}` : '';
-    const criticas = await prisma.$queryRawUnsafe(`
-      SELECT ic.*, p.nombre_producto, c.nombre_centro
-      FROM inventario_centros ic
-      JOIN productos p ON ic.id_producto = p.id_producto
-      JOIN centros c ON ic.id_centro = c.id_centro
-      WHERE ic.cantidad_actual <= 0${filtro}
-      ORDER BY c.nombre_centro
-    `);
-    const advertencias = await prisma.$queryRawUnsafe(`
-      SELECT ic.*, p.nombre_producto, c.nombre_centro
-      FROM inventario_centros ic
-      JOIN productos p ON ic.id_producto = p.id_producto
-      JOIN centros c ON ic.id_centro = c.id_centro
-      WHERE ic.cantidad_actual > 0 AND ic.cantidad_actual <= ic.stock_minimo AND ic.stock_minimo > 0${filtro}
-      ORDER BY c.nombre_centro
-    `);
+    let criticas, advertencias;
+    if (idCliente) {
+      criticas = await prisma.$queryRaw`
+        SELECT ic.*, p.nombre_producto, c.nombre_centro
+        FROM inventario_centros ic
+        JOIN productos p ON ic.id_producto = p.id_producto
+        JOIN centros c ON ic.id_centro = c.id_centro
+        WHERE ic.cantidad_actual <= 0 AND c.id_cliente = ${idCliente}
+        ORDER BY c.nombre_centro
+      `;
+      advertencias = await prisma.$queryRaw`
+        SELECT ic.*, p.nombre_producto, c.nombre_centro
+        FROM inventario_centros ic
+        JOIN productos p ON ic.id_producto = p.id_producto
+        JOIN centros c ON ic.id_centro = c.id_centro
+        WHERE ic.cantidad_actual > 0 AND ic.cantidad_actual <= ic.stock_minimo AND ic.stock_minimo > 0 AND c.id_cliente = ${idCliente}
+        ORDER BY c.nombre_centro
+      `;
+    } else {
+      criticas = await prisma.$queryRaw`
+        SELECT ic.*, p.nombre_producto, c.nombre_centro
+        FROM inventario_centros ic
+        JOIN productos p ON ic.id_producto = p.id_producto
+        JOIN centros c ON ic.id_centro = c.id_centro
+        WHERE ic.cantidad_actual <= 0
+        ORDER BY c.nombre_centro
+      `;
+      advertencias = await prisma.$queryRaw`
+        SELECT ic.*, p.nombre_producto, c.nombre_centro
+        FROM inventario_centros ic
+        JOIN productos p ON ic.id_producto = p.id_producto
+        JOIN centros c ON ic.id_centro = c.id_centro
+        WHERE ic.cantidad_actual > 0 AND ic.cantidad_actual <= ic.stock_minimo AND ic.stock_minimo > 0
+        ORDER BY c.nombre_centro
+      `;
+    }
     res.json({
       criticas: criticas.map(c => ({ id: c.id_centro + '-' + c.id_producto, centro: c.nombre_centro, producto: c.nombre_producto, cantidad_actual: c.cantidad_actual })),
       advertencias: advertencias.map(a => ({ id: a.id_centro + '-' + a.id_producto, centro: a.nombre_centro, producto: a.nombre_producto, cantidad_actual: a.cantidad_actual }))
@@ -200,7 +243,7 @@ app.post('/api/v1/demo/reset', auth, async (req, res) => {
 // ----- CATEGORIAS -----
 app.get('/api/v1/categorias', auth, async (req, res) => {
   try { 
-    const cats = await prisma.$queryRawUnsafe(`SELECT id_categoria, nombre, icono, descripcion FROM categorias ORDER BY nombre`);
+    const cats = await prisma.$queryRaw`SELECT id_categoria, nombre, icono, descripcion FROM categorias ORDER BY nombre`;
     res.json({ categorias: cats }); 
   }
   catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }

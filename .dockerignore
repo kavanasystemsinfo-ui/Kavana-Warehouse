@@ -38,6 +38,11 @@ Dockerfile*
 # Docs
 docs/
 
+# Other service dirs (tienen sus propios node_modules)
+mobile/
+dashboard/
+landing/
+
 # Logs
 *.log
 logs/

@@ -624,15 +624,110 @@ tr:hover td {
   color: var(--gray-900);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* ==========================================================================
+   🌐 Sidebar responsive + toggle hamburguesa
+   ========================================================================== */
+
+/* Botón hamburguesa — flotante, visible cuando sidebar está cerrado */
+.sidebar-toggle {
+  display: none;  /* oculto en desktop */
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 210;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--gray-900);
+  color: white;
+  cursor: pointer;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0;
+  box-shadow: var(--shadow-lg);
+  transition: background 0.15s;
+}
+.sidebar-toggle:hover {
+  background: var(--gray-700);
+}
+.sidebar-toggle.is-open {
+  left: 272px;  /* al lado del sidebar abierto */
+}
+
+.hamburger-line {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: white;
+  border-radius: 2px;
+  transition: all 0.2s;
+}
+
+/* Overlay oscuro en móvil */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 90;
+}
+
+/* Botón ✕ dentro del sidebar en móvil */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 0.5rem;
+}
+.sidebar-close {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--gray-400);
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  border-radius: 4px;
+}
+.sidebar-close:hover {
+  color: white;
+  background: var(--gray-700);
+}
+
+/* ——— RESPONSIVE: móvil y tablet ——— */
+@media (max-width: 1023px) {
+  .sidebar-toggle {
+    display: flex;
+  }
+
+  .sidebar-overlay {
+    display: block;
+  }
+
+  .sidebar-close {
+    display: block;
+  }
+
   .sidebar {
-    width: 200px;
+    transform: translateX(-100%);  /* oculto por defecto */
+    transition: transform 0.25s ease;
+    width: 260px;
   }
+
+  .sidebar.sidebar--open {
+    transform: translateX(0);  /* visible al abrir */
+  }
+
   .main-content {
-    margin-left: 200px;
+    margin-left: 0;
     padding: 1rem;
+    padding-top: 4rem;  /* espacio para el botón hamburguesa */
   }
+
   .form-row {
     grid-template-columns: 1fr;
   }
@@ -641,6 +736,16 @@ tr:hover td {
   }
   .filters-bar .form-group {
     min-width: 100%;
+  }
+}
+
+/* Móvil muy pequeño */
+@media (max-width: 480px) {
+  .sidebar {
+    width: 85vw;
+  }
+  .sidebar-toggle.is-open {
+    left: calc(85vw + 12px);
   }
 }
 
