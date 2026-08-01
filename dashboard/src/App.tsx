@@ -7,6 +7,7 @@ import { Inventario } from './pages/Inventario'
 import { Incidents } from './pages/Incidents'
 import { Empleados } from './pages/Empleados'
 import { Centros } from './pages/Centros'
+import { Deviations } from './pages/Deviations'
 import { getStoredUser } from './lib/api'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -65,6 +66,7 @@ export default function App() {
         <Route path="incidents" element={<Incidents />} />
         <Route path="empleados" element={<Empleados />} />
         <Route path="centros" element={<Centros />} />
+        <Route path="desviaciones" element={<Deviations />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

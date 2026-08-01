@@ -389,16 +389,16 @@ export async function getProductos(): Promise<Producto[]> {
   return productos
 }
 
-// --- Deviations ---
+// --- Deviations (mermas de inventario: registrado vs físico) ---
 export interface DeviationItem {
   centro: { id_centro: number; nombre_centro: string }
   producto: { id_producto: number; nombre_producto: string; unidad_medida: string; coste_unitario: number }
-  consumo_teorico: number
-  consumo_real: number
-  desviacion: number
-  porcentaje_consumido: number
+  cantidad_actual: number
+  stock_fisico: number | null
+  desviacion: number | null
+  porcentaje_desviacion: number | null
   coste_desviacion: number
-  estado: 'exceso' | 'infraconsumo' | 'normal'
+  estado: 'falta' | 'sobra' | 'pendiente' | 'normal'
 }
 
 export interface DeviationsData {
@@ -407,12 +407,22 @@ export interface DeviationsData {
   desviaciones: DeviationItem[]
 }
 
-export async function getDeviations(filters?: { centro?: number; mes?: string }): Promise<DeviationsData> {
+export async function getDeviations(filters?: { centro?: number }): Promise<DeviationsData> {
   const params = new URLSearchParams()
   if (filters?.centro) params.set('centro', String(filters.centro))
-  if (filters?.mes) params.set('mes', filters.mes)
   const qs = params.toString()
   return apiFetch<DeviationsData>(`/dashboard/deviations${qs ? `?${qs}` : ''}`)
+}
+
+export async function guardarConteo(idCentro: number, idProducto: number, stockFisico: number): Promise<{ ok: boolean }> {
+  return apiFetch<{ ok: boolean }>(`/inventario/${idCentro}/${idProducto}/conteo`, {
+    method: 'POST',
+    body: JSON.stringify({ stock_fisico: stockFisico }),
+  })
+}
+
+export async function resetDemo(): Promise<{ ok: boolean; mensaje: string }> {
+  return apiFetch<{ ok: boolean; mensaje: string }>('/demo/reset', { method: 'POST' })
 }
 
 // --- Incidencias ---

@@ -120,6 +120,40 @@ app.get('/api/v1/dashboard/alerts', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Dashboard — Desviaciones (mermas de inventario: registrado vs físico)
+const deviationController = require('./controllers/deviationController');
+app.get('/api/v1/dashboard/deviations', auth, deviationController.getDeviations);
+app.post('/api/v1/inventario/:id_centro/:id_producto/conteo', auth, deviationController.guardarConteo);
+
+// Propuesta de compras (reabastecimiento por stock mínimo)
+const purchaseController = require('./controllers/purchaseController');
+app.get('/api/v1/purchases/proposal', auth, purchaseController.getProposal);
+
+// Reset de datos de demostración (solo borra clientes marcados es_demo)
+app.post('/api/v1/demo/reset', auth, async (req, res) => {
+  try {
+    const usuario = req.user;
+    if (!usuario) return res.status(401).json({ error: 'No autenticado' });
+    const demoClientes = await prisma.cliente.findMany({ where: { es_demo: true } });
+    for (const cli of demoClientes) {
+      const id = cli.id_cliente;
+      await prisma.registroMovimiento.deleteMany({ where: { centro: { id_cliente: id } } });
+      await prisma.inventarioCentro.deleteMany({ where: { centro: { id_cliente: id } } });
+      await prisma.consumoTeorico.deleteMany({ where: { centro: { id_cliente: id } } });
+      await prisma.asignacionPersonal.deleteMany({ where: { centro: { id_cliente: id } } });
+      const uids = (await prisma.usuario.findMany({ where: { id_cliente: id } })).map(u => u.id_usuario);
+      await prisma.reglaNotificacion.deleteMany({ where: { id_supervisor: { in: uids } } });
+      await prisma.usuario.deleteMany({ where: { id_cliente: id } });
+      await prisma.centro.deleteMany({ where: { id_cliente: id } });
+      await prisma.cliente.deleteMany({ where: { id_cliente: id } });
+    }
+    res.json({ ok: true, mensaje: 'Datos de demostración eliminados. Panel limpio listo.' });
+  } catch (e) {
+    console.error('[demo/reset]', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ----- CATEGORIAS -----
 app.get('/api/v1/categorias', auth, async (req, res) => {
   try { 

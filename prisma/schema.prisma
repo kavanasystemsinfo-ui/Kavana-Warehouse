@@ -57,6 +57,7 @@ model Cliente {
   trial_fin       DateTime
   fecha_renovacion DateTime?
   notas           String?
+  es_demo         Boolean  @default(false)        // true = datos de demostración (borrables)
 
   usuarios   Usuario[]
   centros    Centro[]
@@ -139,6 +140,7 @@ model InventarioCentro {
   id_centro      Int
   id_producto    Int
   cantidad_actual Int @default(0)
+  stock_fisico   Int?     // Conteo físico de la encargada (null = pendiente de contar)
   stock_minimo   Int    @default(0)
   fecha_actualizacion DateTime @default(now()) @db.Timestamptz()
 

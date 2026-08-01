@@ -34,6 +34,10 @@ export function Layout() {
             <span className="sidebar-link-icon">🏢</span>
             Centros
           </NavLink>
+          <NavLink to="/desviaciones" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
+            <span className="sidebar-link-icon">⚠️</span>
+            Desviaciones
+          </NavLink>
           <NavLink to="/inventario" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
             <span className="sidebar-link-icon">📦</span>
             Inventario
