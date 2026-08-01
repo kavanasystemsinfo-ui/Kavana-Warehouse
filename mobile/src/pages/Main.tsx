@@ -1,12 +1,12 @@
-// Kavana CleanStock Mobile — Main Dashboard
-// Shows active center and inventory, allows quick consumption
-// 3-click flow: Login → Centro → Restar stock → Confirmar
+// Kavana CleanStock Mobile — Main Dashboard (Responsable de centro)
+// Flujo: Login → Elegir centro → Recuento físico (set cantidad real) → Confirmar
+// El recuento actualiza el stock real del Dashboard y registra el histórico.
 
 import { useState, useEffect, useCallback } from 'react'
 import {
-  getCentroActivo,
+  getCentrosActivos,
   getInventory,
-  consumeStock,
+  guardarConteo,
   createIncidencia,
   logout,
   getStoredUser,
@@ -22,7 +22,6 @@ import {
   addPendingConsumption,
   getPendingConsumptions,
   updateCachedInventoryItem,
-  removePendingConsumption,
 } from '../lib/db'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import './Main.css'
@@ -35,54 +34,53 @@ export function Main({ onLogout }: MainProps) {
   const isOnline = useOnlineStatus()
   const user = getStoredUser()
 
-  const [centro, setCentro] = useState<CentroActivo | null>(null)
+  const [centros, setCentros] = useState<CentroActivo[]>([])
+  const [centroId, setCentroId] = useState<number | null>(null)
   const [inventory, setInventory] = useState<ProductoInventario[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [syncing, setSyncing] = useState(false)
-  const [consumeModal, setConsumeModal] = useState<{
-    product: ProductoInventario
-  } | null>(null)
-  const [consumeAmount, setConsumeAmount] = useState(1)
-  const [consumeLoading, setConsumeLoading] = useState(false)
+  const [syncing] = useState(false)
+  const [conteoModal, setConteoModal] = useState<{ product: ProductoInventario } | null>(null)
+  const [conteoAmount, setConteoAmount] = useState(0)
+  const [conteoLoading, setConteoLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [offlineCount, setOfflineCount] = useState(0)
-  
-  // Tab Navigation
+
   const [activeTab, setActiveTab] = useState<'inventory' | 'incidents'>('inventory')
 
-  // Incident form
   const [incidenciaCategoria, setIncidenciaCategoria] = useState('limpieza')
   const [incidenciaTitulo, setIncidenciaTitulo] = useState('')
   const [incidenciaDescripcion, setIncidenciaDescripcion] = useState('')
   const [incidenciaLoading, setIncidenciaLoading] = useState(false)
 
-  // Load data
+  const centroActual = centros.find(c => c.id_centro === centroId) || null
+
   const loadData = useCallback(async () => {
     setLoading(true)
     setError('')
-
     try {
       if (isOnline) {
-        // Fetch from API
-        const [centroData, inventoryData] = await Promise.all([
-          getCentroActivo(),
-          getInventory(centro?.id_centro),
-        ])
-        setCentro(centroData)
-        setInventory(inventoryData)
-
-        // Cache offline
-        await cacheCentroActivo(centroData)
-        await cacheInventory(inventoryData)
+        const centrosData = await getCentrosActivos()
+        setCentros(centrosData)
+        // Seleccionar primer centro si no hay ninguno elegido
+        const targetId = centroId ?? centrosData[0]?.id_centro ?? null
+        setCentroId(targetId)
+        if (targetId) {
+          const inventoryData = await getInventory(targetId)
+          setInventory(inventoryData)
+          const c = centrosData.find(x => x.id_centro === targetId)
+          if (c) await cacheCentroActivo(c)
+          await cacheInventory(inventoryData)
+        } else {
+          setInventory([])
+        }
       } else {
-        // Load from cache
         const cachedCentro = await getCachedCentroActivo()
-        const cachedInventory = cachedCentro
-          ? await getCachedInventory(cachedCentro.id_centro)
-          : []
-        setCentro(cachedCentro ?? null)
-        // Convert cached items to ProductoInventario format
+        const cachedCentros = cachedCentro ? [cachedCentro] : []
+        setCentros(cachedCentros)
+        const targetId = centroId ?? cachedCentro?.id_centro ?? null
+        setCentroId(targetId)
+        const cachedInventory = targetId ? await getCachedInventory(targetId) : []
         setInventory(
           cachedInventory.map((item) => ({
             id_centro: item.id_centro,
@@ -99,13 +97,11 @@ export function Main({ onLogout }: MainProps) {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar datos')
-      // Try cache as fallback
       const cachedCentro = await getCachedCentroActivo()
-      const cachedInventory = cachedCentro
-        ? await getCachedInventory(cachedCentro.id_centro)
-        : []
       if (cachedCentro) {
-        setCentro(cachedCentro)
+        setCentros([cachedCentro])
+        setCentroId(cachedCentro.id_centro)
+        const cachedInventory = await getCachedInventory(cachedCentro.id_centro)
         setInventory(
           cachedInventory.map((item) => ({
             id_centro: item.id_centro,
@@ -123,9 +119,8 @@ export function Main({ onLogout }: MainProps) {
     } finally {
       setLoading(false)
     }
-  }, [isOnline])
+  }, [isOnline, centroId])
 
-  // Check pending consumptions count
   const checkPendingCount = useCallback(async () => {
     const pending = await getPendingConsumptions()
     setOfflineCount(pending.filter((p) => !p.synced).length)
@@ -136,86 +131,38 @@ export function Main({ onLogout }: MainProps) {
     checkPendingCount()
   }, [loadData, checkPendingCount, isOnline])
 
-  // Sync pending consumptions when back online
-  useEffect(() => {
-    if (!isOnline) return
-
-    const syncPending = async () => {
-      setSyncing(true)
-      try {
-        const pending = await getPendingConsumptions()
-        const unsynced = pending.filter((p) => !p.synced)
-
-        for (const item of unsynced) {
-          try {
-            await consumeStock(item.id_producto, Math.abs(item.cantidad))
-            await removePendingConsumption(item.offline_id)
-          } catch {
-            // Leave in queue for next sync attempt
-          }
-        }
-
-        await checkPendingCount()
-        // Refresh data after sync
-        await loadData()
-      } finally {
-        setSyncing(false)
-      }
-    }
-
-    syncPending()
-  }, [isOnline, loadData, checkPendingCount])
-
   const handleLogout = async () => {
     await logout()
     clearTokens()
     onLogout()
   }
 
-  const handleConsume = async () => {
-    if (!consumeModal) return
-    setConsumeLoading(true)
-
+  const handleConteo = async () => {
+    if (!conteoModal || !centroActual) return
+    setConteoLoading(true)
     try {
-      const offlineId = crypto.randomUUID()
-      const idProducto = consumeModal.product.id_producto
-      const cantidad = consumeAmount
-
+      const idProducto = conteoModal.product.id_producto
+      const cantidad = Math.max(0, Math.floor(conteoAmount))
       if (isOnline) {
-        await consumeStock(idProducto, cantidad)
+        await guardarConteo(centroActual.id_centro, idProducto, cantidad)
         setSuccessMessage(
-          `Consumido ${cantidad} ${consumeModal.product.producto.unidad_medida} de ${consumeModal.product.producto.nombre_producto}`
+          `Recuento guardado: ${cantidad} ${conteoModal.product.producto.unidad_medida} de ${conteoModal.product.producto.nombre_producto}`
         )
       } else {
-        // Queue offline
-        await addPendingConsumption(offlineId, idProducto, cantidad)
-
-        // Optimistic UI update
-        const newCantidad =
-          consumeModal.product.cantidad_actual - Math.abs(cantidad)
-        await updateCachedInventoryItem(
-          centro!.id_centro,
-          idProducto,
-          newCantidad
-        )
-
-        setSuccessMessage(
-          `Consumo guardado offline (${consumeModal.product.producto.nombre_producto})`
-        )
+        // Offline: guardamos el conteo como consumo pendiente (se sincroniza como recuento al volver)
+        await addPendingConsumption(crypto.randomUUID(), idProducto, cantidad)
+        await updateCachedInventoryItem(centroActual.id_centro, idProducto, cantidad)
+        setSuccessMessage(`Recuento guardado offline (${conteoModal.product.producto.nombre_producto})`)
         await checkPendingCount()
       }
-
-      // Refresh inventory
       await loadData()
-      setConsumeModal(null)
-      setConsumeAmount(1)
-
-      // Clear success message after 3s
+      setConteoModal(null)
+      setConteoAmount(0)
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al consumir')
+      setError(err instanceof Error ? err.message : 'Error al guardar recuento')
     } finally {
-      setConsumeLoading(false)
+      setConteoLoading(false)
     }
   }
 
@@ -224,7 +171,7 @@ export function Main({ onLogout }: MainProps) {
 
   const handleReportIncidencia = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!centro) return
+    if (!centroActual) return
     if (!isOnline) {
       setError('No puedes reportar incidencias sin conexión.')
       return
@@ -232,7 +179,7 @@ export function Main({ onLogout }: MainProps) {
     setIncidenciaLoading(true)
     try {
       await createIncidencia({
-        id_centro: centro.id_centro,
+        id_centro: centroActual.id_centro,
         categoria: incidenciaCategoria,
         titulo: incidenciaTitulo,
         descripcion: incidenciaDescripcion,
@@ -253,14 +200,13 @@ export function Main({ onLogout }: MainProps) {
     return (
       <div className="main-loading">
         <div className="spinner" />
-        <p>Cargando centro activo...</p>
+        <p>Cargando centros...</p>
       </div>
     )
   }
 
   return (
     <div className="main-container">
-      {/* Header */}
       <header className="main-header">
         <div className="header-top">
           <div>
@@ -270,9 +216,7 @@ export function Main({ onLogout }: MainProps) {
             </p>
           </div>
           <div className="header-actions">
-            {!isOnline && (
-              <span className="badge badge-offline">Sin conexión</span>
-            )}
+            {!isOnline && <span className="badge badge-offline">Sin conexión</span>}
             {syncing && <span className="badge badge-syncing">Sincronizando...</span>}
             {offlineCount > 0 && (
               <span className="badge badge-pending">{offlineCount} pendientes</span>
@@ -283,23 +227,25 @@ export function Main({ onLogout }: MainProps) {
           </div>
         </div>
 
-        {centro && (
-          <div className="centro-banner">
-            <span className="centro-icon">🏢</span>
-            <div>
-              <p className="centro-nombre">{centro.nombre_centro}</p>
-              {centro.direccion && (
-                <p className="centro-direccion">{centro.direccion}</p>
-              )}
-            </div>
+        {centros.length > 0 && (
+          <div className="centro-selector">
+            <label className="centro-selector-label">Centro:</label>
+            <select
+              className="form-input"
+              value={centroId ?? ''}
+              onChange={(e) => setCentroId(Number(e.target.value))}
+            >
+              {centros.map((c) => (
+                <option key={c.id_centro} value={c.id_centro}>
+                  {c.nombre_centro}
+                </option>
+              ))}
+            </select>
           </div>
         )}
       </header>
 
-      {/* Success/Error messages */}
-      {successMessage && (
-        <div className="alert alert-success">{successMessage}</div>
-      )}
+      {successMessage && <div className="alert alert-success">{successMessage}</div>}
       {error && (
         <div className="alert alert-error">
           {error}
@@ -309,24 +255,21 @@ export function Main({ onLogout }: MainProps) {
         </div>
       )}
 
-      {/* Content based on active tab */}
       {activeTab === 'inventory' ? (
         <main className="inventory-list">
           <h2 className="section-title">
-            Inventario
-            <button
-              onClick={loadData}
-              className="btn-refresh"
-              disabled={loading}
-            >
+            Recuento de inventario
+            <button onClick={loadData} className="btn-refresh" disabled={loading}>
               ↻
             </button>
           </h2>
 
-          {inventory.length === 0 ? (
+          {centros.length === 0 ? (
             <p className="empty-state">
-              No hay productos asignados a este centro.
+              No tienes centros asignados. El supervisor debe darte acceso desde el Dashboard.
             </p>
+          ) : inventory.length === 0 ? (
+            <p className="empty-state">No hay productos en este centro.</p>
           ) : (
             inventory.map((item) => (
               <div
@@ -334,9 +277,7 @@ export function Main({ onLogout }: MainProps) {
                 className={`inventory-card ${isLowStock(item) ? 'low-stock' : ''}`}
               >
                 <div className="card-info">
-                  <p className="card-product-name">
-                    {item.producto.nombre_producto}
-                  </p>
+                  <p className="card-product-name">{item.producto.nombre_producto}</p>
                   <p className="card-stock">
                     <span
                       className={`stock-value ${item.cantidad_actual <= 0 ? 'stock-critical' : ''}`}
@@ -356,12 +297,11 @@ export function Main({ onLogout }: MainProps) {
                 <button
                   className="btn-consume"
                   onClick={() => {
-                    setConsumeModal({ product: item })
-                    setConsumeAmount(1)
+                    setConteoModal({ product: item })
+                    setConteoAmount(item.cantidad_actual)
                   }}
-                  disabled={item.cantidad_actual <= 0}
                 >
-                  Consumir
+                  Recuento
                 </button>
               </div>
             ))
@@ -373,8 +313,8 @@ export function Main({ onLogout }: MainProps) {
           <form className="incidents-form" onSubmit={handleReportIncidencia}>
             <div className="form-group">
               <label>Categoría</label>
-              <select 
-                value={incidenciaCategoria} 
+              <select
+                value={incidenciaCategoria}
                 onChange={(e) => setIncidenciaCategoria(e.target.value)}
                 className="form-input"
               >
@@ -387,8 +327,8 @@ export function Main({ onLogout }: MainProps) {
             </div>
             <div className="form-group">
               <label>Título (Breve descripción)</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={incidenciaTitulo}
                 onChange={(e) => setIncidenciaTitulo(e.target.value)}
                 placeholder="Ej. Fuga de agua en baño 1"
@@ -399,7 +339,7 @@ export function Main({ onLogout }: MainProps) {
             </div>
             <div className="form-group">
               <label>Detalles adicionales</label>
-              <textarea 
+              <textarea
                 value={incidenciaDescripcion}
                 onChange={(e) => setIncidenciaDescripcion(e.target.value)}
                 placeholder="Explica qué ha ocurrido con más detalle..."
@@ -407,9 +347,9 @@ export function Main({ onLogout }: MainProps) {
                 className="form-input"
               />
             </div>
-            <button 
-              type="submit" 
-              className="btn-confirm" 
+            <button
+              type="submit"
+              className="btn-confirm"
               style={{ width: '100%', padding: '1rem', marginTop: '0.5rem' }}
               disabled={incidenciaLoading || !incidenciaTitulo.trim()}
             >
@@ -419,87 +359,72 @@ export function Main({ onLogout }: MainProps) {
         </main>
       )}
 
-      {/* Consume Modal */}
-      {consumeModal && (
-        <div className="modal-backdrop" onClick={() => setConsumeModal(null)}>
+      {conteoModal && (
+        <div className="modal-backdrop" onClick={() => setConteoModal(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Consumir producto</h3>
-            <p className="modal-product">
-              {consumeModal.product.producto.nombre_producto}
-            </p>
+            <h3 className="modal-title">Recuento físico</h3>
+            <p className="modal-product">{conteoModal.product.producto.nombre_producto}</p>
             <p className="modal-stock">
-              Stock actual: {consumeModal.product.cantidad_actual}{' '}
-              {consumeModal.product.producto.unidad_medida}
+              Stock registrado: {conteoModal.product.cantidad_actual}{' '}
+              {conteoModal.product.producto.unidad_medida}
             </p>
 
             <div className="modal-input-group">
               <button
                 className="btn-qty"
-                onClick={() => setConsumeAmount(Math.max(1, consumeAmount - 1))}
-                disabled={consumeAmount <= 1}
+                onClick={() => setConteoAmount(Math.max(0, conteoAmount - 1))}
+                disabled={conteoAmount <= 0}
               >
                 −
               </button>
               <input
                 type="number"
-                value={consumeAmount}
+                value={conteoAmount}
                 onChange={(e) =>
-                  setConsumeAmount(
-                    Math.max(1, parseInt(e.target.value) || 1)
-                  )
+                  setConteoAmount(Math.max(0, parseInt(e.target.value) || 0))
                 }
-                min={1}
-                max={consumeModal.product.cantidad_actual}
+                min={0}
                 className="modal-input"
               />
               <button
                 className="btn-qty"
-                onClick={() => setConsumeAmount(consumeAmount + 1)}
+                onClick={() => setConteoAmount(conteoAmount + 1)}
               >
                 +
               </button>
             </div>
 
             <div className="modal-actions">
-              <button
-                className="btn-cancel"
-                onClick={() => setConsumeModal(null)}
-              >
+              <button className="btn-cancel" onClick={() => setConteoModal(null)}>
                 Cancelar
               </button>
               <button
                 className="btn-confirm"
-                onClick={handleConsume}
-                disabled={consumeLoading || consumeAmount <= 0}
+                onClick={handleConteo}
+                disabled={conteoLoading}
               >
-                {consumeLoading
-                  ? 'Consumiendo...'
-                  : isOnline
-                    ? 'Confirmar consumo'
-                    : 'Guardar offline'}
+                {conteoLoading ? 'Guardando...' : isOnline ? 'Confirmar recuento' : 'Guardar offline'}
               </button>
             </div>
 
             {!isOnline && (
               <p className="modal-offline-note">
-                📡 Sin conexión — el consumo se registrará cuando recuperes
-                conexión.
+                📡 Sin conexión — el recuento se enviará cuando recuperes conexión.
               </p>
             )}
           </div>
         </div>
       )}
 
-      {/* Bottom Navigation */}
       <nav className="bottom-nav">
-        <button 
+        <button
           className={`nav-item ${activeTab === 'inventory' ? 'active' : ''}`}
           onClick={() => setActiveTab('inventory')}
         >
           <span className="nav-icon">📦</span>
-          <span className="nav-text">Inventario</span>
+          <span className="nav-text">Recuento</span>
         </button>
-        <button 
+        <button
           className={`nav-item ${activeTab === 'incidents' ? 'active' : ''}`}
           onClick={() => setActiveTab('incidents')}
         >

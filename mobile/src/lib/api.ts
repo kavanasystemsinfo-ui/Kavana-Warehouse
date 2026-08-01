@@ -13,6 +13,16 @@ export interface ProductoInventario {
   }
 }
 
+export interface CentroActivo {
+  id_centro: number
+  nombre_centro: string
+  direccion?: string
+}
+
+export function isAuthenticated(): boolean {
+  return !!getAccessToken()
+}
+
 // Token helpers
 function getAccessToken(): string | null { return localStorage.getItem('access_token') }
 function getRefreshToken(): string | null { return localStorage.getItem('refresh_token') }
@@ -62,15 +72,24 @@ export async function login(email: string, password: string) {
 
 export function logout(): void { clearTokens() }
 
-export async function getCentroActivo() {
-  const res = await apiFetch<{ asignacion: { centro: { id_centro: number; nombre_centro: string; direccion?: string } } }>('/asignaciones/active')
-  return res.asignacion.centro
+export async function getCentrosActivos(): Promise<CentroActivo[]> {
+  const res = await apiFetch<{ centros: CentroActivo[] }>('/asignaciones/active')
+  return res.centros || []
 }
 
 export async function getInventory(idCentro?: number) {
   const q = idCentro ? `?centro=${idCentro}` : ''
   const res = await apiFetch<{ inventario: ProductoInventario[] }>(`/stock/inventory${q}`)
   return res.inventario
+}
+
+// Recuento físico: setea la cantidad real del producto en el centro.
+// El backend actualiza cantidad_actual y registra el histórico.
+export async function guardarConteo(idCentro: number, idProducto: number, cantidad: number) {
+  return apiFetch(`/inventario/${idCentro}/${idProducto}/conteo`, {
+    method: 'POST',
+    body: JSON.stringify({ stock_fisico: Math.max(0, Math.floor(cantidad)) }),
+  })
 }
 
 export async function consumeStock(idProducto: number, cantidad: number) {

@@ -373,6 +373,112 @@ app.put('/api/v1/centros/:id', auth, supervisorOnly, async (req, res) => {
   } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 
+// =============================================================================
+// GESTIÓN DE RESPONSABLES DE CENTRO (supervisor)
+// El supervisor crea usuarios con rol "responsable" y les asigna centros
+// mediante checkboxes. El responsable usa la app móvil para hacer recuentos
+// físicos que actualizan el stock real y generan histórico.
+// =============================================================================
+
+// Crear usuario responsable (solo supervisor)
+app.post('/api/v1/usuarios', auth, supervisorOnly, async (req, res) => {
+  try {
+    const idCliente = req.user.id_cliente;
+    if (!idCliente) return res.status(403).json({ error: 'Sin empresa asociada' });
+    const { nombre, email, password, telefono } = req.body;
+    if (!nombre || !email || !password) {
+      return res.status(400).json({ error: 'nombre, email y password son requeridos' });
+    }
+    const existente = await prisma.usuario.findUnique({ where: { email } });
+    if (existente) return res.status(400).json({ error: 'Ese email ya está registrado' });
+    const password_hash = await bcrypt.hash(password, 10);
+    const u = await prisma.usuario.create({
+      data: {
+        nombre,
+        email,
+        password_hash,
+        rol: 'responsable',
+        id_cliente: idCliente,
+        telefono: telefono || null,
+        estado: 'activo',
+      },
+      select: { id_usuario: true, nombre: true, email: true, rol: true, telefono: true }
+    });
+    res.status(201).json({ usuario: u });
+  } catch (e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
+});
+
+// Asignar centros a un responsable mediante checkboxes (sincroniza AsignacionPersonal)
+app.post('/api/v1/usuarios/:id/centros', auth, supervisorOnly, async (req, res) => {
+  try {
+    const idCliente = req.user.id_cliente;
+    if (!idCliente) return res.status(403).json({ error: 'Sin empresa asociada' });
+    const idUsuario = Number(req.params.id);
+    const centrosBody = req.body.centros;
+    if (!Array.isArray(centrosBody)) return res.status(400).json({ error: 'centros debe ser un array de ids' });
+
+    // Verificar que el usuario responsable pertenece al cliente
+    const usuario = await prisma.usuario.findUnique({ where: { id_usuario: idUsuario } });
+    if (!usuario || usuario.id_cliente !== idCliente) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (usuario.rol !== 'responsable') return res.status(400).json({ error: 'El usuario no es responsable' });
+
+    // Validar que todos los centros pertenecen al cliente
+    const centrosValidos = await prisma.centro.findMany({
+      where: { id_centro: { in: centrosBody.map(Number) }, id_cliente: idCliente },
+      select: { id_centro: true }
+    });
+    const idsValidos = new Set(centrosValidos.map(c => c.id_centro));
+    const centrosFinal = centrosBody.map(Number).filter(id => idsValidos.has(id));
+
+    // Cerrar asignaciones previas (fecha_fin = now) y crear las nuevas
+    await prisma.asignacionPersonal.updateMany({
+      where: { id_usuario: idUsuario, fecha_fin: null },
+      data: { fecha_fin: new Date() }
+    });
+    for (const idCentro of centrosFinal) {
+      await prisma.asignacionPersonal.create({
+        data: { id_usuario: idUsuario, id_centro: idCentro, fecha_inicio: new Date() }
+      });
+    }
+    const asignadas = await prisma.asignacionPersonal.findMany({
+      where: { id_usuario: idUsuario, fecha_fin: null },
+      include: { centro: { select: { id_centro: true, nombre_centro: true } } }
+    });
+    res.json({ centros_asignados: asignadas.map(a => a.centro) });
+  } catch (e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
+});
+
+// Histórico de recuentos físicos (solo supervisor) — tabla en Dashboard
+app.get('/api/v1/recuentos', auth, supervisorOnly, async (req, res) => {
+  try {
+    const idCliente = req.user.id_cliente;
+    if (!idCliente) return res.status(403).json({ error: 'Sin empresa asociada' });
+    const where = { centro: { id_cliente: idCliente }, tipo: 'recuento' };
+    const filtroCentro = req.query.centro ? Number(req.query.centro) : null;
+    if (filtroCentro) where.id_centro = filtroCentro;
+    const recuentos = await prisma.registroMovimiento.findMany({
+      where,
+      include: {
+        centro: { select: { id_centro: true, nombre_centro: true } },
+        producto: { select: { id_producto: true, nombre_producto: true, unidad_medida: true } },
+        usuario: { select: { id_usuario: true, nombre: true, email: true } }
+      },
+      orderBy: { fecha_hora: 'desc' },
+      take: 200
+    });
+    res.json({
+      recuentos: recuentos.map(r => ({
+        id_movimiento: r.id_movimiento,
+        fecha_hora: r.fecha_hora,
+        responsable: { id_usuario: r.usuario.id_usuario, nombre: r.usuario.nombre, email: r.usuario.email },
+        centro: { id_centro: r.centro.id_centro, nombre_centro: r.centro.nombre_centro },
+        producto: { id_producto: r.producto.id_producto, nombre_producto: r.producto.nombre_producto, unidad_medida: r.producto.unidad_medida },
+        cantidad_nueva: r.cantidad,
+      }))
+    });
+  } catch (e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
+});
+
 // ----- EMPLEADOS -----
 app.get('/api/v1/empleados', auth, supervisorOnly, async (req, res) => {
   try {
@@ -421,7 +527,7 @@ app.post('/api/v1/empleados', auth, supervisorOnly, async (req, res) => {
 app.get('/api/v1/asignaciones/active', auth, async (req, res) => {
   try {
     const now = new Date();
-    const asignacion = await prisma.asignacionPersonal.findFirst({
+    const asignaciones = await prisma.asignacionPersonal.findMany({
       where: {
         id_usuario: req.user.id_usuario,
         fecha_inicio: { lte: now },
@@ -429,8 +535,8 @@ app.get('/api/v1/asignaciones/active', auth, async (req, res) => {
       },
       include: { centro: true }
     });
-    if (!asignacion) return res.status(404).json({ error: 'No tienes un centro asignado' });
-    res.json({ asignacion: { centro: asignacion.centro } });
+    if (!asignaciones.length) return res.status(404).json({ error: 'No tienes centros asignados' });
+    res.json({ centros: asignaciones.map(a => a.centro) });
   } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 

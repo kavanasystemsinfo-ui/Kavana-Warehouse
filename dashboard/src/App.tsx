@@ -7,6 +7,7 @@ import { Inventario } from './pages/Inventario'
 import { Incidents } from './pages/Incidents'
 import { Empleados } from './pages/Empleados'
 import { Centros } from './pages/Centros'
+import { Responsables } from './pages/Responsables'
 import { Deviations } from './pages/Deviations'
 import { Costes } from './pages/Costes'
 import { getStoredUser } from './lib/api'
@@ -67,6 +68,7 @@ export default function App() {
         <Route path="incidents" element={<Incidents />} />
         <Route path="empleados" element={<Empleados />} />
         <Route path="centros" element={<Centros />} />
+        <Route path="responsables" element={<Responsables />} />
         <Route path="desviaciones" element={<Deviations />} />
         <Route path="costes" element={<Costes />} />
       </Route>

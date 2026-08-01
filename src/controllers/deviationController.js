@@ -110,15 +110,40 @@ async function guardarConteo(req, res) {
     const centro = await prisma.centro.findFirst({ where: { id_centro: idCentro, id_cliente: idCliente } });
     if (!centro) return res.status(404).json({ error: 'Centro no encontrado' });
 
+    // El responsable solo puede contar centros que tenga asignados
+    const asignado = await prisma.asignacionPersonal.findFirst({
+      where: {
+        id_usuario: usuario.id_usuario,
+        id_centro: idCentro,
+        fecha_inicio: { lte: new Date() },
+        OR: [{ fecha_fin: null }, { fecha_fin: { gte: new Date() } }]
+      }
+    });
+    if (usuario.rol === 'responsable' && !asignado) {
+      return res.status(403).json({ error: 'No tienes acceso a este centro' });
+    }
+
     const inv = await prisma.inventarioCentro.upsert({
       where: { id_centro_id_producto: { id_centro: idCentro, id_producto: idProducto } },
-      update: { stock_fisico: stockFisico, fecha_actualizacion: new Date() },
+      update: { stock_fisico: stockFisico, cantidad_actual: stockFisico, fecha_actualizacion: new Date() },
       create: {
         id_centro: idCentro,
         id_producto: idProducto,
         cantidad_actual: stockFisico,
         stock_fisico: stockFisico,
       },
+    });
+
+    // Histórico de recuento: registra quién, cuándo y qué cantidad física dejó.
+    // tipo='recuento' permite filtrarlo en el Dashboard del supervisor.
+    await prisma.registroMovimiento.create({
+      data: {
+        id_usuario: usuario.id_usuario,
+        id_centro: idCentro,
+        id_producto: idProducto,
+        cantidad: stockFisico,
+        tipo: 'recuento',
+      }
     });
 
     res.json({ ok: true, inventario: inv });

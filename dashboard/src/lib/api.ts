@@ -627,3 +627,44 @@ export async function createNotificationRule(data: { id_centro?: number; id_oper
 export async function deleteNotificationRule(id: number): Promise<{ success: boolean }> {
   return apiFetch(`/notifications/rules/${id}`, { method: 'DELETE' })
 }
+// --- Responsables de centro (supervisor) ---
+export interface Responsable {
+  id_usuario: number
+  nombre: string
+  email: string
+  rol: string
+  telefono?: string | null
+  centros_asignados?: Array<{ id_centro: number; nombre_centro: string }>
+}
+
+// Crear usuario responsable (rol fijado en backend)
+export async function createResponsable(data: { nombre: string; email: string; password: string; telefono?: string }): Promise<{ usuario: Responsable }> {
+  return apiFetch('/usuarios', { method: 'POST', body: JSON.stringify(data) })
+}
+
+// Listar responsables del cliente
+export async function getResponsables(): Promise<Responsable[]> {
+  const res = await apiFetch<{ usuarios: Responsable[] }>('/asignaciones/users')
+  return (res.usuarios || []).filter(u => u.rol === 'responsable')
+}
+
+// Asignar centros a un responsable (checkboxes)
+export async function assignCentrosToResponsable(idUsuario: number, centros: number[]): Promise<{ centros_asignados: Array<{ id_centro: number; nombre_centro: string }> }> {
+  return apiFetch(`/usuarios/${idUsuario}/centros`, { method: 'POST', body: JSON.stringify({ centros }) })
+}
+
+// Histórico de recuentos para la tabla del Dashboard
+export interface Recuento {
+  id_movimiento: number
+  fecha_hora: string
+  responsable: { id_usuario: number; nombre: string; email: string }
+  centro: { id_centro: number; nombre_centro: string }
+  producto: { id_producto: number; nombre_producto: string; unidad_medida: string }
+  cantidad_nueva: number
+}
+
+export async function getRecuentos(centroId?: number): Promise<Recuento[]> {
+  const qs = centroId ? `?centro=${centroId}` : ''
+  const res = await apiFetch<{ recuentos: Recuento[] }>(`/recuentos${qs}`)
+  return res.recuentos || []
+}

@@ -181,6 +181,7 @@ model RegistroMovimiento {
   id_producto   Int
   cantidad      Int      // Negativo = salida, Positivo = entrada
   fecha_hora    DateTime @default(now())
+  tipo          String   @default("movimiento") // movimiento | recuento (recuento físico del responsable)
 
   usuario  Usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
   centro   Centro   @relation(fields: [id_centro], references: [id_centro], onDelete: Cascade)
