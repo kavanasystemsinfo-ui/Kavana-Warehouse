@@ -119,6 +119,18 @@ app.get('/api/v1/dashboard', auth, async (req, res) => {
 app.get('/api/v1/dashboard/consumption', auth, async (req, res) => {
   try {
     const idCliente = req.user.id_cliente;
+    // Totales y evolución: sobre TODO el histórico del cliente (no solo 50 movs)
+    const scope = idCliente ? Prisma.sql`AND c.id_cliente = ${idCliente}` : Prisma.empty;
+    const evol = await prisma.$queryRaw`
+      SELECT to_char(rm.fecha_hora, 'YYYY-MM') AS mes,
+             SUM(ABS(rm.cantidad))::int AS unidades,
+             ROUND(SUM(ABS(rm.cantidad) * p.coste_unitario)::numeric, 2) AS gasto
+      FROM registro_movimientos rm
+      JOIN productos p ON rm.id_producto = p.id_producto
+      JOIN centros c ON rm.id_centro = c.id_centro
+      WHERE rm.cantidad < 0 ${scope}
+      GROUP BY 1 ORDER BY 1
+    `;
     let movs;
     if (idCliente) {
       movs = await prisma.$queryRaw`
@@ -143,12 +155,13 @@ app.get('/api/v1/dashboard/consumption', auth, async (req, res) => {
         ORDER BY rm.fecha_hora DESC LIMIT 50
       `;
     }
-    const total = movs.reduce((s, m) => s + Math.abs(Number(m.cantidad)), 0);
-    const totalEuro = movs.reduce((s, m) => s + (Math.abs(Number(m.cantidad)) * Number(m.coste_unitario || 0)), 0);
+    const total = evol.reduce((s, m) => s + Number(m.unidades), 0);
+    const totalEuro = evol.reduce((s, m) => s + Number(m.gasto), 0);
     res.json({
       total_consumo_unidades: total,
       total_gasto_euros: Math.round(totalEuro * 100) / 100,
       total_movimientos: movs.length,
+      evolucion_mensual: evol.map(m => ({ mes: m.mes, unidades: Number(m.unidades), gasto_euros: Number(m.gasto) })),
       resumen_por_centro: [],
       movimientos: movs.map(m => ({
         id_movimiento: m.id_movimiento,

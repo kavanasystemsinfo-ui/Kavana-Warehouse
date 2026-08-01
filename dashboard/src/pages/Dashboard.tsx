@@ -108,6 +108,37 @@ export function Dashboard() {
         </div>
       </div>
 
+      {/* Evolución mensual (trayectoria histórica) */}
+      {consumption && consumption.evolucion_mensual && consumption.evolucion_mensual.length > 0 && (
+        (() => {
+          const evol = consumption.evolucion_mensual!
+          const max = Math.max(...evol.map((x) => x.unidades), 1)
+          return (
+            <div className="card">
+              <div className="card-header">
+                <h2 className="card-title">Evolución de consumo (últimos meses)</h2>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', height: '160px', padding: '1rem 0' }}>
+                {evol.map((p) => {
+                  const h = Math.max(8, Math.round((p.unidades / max) * 140))
+                  const mesLabel = p.mes.split('-').reverse().join('/')
+                  return (
+                    <div key={p.mes} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                      <span style={{ fontSize: '.75rem', color: 'var(--text2)' }}>{p.unidades.toLocaleString()}</span>
+                      <div style={{ width: '100%', maxWidth: '56px', height: `${h}px`, background: 'var(--primary)', borderRadius: '6px 6px 0 0', minHeight: '8px' }} />
+                      <span style={{ fontSize: '.8rem', fontWeight: 600 }}>{mesLabel}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              <p style={{ color: 'var(--text2)', fontSize: '.85rem', margin: '0.5rem 0 0' }}>
+                Consumo histórico por mes: se ve la trayectoria real de la empresa, no solo el último día.
+              </p>
+            </div>
+          )
+        })()
+      )}
+
       {/* Filters */}
       <div className="card">
         <form className="filters-bar" onSubmit={handleFilter}>

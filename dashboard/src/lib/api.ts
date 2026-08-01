@@ -100,6 +100,11 @@ export interface ConsumptionData {
   total_consumo_unidades: number
   total_gasto_euros: number
   total_movimientos: number
+  evolucion_mensual?: Array<{
+    mes: string
+    unidades: number
+    gasto_euros: number
+  }>
   resumen_por_centro: Array<{
     centro: { id_centro: number; nombre_centro: string; presupuesto_mensual: number }
     presupuesto_mensual: number

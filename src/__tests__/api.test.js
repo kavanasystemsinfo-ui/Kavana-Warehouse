@@ -104,6 +104,22 @@ describe('GET /api/v1/dashboard/consumption', () => {
     expect(typeof res.body.total_gasto_euros).toBe('number');
     expect(Array.isArray(res.body.movimientos)).toBe(true);
   });
+
+  it('returns evolucion_mensual con agrupación por mes (trayectoria histórica)', async () => {
+    const res = await request(app)
+      .get('/api/v1/dashboard/consumption')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.evolucion_mensual)).toBe(true);
+    // Cada punto: mes (YYYY-MM), unidades consumidas y gasto
+    if (res.body.evolucion_mensual.length > 0) {
+      const primer = res.body.evolucion_mensual[0];
+      expect(typeof primer.mes).toBe('string');
+      expect(primer.mes).toMatch(/^\d{4}-\d{2}$/);
+      expect(typeof primer.unidades).toBe('number');
+      expect(typeof primer.gasto_euros).toBe('number');
+    }
+  });
 });
 
 describe('GET /api/v1/dashboard/alerts', () => {
