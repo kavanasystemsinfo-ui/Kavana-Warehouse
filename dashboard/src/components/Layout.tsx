@@ -77,6 +77,10 @@ export function Layout() {
             <span className="sidebar-link-icon">🧑‍💼</span>
             Responsables
           </NavLink>
+          <NavLink to="/supervisores" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`} onClick={closeOnNav}>
+            <span className="sidebar-link-icon">🛠️</span>
+            Supervisores demo
+          </NavLink>
           <NavLink to="/desviaciones" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`} onClick={closeOnNav}>
             <span className="sidebar-link-icon">⚠️</span>
             Desviaciones

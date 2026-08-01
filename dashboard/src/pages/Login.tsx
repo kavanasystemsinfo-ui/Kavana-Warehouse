@@ -36,7 +36,7 @@ export function Login({ onLogin }: LoginProps) {
     try {
       const data = await login(email, password)
       if (data.usuario.rol === 'limpiador') {
-        setError('Acceso denegado. Este panel es para supervisores y administradores.')
+        setError('Acceso denegado. Este panel es para oficina y supervisores.')
         return
       }
       onLogin?.()
@@ -54,7 +54,7 @@ export function Login({ onLogin }: LoginProps) {
         <div className="login-logo" style={{ textAlign: 'center' }}>
           <img src="/logo.png" alt="KAVANA WAREHOUSE" style={{ width: '80px', height: '80px', borderRadius: '12px', marginBottom: '0.75rem' }} />
           <h1>KAVANA WAREHOUSE</h1>
-          <p>Panel de Control del Supervisor</p>
+          <p>Panel de Control de Oficina</p>
         </div>
 
         {error && <div className="alert alert-danger">{error}</div>}

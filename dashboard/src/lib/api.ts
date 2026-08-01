@@ -254,6 +254,20 @@ export async function apiFetch<T>(
   return res.json() as Promise<T>
 }
 
+// --- Session ID (etiqueta de visitante para la demo) ---
+// Se genera una vez por navegador y persiste en localStorage. Todos los
+// supervisores demo creados desde este navegador se asocian a este id,
+// y caducan a las 24h (los borra un cron en el backend).
+export function getSessionId(): string {
+  const KEY = 'kavana_session_id'
+  let sid = localStorage.getItem(KEY)
+  if (!sid) {
+    sid = `vis-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+    localStorage.setItem(KEY, sid)
+  }
+  return sid
+}
+
 // --- Auth ---
 export async function login(email: string, password: string): Promise<AuthResponse> {
   const res = await fetch(`${BASE_URL}/auth/login`, {
@@ -640,6 +654,25 @@ export interface Responsable {
 // Crear usuario responsable (rol fijado en backend)
 export async function createResponsable(data: { nombre: string; email: string; password: string; telefono?: string }): Promise<{ usuario: Responsable }> {
   return apiFetch('/usuarios', { method: 'POST', body: JSON.stringify(data) })
+}
+
+// --- Supervisores demo (sesión de reclutador, expiran 24h) ---
+export interface SupervisorDemo {
+  id_usuario: number
+  nombre: string
+  email: string
+  rol: string
+  session_id: string | null
+  expira_en: string | null
+}
+
+export async function createSupervisorDemo(data: { nombre: string; email: string; password: string; session_id: string }): Promise<{ supervisor: SupervisorDemo }> {
+  return apiFetch('/supervisores', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function getSupervisoresDemo(sessionId: string): Promise<SupervisorDemo[]> {
+  const res = await apiFetch<{ supervisores: SupervisorDemo[] }>(`/supervisores?session_id=${encodeURIComponent(sessionId)}`)
+  return res.supervisores || []
 }
 
 // Listar responsables del cliente
