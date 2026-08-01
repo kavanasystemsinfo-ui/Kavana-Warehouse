@@ -39,7 +39,7 @@ describe('POST /api/v1/auth/login', () => {
       .send({ email: 'warehouse', password: 'kavana' });
     expect(res.status).toBe(200);
     expect(res.body.token).toBeTruthy();
-    expect(res.body.usuario.rol).toBe('supervisor');
+    expect(res.body.usuario.rol).toBe('oficina');
     token = res.body.token;
   });
 });
@@ -388,5 +388,43 @@ describe('GET /api/v1/categorias', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.categorias)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Supervisores demo (sesión de reclutador, expiran a las 24h)
+// ---------------------------------------------------------------------------
+describe('Supervisores demo con expiración', () => {
+  const sessionId = `test-session-${Date.now()}`;
+  const emailSup = `sup-demo-${Date.now()}@demo.local`;
+
+  it('POST /api/v1/supervisores crea supervisor demo con expiración 24h', async () => {
+    const res = await request(app)
+      .post('/api/v1/supervisores')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre: 'Sup Demo', email: emailSup, password: 'demo1234', session_id: sessionId });
+    expect(res.status).toBe(201);
+    expect(res.body.supervisor.rol).toBe('supervisor');
+    expect(res.body.supervisor.session_id).toBe(sessionId);
+    expect(res.body.supervisor.expira_en).toBeTruthy();
+  });
+
+  it('GET /api/v1/supervisores?session_id filtra por sesión', async () => {
+    const res = await request(app)
+      .get(`/api/v1/supervisores?session_id=${sessionId}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.supervisores)).toBe(true);
+    const sup = res.body.supervisores.find((s) => s.email === emailSup);
+    expect(sup).toBeTruthy();
+    expect(sup.rol).toBe('supervisor');
+  });
+
+  it('el supervisor demo puede loguearse', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: emailSup, password: 'demo1234' });
+    expect(res.status).toBe(200);
+    expect(res.body.usuario.rol).toBe('supervisor');
   });
 });

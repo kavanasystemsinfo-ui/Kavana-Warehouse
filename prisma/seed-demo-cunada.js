@@ -163,12 +163,12 @@ async function main() {
     // Idempotente: actualiza username y password si el usuario demo ya existe
     supervisor = await prisma.usuario.update({
       where: { id_usuario: supervisorExistente.id_usuario },
-      data: { username: 'warehouse', password_hash: pw, rol: 'supervisor', id_cliente: idCliente, nombre: 'Zaira García' },
+      data: { username: 'warehouse', password_hash: pw, rol: 'oficina', id_cliente: idCliente, nombre: 'Zaira García' },
     });
     console.log('  ✓ Supervisor demo actualizado (login: warehouse / kavana)');
   } else {
     supervisor = await prisma.usuario.create({
-      data: { nombre: 'Zaira García', email: supervisorEmail, username: 'warehouse', password_hash: pw, rol: 'supervisor', id_cliente: idCliente },
+      data: { nombre: 'Zaira García', email: supervisorEmail, username: 'warehouse', password_hash: pw, rol: 'oficina', id_cliente: idCliente },
     });
     console.log('  ✓ Supervisor creado (Zaira García, login: warehouse / kavana)');
   }

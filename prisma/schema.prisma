@@ -29,6 +29,8 @@ model Usuario {
   is_super_admin Boolean  @default(false)
   telefono      String?
   numero_empleado String?   // ID interno/matrícula del empleado (p.ej. 100-500)
+  session_id    String?     // Sesión de reclutador en la demo: datos aislados por visitante
+  expira_en     DateTime?   // Caducidad para supervisores demo (24h), null = permanente
 
   cliente           Cliente? @relation(fields: [id_cliente], references: [id_cliente])
   asignaciones       AsignacionPersonal[]

@@ -61,7 +61,10 @@ const auth = async (req, res, next) => {
   }
 };
 const supervisorOnly = (req, res, next) => {
-  if (req.user.rol !== 'supervisor') return res.status(403).json({ error: 'Solo supervisor' });
+  // Rol 'oficina' (gestiona todo) y 'supervisor' (responsable de centro) pueden
+  // operar. 'oficina' es el nombre nuevo; 'supervisor' se mantiene por
+  // compatibilidad hasta que toda la BD migre.
+  if (req.user.rol !== 'supervisor' && req.user.rol !== 'oficina') return res.status(403).json({ error: 'Solo personal autorizado' });
   next();
 };
 const superAdminOnly = (req, res, next) => {
@@ -476,6 +479,54 @@ app.get('/api/v1/recuentos', auth, supervisorOnly, async (req, res) => {
         cantidad_nueva: r.cantidad,
       }))
     });
+  } catch (e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
+});
+
+// ----- SUPERVISORES DEMO (sesión de reclutador, expiran 24h) -----
+// La oficina crea supervisores de prueba. Se guardan en BD con session_id
+// (etiqueta del visitante) y expira_en (now + 24h). Un cron diario los borra.
+app.post('/api/v1/supervisores', auth, supervisorOnly, async (req, res) => {
+  try {
+    const idCliente = req.user.id_cliente;
+    if (!idCliente) return res.status(403).json({ error: 'Sin empresa asociada' });
+    const { nombre, email, password, session_id } = req.body;
+    if (!nombre || !email || !password || !session_id) {
+      return res.status(400).json({ error: 'nombre, email, password y session_id son requeridos' });
+    }
+    const existente = await prisma.usuario.findUnique({ where: { email } });
+    if (existente) return res.status(400).json({ error: 'Ese email ya está registrado' });
+    const password_hash = await bcrypt.hash(password, 10);
+    const expiraEn = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+    const u = await prisma.usuario.create({
+      data: {
+        nombre,
+        email,
+        password_hash,
+        rol: 'supervisor',
+        id_cliente: idCliente,
+        session_id,
+        expira_en: expiraEn,
+        estado: 'activo',
+      },
+      select: { id_usuario: true, nombre: true, email: true, rol: true, session_id: true, expira_en: true }
+    });
+    res.status(201).json({ supervisor: u });
+  } catch (e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
+});
+
+app.get('/api/v1/supervisores', auth, supervisorOnly, async (req, res) => {
+  try {
+    const idCliente = req.user.id_cliente;
+    const sessionId = req.query.session_id;
+    if (!idCliente) return res.status(403).json({ error: 'Sin empresa asociada' });
+    const where = { rol: 'supervisor', id_cliente: idCliente };
+    if (sessionId) where.session_id = sessionId;
+    const supervisores = await prisma.usuario.findMany({
+      where,
+      select: { id_usuario: true, nombre: true, email: true, rol: true, session_id: true, expira_en: true },
+      orderBy: { id_usuario: 'desc' },
+    });
+    res.json({ supervisores });
   } catch (e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 
