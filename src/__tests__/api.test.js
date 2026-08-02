@@ -525,3 +525,113 @@ describe('GET /api/v1/dashboard/costes', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Flujo completo: conteo físico → desviación (mermas) → propuesta de compra
+// Modelo real: la desviación es la diferencia entre el stock REGISTRADO
+// (cantidad_actual) y el último conteo físico (stock_fisico). El seed lo fija
+// así (Plaza de Toros: registrado 50, físico 30 → faltan 20). Aquí se replica
+// con datos propios: registrado 10, físico 7 → faltan 3 (desviación > 0).
+// ---------------------------------------------------------------------------
+describe('Flujo conteo → desviación → propuesta de compra', () => {
+  let fToken = '';
+  let fCentroId = null;
+  let fProductoId = null;
+  const fEmail = `flujo-${Date.now()}@yagni.com`;
+
+  beforeAll(async () => {
+    jest.setTimeout(45000);
+    // Empresa de prueba con su centro
+    await request(app).post('/api/v1/auth/register-empresa')
+      .send({ nombre_empresa: 'Flujo Test SL', email: fEmail, password: 'test123', nombre_responsable: 'F' });
+    const login = await request(app).post('/api/v1/auth/login')
+      .send({ email: fEmail, password: 'test123' });
+    fToken = login.body.token;
+    const centros = await request(app).get('/api/v1/centros').set('Authorization', `Bearer ${fToken}`);
+    fCentroId = centros.body.centros[0].id_centro;
+
+    // Producto (coste 2€) con inventario: registrado 10, físico 7, mínimo 15
+    const prod = await request(app).post('/api/v1/productos')
+      .set('Authorization', `Bearer ${fToken}`)
+      .send({ nombre_producto: 'Bayeta Flujo Test', unidad_medida: 'ud', coste_unitario: 2 });
+    fProductoId = prod.body.producto.id_producto;
+
+    // Inventario directo (como hace el seed): cantidad_actual=10, stock_fisico=7,
+    // stock_minimo=15 → desviación de 3 (falta) y déficit de 5 (propuesta de compra)
+    await prisma.inventarioCentro.create({
+      data: {
+        id_centro: fCentroId,
+        id_producto: fProductoId,
+        cantidad_actual: 10,
+        stock_fisico: 7,
+        stock_minimo: 15,
+      },
+    });
+  }, 30000);
+
+  it('la desviación aparece como "falta" en el dashboard de mermas', async () => {
+    // Inventario inicial: registrado 10 vs físico 7 → desviación +3 (falta de material)
+    const dev = await request(app)
+      .get(`/api/v1/dashboard/deviations?centro=${fCentroId}`)
+      .set('Authorization', `Bearer ${fToken}`);
+    expect(dev.status).toBe(200);
+    const falta = (dev.body.desviaciones || []).find((d) => d.producto.id_producto === fProductoId);
+    expect(falta).toBeTruthy();
+    expect(falta.estado).toBe('falta');
+    expect(falta.desviacion).toBeGreaterThan(0);
+    expect(falta.coste_desviacion).toBeGreaterThan(0);
+  });
+
+  it('GET purchases/proposal incluye el producto bajo mínimo', async () => {
+    // stock_actual 10 < stock_minimo 15 → déficit 5 → propuesta de compra
+    const res = await request(app)
+      .get(`/api/v1/purchases/proposal?centro=${fCentroId}`)
+      .set('Authorization', `Bearer ${fToken}`);
+    expect(res.status).toBe(200);
+    const prop = (res.body.propuestas || []).find((p) => p.producto.id_producto === fProductoId);
+    expect(prop).toBeTruthy();
+    expect(prop.deficit).toBeGreaterThan(0);
+    expect(prop.cantidad_pedido).toBeGreaterThan(0);
+    expect(prop.coste_estimado).toBeGreaterThan(0);
+  });
+
+  it('POST conteo físico registra el recuento y sincroniza el stock físico', async () => {
+    // La encargada cuenta y deja el stock físico en 7 (conteo real)
+    const conteo = await request(app)
+      .post(`/api/v1/inventario/${fCentroId}/${fProductoId}/conteo`)
+      .set('Authorization', `Bearer ${fToken}`)
+      .send({ stock_fisico: 7 });
+    expect(conteo.status).toBe(200);
+    expect(conteo.body.ok).toBe(true);
+
+    // El conteo deja un movimiento tipo 'recuento' en el histórico
+    const movs = await prisma.registroMovimiento.findMany({
+      where: { id_centro: fCentroId, id_producto: fProductoId, tipo: 'recuento' },
+    });
+    expect(movs.length).toBeGreaterThan(0);
+    expect(movs[0].cantidad).toBe(7);
+
+    // Tras el conteo, stock_fisico y cantidad_actual quedan sincronizados
+    const inv = await prisma.inventarioCentro.findUnique({
+      where: { id_centro_id_producto: { id_centro: fCentroId, id_producto: fProductoId } },
+    });
+    expect(inv.stock_fisico).toBe(7);
+    expect(inv.cantidad_actual).toBe(7);
+  });
+
+  afterAll(async () => {
+    const cliente = await prisma.cliente.findFirst({ where: { email_contacto: fEmail } });
+    if (cliente) {
+      await prisma.registroMovimiento.deleteMany({ where: { centro: { id_cliente: cliente.id_cliente } } });
+      await prisma.inventarioCentro.deleteMany({ where: { centro: { id_cliente: cliente.id_cliente } } });
+      await prisma.asignacionPersonal.deleteMany({ where: { centro: { id_cliente: cliente.id_cliente } } });
+      await prisma.usuario.deleteMany({ where: { id_cliente: cliente.id_cliente } });
+      await prisma.centro.deleteMany({ where: { id_cliente: cliente.id_cliente } });
+      await prisma.cliente.delete({ where: { id_cliente: cliente.id_cliente } });
+    }
+    // Producto global de prueba (tabla global sin id_cliente)
+    if (fProductoId) {
+      await prisma.producto.deleteMany({ where: { id_producto: fProductoId } });
+    }
+  });
+});

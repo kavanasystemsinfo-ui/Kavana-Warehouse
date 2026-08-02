@@ -49,11 +49,15 @@ La demo pública simula una empresa viva con 3 meses de histórico (10 centros, 
 
 | Decisión | Alternativas | Elegida | Por qué |
 |----------|-------------|---------|---------|
-| Multi-tenancy | Schema-per-tenant, RLS | Shared schema + `client_id` | Simple y suficiente para el dominio (ver `docs/adr/001`) |
+| Multi-tenancy | Schema-per-tenant, RLS | Shared schema + `client_id` | Simple y suficiente para el dominio (ADR-001) |
+| Auth | Sesiones en servidor, JWT largo | JWT corto + refresh tokens | Stateless, sesiones revocables sin Redis (ADR-002) |
+| ORM | SQL raw, Knex | Prisma | Type-safety de extremo a extremo, migraciones declarativas (ADR-003) |
 | Roles | 4 roles, app móvil | 2 roles: `oficina` + `supervisor` | La app evolucionó a gestión de stock pura; menos roles, menos fricción |
 | BD | Supabase, VPS | Neon serverless | IPv4 nativo, compatible con Render free |
-| API | Serverless Vercel, Railway | Render Web Service | Build ligero (JS puro), free tier |
+| Deploy | VPS, serverless | Vercel + Render + Neon | Coste cero, auto-deploy por push, demo viva (ADR-004) |
 | Migraciones | En el start | Manuales | `migrate deploy` en el arranque rompía los deploys |
+
+> Todas las decisiones consolidadas con detalle en [`DECISIONS.md`](DECISIONS.md) (4 ADRs + decisiones de implementación).
 
 ---
 
@@ -73,7 +77,7 @@ La demo pública simula una empresa viva con 3 meses de histórico (10 centros, 
 | Supervisores demo (caducan a las 24h) | ✅ |
 | Multi-tenant verificado con tests | ✅ |
 | CI/CD (GitHub Actions) | ✅ |
-| 35 tests automatizados | ✅ |
+| 38 tests de API + 3 tests de frontend | ✅ |
 | App móvil | ❌ Descartada (gestión de stock web) |
 
 ---
@@ -82,7 +86,8 @@ La demo pública simula una empresa viva con 3 meses de histórico (10 centros, 
 
 | Documento | Descripción |
 |-----------|-------------|
-| `docs/adr/` | Architecture Decision Records |
+| `DECISIONS.md` | Consolidación de todas las decisiones (ADRs + implementación) |
+| `docs/adr/` | Architecture Decision Records (4) |
 | `docs/technical/` | Arquitectura, despliegue, auditoría, roadmap |
 | `docs/commercial/` | Documentación de producto y plan de mejoras |
 | `docs/deployment.md` | Despliegue real (Vercel + Render + Neon) y credenciales demo |

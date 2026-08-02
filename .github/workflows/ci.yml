@@ -57,6 +57,27 @@ jobs:
       - name: Run tests
         run: npm test
         env:
-          DATABASE_URL: postgresql://kavana:kavana_test@localhost:5432/kavana_warehouse_test
+          DATABASE_URL: postgresql://kavana:***@localhost:5432/kavana_warehouse_test
           JWT_SECRET: ci-test-secret
           NODE_ENV: test
+
+  frontend-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Install dashboard dependencies
+        run: npm ci
+        working-directory: dashboard
+
+      - name: Run frontend tests (Vitest)
+        run: npm test
+        working-directory: dashboard
