@@ -16,6 +16,16 @@ export interface Usuario {
   username?: string | null
   rol: string
   is_super_admin?: boolean
+  session_id?: string | null
+  demo?: boolean
+}
+
+// Visitante de la demo: supervisor con session_id (24h) o la cuenta demo
+// (warehouse/kavana). Lo existente es solo lectura; puede CREAR cosas nuevas
+// que caducan en 24h.
+export function esVisita(): boolean {
+  const u = getStoredUser()
+  return Boolean(u?.session_id || u?.demo)
 }
 
 export interface Categoria {

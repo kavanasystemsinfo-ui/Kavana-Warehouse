@@ -68,14 +68,32 @@ const supervisorOnly = (req, res, next) => {
   if (req.user.rol !== 'supervisor' && req.user.rol !== 'oficina') return res.status(403).json({ error: 'Solo personal autorizado' });
   next();
 };
-const officeOnly = (req, res, next) => {
-  // Blindaje de la demo: la gestión global (crear/editar/borrar productos,
-  // centros, usuarios, reset) requiere oficina O un supervisor permanente
-  // (sin session_id). Los supervisores de visita (session_id, caducan en 24h)
-  // solo leen y hacen recuentos: no tocan los datos compartidos.
-  const esVisitante = Boolean(req.user.session_id);
-  if (req.user.rol !== 'oficina' && (req.user.rol !== 'supervisor' || esVisitante)) {
-    return res.status(403).json({ error: 'Solo la oficina puede realizar esta acción' });
+// ¿El cliente del usuario es la empresa demo? (caché: solo hay una)
+let _demoClienteId = null;
+async function esDemoCliente(idCliente) {
+  if (!idCliente) return false;
+  if (_demoClienteId === null) {
+    const cli = await prisma.cliente.findFirst({ where: { es_demo: true }, select: { id_cliente: true } });
+    _demoClienteId = cli ? cli.id_cliente : false;
+  }
+  return _demoClienteId === idCliente;
+}
+
+// ¿El usuario es un visitante de la demo? (supervisor con session_id o la cuenta demo)
+async function esVisitaUsuario(user) {
+  return Boolean(user.session_id) || await esDemoCliente(user.id_cliente);
+}
+
+const officeOnly = async (req, res, next) => {
+  // Blindaje de la demo: la gestión global (editar/borrar productos, centros,
+  // usuarios, presupuestos, reset) es solo para la oficina real. Los visitantes
+  // (supervisores de 24h y la cuenta demo warehouse/kavana) solo leen lo
+  // existente: no tocan los datos compartidos.
+  if (await esVisitaUsuario(req.user)) {
+    return res.status(403).json({ error: 'Modo demo: los datos existentes son de solo lectura' });
+  }
+  if (req.user.rol !== 'oficina' && req.user.rol !== 'supervisor') {
+    return res.status(403).json({ error: 'Solo personal autorizado' });
   }
   next();
 };
@@ -99,7 +117,7 @@ app.post('/api/v1/auth/login', validate(loginSchema), async (req, res) => {
     // espacios al pulsar siguiente/sugerencia, y en el campo de puntos no se ve.
     if (!u || !(await bcrypt.compare(password.trim(), u.password_hash))) return res.status(401).json({ error: 'Credenciales invalidas' });
     const token = jwt.sign({ id_usuario: u.id_usuario, email: u.email, rol: u.rol, is_super_admin: u.is_super_admin, id_cliente: u.id_cliente }, JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '2h' });
-    res.json({ token, usuario: { id_usuario: u.id_usuario, nombre: u.nombre, email: u.email, username: u.username, rol: u.rol, is_super_admin: u.is_super_admin } });
+    res.json({ token, usuario: { id_usuario: u.id_usuario, nombre: u.nombre, email: u.email, username: u.username, rol: u.rol, is_super_admin: u.is_super_admin, session_id: u.session_id, demo: await esDemoCliente(u.id_cliente) } });
   } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 
@@ -294,7 +312,7 @@ app.get('/api/v1/dashboard/alerts', auth, async (req, res) => {
 // Dashboard — Desviaciones (mermas de inventario: registrado vs físico)
 const deviationController = require('./controllers/deviationController');
 app.get('/api/v1/dashboard/deviations', auth, deviationController.getDeviations);
-app.post('/api/v1/inventario/:id_centro/:id_producto/conteo', auth, deviationController.guardarConteo);
+app.post('/api/v1/inventario/:id_centro/:id_producto/conteo', auth, officeOnly, deviationController.guardarConteo);
 
 // Propuesta de compras (reabastecimiento por stock mínimo)
 const purchaseController = require('./controllers/purchaseController');
@@ -303,7 +321,7 @@ app.get('/api/v1/purchases/proposal', auth, purchaseController.getProposal);
 // Costes por centro (Fase 2: control de coste vs presupuesto)
 const costeController = require('./controllers/costeController');
 app.get('/api/v1/dashboard/costes', auth, costeController.getCostes);
-app.post('/api/v1/centros/:id_centro/presupuesto', auth, costeController.setPresupuesto);
+app.post('/api/v1/centros/:id_centro/presupuesto', auth, officeOnly, costeController.setPresupuesto);
 
 // Reset de datos de demostración (solo borra clientes marcados es_demo)
 app.post('/api/v1/demo/reset', auth, officeOnly, async (req, res) => {
@@ -362,15 +380,19 @@ app.get('/api/v1/productos', auth, async (req, res) => {
     res.json({ productos: prods });
   } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
-app.post('/api/v1/productos', auth, officeOnly, async (req, res) => {
+app.post('/api/v1/productos', auth, async (req, res) => {
   try {
+    // Cualquiera autenticado puede CREAR un material nuevo; si es visitante
+    // (demo), queda marcado con su sesión y caduca en 24h (lo limpia el cron).
+    const esVisita = await esVisitaUsuario(req.user);
     const p = await prisma.producto.create({
       data: {
         nombre_producto: req.body.nombre_producto,
         unidad_medida: req.body.unidad_medida || 'unidades',
         coste_unitario: Number(req.body.coste_unitario) || 0,
         stock_minimo_alerta: Number(req.body.stock_minimo_alerta) || 5,
-        id_categoria: req.body.id_categoria ? Number(req.body.id_categoria) : null
+        id_categoria: req.body.id_categoria ? Number(req.body.id_categoria) : null,
+        ...(esVisita ? { session_id: req.user.session_id || 'demo', expira_en: new Date(Date.now() + 24 * 3600 * 1000) } : {})
       }
     });
     res.json({ producto: p });
@@ -797,7 +819,7 @@ app.get('/api/v1/stock/inventory', auth, async (req, res) => {
 });
 
 // Consumir stock (app empleado)
-app.post('/api/v1/stock/consume', auth, async (req, res) => {
+app.post('/api/v1/stock/consume', auth, officeOnly, async (req, res) => {
   try {
     const { id_producto, cantidad } = req.body;
     if (!id_producto || !cantidad || cantidad <= 0) {
@@ -843,7 +865,7 @@ app.get('/api/v1/consumos', auth, async (req, res) => {
     res.json({ consumos: movs });
   } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
-app.post('/api/v1/consumos', auth, async (req, res) => {
+app.post('/api/v1/consumos', auth, officeOnly, async (req, res) => {
   try {
     const { id_centro, id_producto, cantidad } = req.body;
     if (!(await requireCentroDelCliente(id_centro, req.user.id_cliente))) {
@@ -876,11 +898,14 @@ app.post('/api/v1/incidencias', auth, async (req, res) => {
     if (!(await requireCentroDelCliente(id_centro, req.user.id_cliente))) {
       return res.status(403).json({ error: 'Sin acceso a este centro' });
     }
-    const inc = await prisma.incidencia.create({ data: { id_centro, id_usuario: req.user.id_usuario, categoria: req.body.categoria, titulo: req.body.titulo, descripcion: req.body.descripcion, foto_url: req.body.foto_url } });
+    // Cualquiera autenticado puede CREAR una incidencia; si es visitante,
+    // queda marcada y caduca en 24h (la limpia el cron).
+    const esVisita = await esVisitaUsuario(req.user);
+    const inc = await prisma.incidencia.create({ data: { id_centro, id_usuario: req.user.id_usuario, categoria: req.body.categoria, titulo: req.body.titulo, descripcion: req.body.descripcion, foto_url: req.body.foto_url, ...(esVisita ? { session_id: req.user.session_id || 'demo', expira_en: new Date(Date.now() + 24 * 3600 * 1000) } : {}) } });
     res.json({ incidencia: inc });
   } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
-app.put('/api/v1/incidencias/:id', auth, supervisorOnly, async (req, res) => {
+app.put('/api/v1/incidencias/:id', auth, officeOnly, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const inc = await prisma.incidencia.findUnique({ where: { id_incidencia: id } });

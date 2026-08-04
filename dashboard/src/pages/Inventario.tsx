@@ -4,11 +4,13 @@ import {
   createProducto, updateProducto, deleteProducto,
   type Producto,
 } from '../lib/api'
+import { esVisita } from '../lib/api'
 import { exportToCsv } from '../lib/csv'
 import { fmtEuro } from '../lib/format'
 import { GuiaAyuda } from '../components/GuiaAyuda'
 
 export function Inventario() {
+  const visita = esVisita()
   const [productos, setProductos] = useState<Producto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -217,10 +219,14 @@ export function Inventario() {
                   <td>{p.coste_unitario}</td>
                   <td>{p.stock_minimo_alerta ?? '—'}</td>
                   <td style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="btn btn-sm btn-outline" onClick={() => openEdit(p)}>✏️ Editar</button>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(p)} disabled={borrando === p.id_producto}>
-                      {borrando === p.id_producto ? '...' : '🗑️'}
-                    </button>
+                    {!visita && (
+                      <>
+                        <button className="btn btn-sm btn-outline" onClick={() => openEdit(p)}>✏️ Editar</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(p)} disabled={borrando === p.id_producto}>
+                          {borrando === p.id_producto ? '...' : '🗑️'}
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}

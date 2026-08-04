@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { getDeviations, getCentros, guardarConteo, resetDemo, type DeviationsData, type Centro, type DeviationItem } from '../lib/api'
+import { getDeviations, getCentros, guardarConteo, resetDemo, esVisita, type DeviationsData, type Centro, type DeviationItem } from '../lib/api'
 import { fmtNum, fmtEuro } from '../lib/format'
 import { GuiaAyuda } from '../components/GuiaAyuda'
 
 export function Deviations() {
+  const visita = esVisita()
   const [data, setData] = useState<DeviationsData | null>(null)
   const [centros, setCentros] = useState<Centro[]>([])
   const [filtroCentro, setFiltroCentro] = useState('')
@@ -199,9 +200,11 @@ export function Deviations() {
                     <td style={{ color: 'var(--danger)', fontWeight: 600 }}>{fmtEuro(d.coste_desviacion)} €</td>
                     <td><span className={`badge ${badgeClass(d.estado)}`}>{badgeText(d.estado)}</span></td>
                     <td>
-                      <button className="btn btn-sm btn-outline" onClick={() => abrirConteo(d)}>
-                        {d.stock_fisico === null ? 'Contar' : 'Ajustar'}
-                      </button>
+                      {!visita && (
+                        <button className="btn btn-sm btn-outline" onClick={() => abrirConteo(d)}>
+                          {d.stock_fisico === null ? 'Contar' : 'Ajustar'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

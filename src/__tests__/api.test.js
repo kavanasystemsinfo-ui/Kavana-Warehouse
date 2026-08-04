@@ -376,43 +376,89 @@ describe('SECURITY: multi-tenant isolation', () => {
 // ---------------------------------------------------------------------------
 describe('Escritura: centros / productos / stock', () => {
   let centroId = null;
+  let editToken = '';
+  let editClienteId = null;
+
   beforeAll(async () => {
-    const r = await request(app).get('/api/v1/centros').set('Authorization', `Bearer ${token}`);
-    centroId = r.body.centros?.[0]?.id_centro ?? null;
+    // Empresa de PRUEBA (no demo): puede editar/borrar sus propios datos.
+    // La cuenta demo (warehouse/kavana) ya NO puede (solo lectura + crear 24h).
+    const email = `escritura-${Date.now()}@yagni.com`;
+    await request(app).post('/api/v1/auth/register-empresa')
+      .send({ nombre_empresa: 'Escritura Test SL', email, password: 'test123', nombre_responsable: 'E' });
+    const login = await request(app).post('/api/v1/auth/login').send({ email, password: 'test123' });
+    editToken = login.body.token;
+    editClienteId = login.body.usuario.id_cliente;
+    const centros = await request(app).get('/api/v1/centros').set('Authorization', `Bearer ${editToken}`);
+    centroId = centros.body.centros?.[0]?.id_centro ?? null;
   });
 
-  it('PUT /centros/:id actualiza nombre (happy path)', async () => {
+  afterAll(async () => {
+    if (editClienteId) {
+      await prisma.asignacionPersonal.deleteMany({ where: { centro: { id_cliente: editClienteId } } });
+      await prisma.usuario.deleteMany({ where: { id_cliente: editClienteId } });
+      await prisma.inventarioCentro.deleteMany({ where: { centro: { id_cliente: editClienteId } } });
+      await prisma.centro.deleteMany({ where: { id_cliente: editClienteId } });
+      await prisma.cliente.deleteMany({ where: { id_cliente: editClienteId } });
+    }
+  });
+
+  it('PUT /centros/:id actualiza nombre (happy path, empresa real)', async () => {
     if (!centroId) return;
     const res = await request(app)
       .put(`/api/v1/centros/${centroId}`)
-      .set('Authorization', `Bearer ${token}`)
+      .set('Authorization', `Bearer ${editToken}`)
       .send({ nombre_centro: 'Centro Test Edit' });
     expect(res.status).toBe(200);
     expect(res.body.centro.nombre_centro).toBe('Centro Test Edit');
-    // revertir
-    await request(app).put(`/api/v1/centros/${centroId}`).set('Authorization', `Bearer ${token}`).send({ nombre_centro: 'Beneficencia' });
+    await request(app).put(`/api/v1/centros/${centroId}`).set('Authorization', `Bearer ${editToken}`).send({ nombre_centro: 'Centro 1' });
+  });
+
+  it('la cuenta demo (warehouse/kavana) NO edita centros existentes (403)', async () => {
+    const res = await request(app)
+      .put('/api/v1/centros/1')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre_centro: 'Hack' });
+    expect(res.status).toBe(403);
   });
 
   it('POST /productos rechaza id_cliente inyectado (mass-assignment)', async () => {
     const res = await request(app)
       .post('/api/v1/productos')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Authorization', `Bearer ${editToken}`)
       .send({ nombre_producto: 'Prod Test MA', unidad_medida: 'ud', coste_unitario: 1, id_cliente: 99999 });
     expect(res.status).toBe(200);
     expect(res.body.producto.id_cliente).toBeUndefined();
-    // limpiar
     if (res.body.producto?.id_producto) {
-      await request(app).delete(`/api/v1/productos/${res.body.producto.id_producto}`).set('Authorization', `Bearer ${token}`);
+      await prisma.producto.deleteMany({ where: { id_producto: res.body.producto.id_producto } });
     }
   });
 
-  it('DELETE /productos/:id borra (happy path)', async () => {
-    const c = await request(app).post('/api/v1/productos').set('Authorization', `Bearer ${token}`)
+  it('DELETE /productos/:id borra (happy path, empresa real)', async () => {
+    const c = await request(app).post('/api/v1/productos').set('Authorization', `Bearer ${editToken}`)
       .send({ nombre_producto: 'Prod Test Del', unidad_medida: 'ud', coste_unitario: 1 });
     const id = c.body.producto?.id_producto;
     expect(id).toBeTruthy();
-    const del = await request(app).delete(`/api/v1/productos/${id}`).set('Authorization', `Bearer ${token}`);
+    const del = await request(app).delete(`/api/v1/productos/${id}`).set('Authorization', `Bearer ${editToken}`);
     expect(del.status).toBe(200);
+  });
+
+  it('el visitante (supervisor demo) CREA un producto marcado con caducidad 24h', async () => {
+    const { supToken: st } = await (async () => {
+      const emailSup = `crea-${Date.now()}@demo.local`;
+      await request(app).post('/api/v1/supervisores')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ nombre: 'Sup Crea', email: emailSup, password: 'demo1234', session_id: `crea-${Date.now()}` });
+      const login = await request(app).post('/api/v1/auth/login').send({ email: emailSup, password: 'demo1234' });
+      return { supToken: login.body.token };
+    })();
+    const res = await request(app)
+      .post('/api/v1/productos')
+      .set('Authorization', `Bearer ${st}`)
+      .send({ nombre_producto: 'Material Visita', unidad_medida: 'ud', coste_unitario: 1 });
+    expect(res.status).toBe(200);
+    expect(res.body.producto.expira_en).toBeTruthy();
+    expect(res.body.producto.session_id).toBeTruthy();
+    await prisma.producto.deleteMany({ where: { id_producto: res.body.producto.id_producto } });
   });
 });
 
@@ -661,12 +707,16 @@ describe('Blindaje: supervisor demo no gestiona datos globales', () => {
     expect(res.status).toBe(403);
   });
 
-  it('403 al crear un producto', async () => {
+  it('201 al crear un producto (queda marcado y caduca en 24h)', async () => {
     const res = await request(app)
       .post('/api/v1/productos')
       .set('Authorization', `Bearer ${supToken}`)
-      .send({ nombre: 'Producto X', unidad_medida: 'unidad' });
-    expect(res.status).toBe(403);
+      .send({ nombre_producto: 'Producto X', unidad_medida: 'unidad' });
+    expect(res.status).toBe(200);
+    expect(res.body.producto.expira_en).toBeTruthy();
+    if (res.body.producto?.id_producto) {
+      await prisma.producto.deleteMany({ where: { id_producto: res.body.producto.id_producto } });
+    }
   });
 
   it('403 al resetear la demo', async () => {
@@ -759,5 +809,84 @@ describe('GET /api/v1/dashboard/consumption — total_movimientos', () => {
     } finally {
       await prisma.$disconnect();
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Blindaje completo: supervisor de visita no modifica datos compartidos
+// (consumos, conteos, incidencias) — mismo patrón RouteAI
+// ---------------------------------------------------------------------------
+describe('Blindaje: supervisor demo no modifica stock ni incidencias', () => {
+  let supToken = '';
+
+  beforeAll(async () => {
+    const emailSup = `sup-blink2-${Date.now()}@demo.local`;
+    await request(app)
+      .post('/api/v1/supervisores')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre: 'Sup Blindaje 2', email: emailSup, password: 'demo1234', session_id: `blink2-${Date.now()}` });
+    const login = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: emailSup, password: 'demo1234' });
+    supToken = login.body.token;
+    expect(supToken).toBeTruthy();
+  });
+
+  it('403 al crear un consumo (restar stock)', async () => {
+    const res = await request(app)
+      .post('/api/v1/consumos')
+      .set('Authorization', `Bearer ${supToken}`)
+      .send({ id_centro: 1, id_producto: 1, cantidad: 1 });
+    expect(res.status).toBe(403);
+  });
+
+  it('403 al guardar un conteo físico', async () => {
+    const res = await request(app)
+      .post('/api/v1/inventario/1/1/conteo')
+      .set('Authorization', `Bearer ${supToken}`)
+      .send({ stock_fisico: 5 });
+    expect(res.status).toBe(403);
+  });
+
+  it('201 al crear una incidencia (queda marcada y caduca en 24h)', async () => {
+    const res = await request(app)
+      .post('/api/v1/incidencias')
+      .set('Authorization', `Bearer ${supToken}`)
+      .send({ id_centro: 1, categoria: 'limpieza', titulo: 'X', descripcion: 'Y' });
+    expect(res.status).toBe(200);
+    expect(res.body.incidencia.expira_en).toBeTruthy();
+    if (res.body.incidencia?.id_incidencia) {
+      await prisma.incidencia.deleteMany({ where: { id_incidencia: res.body.incidencia.id_incidencia } });
+    }
+  });
+
+  it('403 al cambiar el estado de una incidencia', async () => {
+    const res = await request(app)
+      .put('/api/v1/incidencias/1')
+      .set('Authorization', `Bearer ${supToken}`)
+      .send({ estado: 'resuelta' });
+    expect(res.status).toBe(403);
+  });
+
+});
+
+// ---------------------------------------------------------------------------
+// Presupuesto y consumo de stock: la cuenta demo NO los modifica (403)
+// ---------------------------------------------------------------------------
+describe('Blindaje: presupuesto y stock/consume para la cuenta demo', () => {
+  it('403 al cambiar el presupuesto de un centro del histórico', async () => {
+    const res = await request(app)
+      .post('/api/v1/centros/1/presupuesto')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ presupuesto_mensual: 9999 });
+    expect(res.status).toBe(403);
+  });
+
+  it('403 al consumir stock del histórico', async () => {
+    const res = await request(app)
+      .post('/api/v1/stock/consume')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id_centro: 1, id_producto: 1, cantidad: 1 });
+    expect(res.status).toBe(403);
   });
 });

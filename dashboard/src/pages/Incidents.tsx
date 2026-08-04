@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getIncidencias, updateIncidencia, getCentros, type Incidencia, type Centro } from '../lib/api'
+import { getIncidencias, updateIncidencia, getCentros, esVisita, type Incidencia, type Centro } from '../lib/api'
 import { usePeriodo } from '../lib/PeriodoContext'
 import { GuiaAyuda } from '../components/GuiaAyuda'
 
@@ -29,6 +29,7 @@ const CATEGORIA_ICONS: Record<string, string> = {
 
 export function Incidents() {
   const { periodo } = usePeriodo()
+  const visita = esVisita()
   const [incidencias, setIncidencias] = useState<Incidencia[]>([])
   const [centros, setCentros] = useState<Centro[]>([])
   const [total, setTotal] = useState(0)
@@ -213,7 +214,7 @@ export function Incidents() {
                           Iniciar
                         </button>
                       )}
-                      {inc.estado === 'en_proceso' && (
+                      {inc.estado === 'en_proceso' && !visita && (
                         <button className="btn btn-sm btn-primary" onClick={() => handleChangeEstado(inc.id_incidencia, 'resuelta')}>
                           Resolver
                         </button>

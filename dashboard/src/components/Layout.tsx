@@ -126,6 +126,12 @@ export function Layout() {
             {user?.rol === 'supervisor' && (
               <span className="badge badge-info" style={{ marginTop: '0.25rem' }}>Supervisor</span>
             )}
+            {user?.session_id && (
+              <span className="badge" style={{ marginTop: '0.25rem', background: 'var(--warning)', color: '#fff' }}>🔒 Solo lectura (demo)</span>
+            )}
+            {user?.demo && (
+              <span className="badge" style={{ marginTop: '0.25rem', background: 'var(--primary)', color: '#fff' }}>🌱 Demo: crea y caduca en 24h</span>
+            )}
           </div>
           <button className="btn btn-outline btn-sm" style={{ color: 'white', borderColor: '#4b5563', width: '100%', marginTop: '0.5rem' }} onClick={handleLogout}>
             Cerrar sesión

@@ -1,9 +1,10 @@
 import { useState, useEffect, Fragment } from 'react'
-import { getCentros, createCentro, updateCentro, getCatalogoProductos, addProductoCentro, type Centro, type Producto } from '../lib/api'
+import { getCentros, createCentro, updateCentro, getCatalogoProductos, addProductoCentro, esVisita, type Centro, type Producto } from '../lib/api'
 import { fmtEuro } from '../lib/format'
 import { GuiaAyuda } from '../components/GuiaAyuda'
 
 export function Centros() {
+  const visita = esVisita()
   const [centros, setCentros] = useState<Centro[]>([])
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState('')
@@ -128,7 +129,9 @@ export function Centros() {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="page-title">🏢 Centros de Trabajo</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ Nuevo Centro</button>
+          {!visita && (
+            <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ Nuevo Centro</button>
+          )}
           <GuiaAyuda titulo="Centros">
             <p>Esta pantalla muestra <strong>tus centros de trabajo</strong> (los lugares donde limpias) y qué tienen cada uno.</p>
             <h3>¿Qué ves en la tabla?</h3>
@@ -204,7 +207,9 @@ export function Centros() {
                         <td>{c.presupuesto_mensual ? `${fmtEuro(c.presupuesto_mensual)} €` : '—'}</td>
                         <td>{c._count?.inventarioCentros ?? '—'}</td>
                         <td>
-                          <button className="btn btn-sm btn-outline" onClick={(e) => { e.stopPropagation(); abrirEditar(c); }} aria-label={`Editar centro ${c.nombre_centro}`}>Editar</button>
+                          {!visita && (
+                            <button className="btn btn-sm btn-outline" onClick={(e) => { e.stopPropagation(); abrirEditar(c); }} aria-label={`Editar centro ${c.nombre_centro}`}>Editar</button>
+                          )}
                         </td>
                       </tr>
                       {abierto && (

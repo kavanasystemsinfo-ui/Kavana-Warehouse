@@ -101,6 +101,8 @@ model Producto {
   coste_unitario      Float   @default(0.0)
   id_categoria      Int?
   campos_extra      Json?   @default("{}")
+  session_id        String? // creado por un visitante de la demo (caduca en 24h)
+  expira_en         DateTime?
 
   categoria         Categoria? @relation(fields: [id_categoria], references: [id_categoria])
   inventarioCentros   InventarioCentro[]
@@ -207,6 +209,8 @@ model Incidencia {
   foto_url       String?
   estado         String   @default("pendiente") // "pendiente" | "en_proceso" | "resuelta"
   fecha_creacion DateTime @default(now())
+  session_id     String? // creada por un visitante de la demo (caduca en 24h)
+  expira_en      DateTime?
 
   centro  Centro  @relation(fields: [id_centro], references: [id_centro], onDelete: Cascade)
   usuario Usuario @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
