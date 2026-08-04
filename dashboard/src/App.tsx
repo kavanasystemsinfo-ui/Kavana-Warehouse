@@ -10,6 +10,7 @@ import { Responsables } from './pages/Responsables'
 import { Supervisores } from './pages/Supervisores'
 import { Deviations } from './pages/Deviations'
 import { Costes } from './pages/Costes'
+import { Asistente } from './pages/Asistente'
 import { getStoredUser } from './lib/api'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="supervisores" element={<Supervisores />} />
         <Route path="desviaciones" element={<Deviations />} />
         <Route path="costes" element={<Costes />} />
+        <Route path="asistente" element={<Asistente />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

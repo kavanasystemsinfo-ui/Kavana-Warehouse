@@ -1,5 +1,6 @@
 import { useState, useEffect, Fragment } from 'react'
 import { getCentros, createCentro, updateCentro, getCatalogoProductos, addProductoCentro, type Centro, type Producto } from '../lib/api'
+import { fmtEuro } from '../lib/format'
 import { GuiaAyuda } from '../components/GuiaAyuda'
 
 export function Centros() {
@@ -200,7 +201,7 @@ export function Centros() {
                           <strong>{c.nombre_centro || '—'}</strong>
                         </td>
                         <td>{c.direccion || '—'}</td>
-                        <td>{c.presupuesto_mensual ? `${c.presupuesto_mensual} €` : '—'}</td>
+                        <td>{c.presupuesto_mensual ? `${fmtEuro(c.presupuesto_mensual)} €` : '—'}</td>
                         <td>{c._count?.inventarioCentros ?? '—'}</td>
                         <td>
                           <button className="btn btn-sm btn-outline" onClick={(e) => { e.stopPropagation(); abrirEditar(c); }} aria-label={`Editar centro ${c.nombre_centro}`}>Editar</button>

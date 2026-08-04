@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getDeviations, getCentros, guardarConteo, resetDemo, type DeviationsData, type Centro, type DeviationItem } from '../lib/api'
+import { fmtNum, fmtEuro } from '../lib/format'
 import { GuiaAyuda } from '../components/GuiaAyuda'
 
 export function Deviations() {
@@ -186,16 +187,16 @@ export function Deviations() {
                   <tr key={i}>
                     <td><strong>{d.centro.nombre_centro}</strong></td>
                     <td>{d.producto.nombre_producto}</td>
-                    <td>{d.cantidad_actual}</td>
-                    <td>{d.stock_fisico === null ? '—' : d.stock_fisico}</td>
+                    <td>{fmtNum(d.cantidad_actual)}</td>
+                    <td>{d.stock_fisico === null ? '—' : fmtNum(d.stock_fisico)}</td>
                     <td style={{
                       color: d.desviacion && d.desviacion > 0 ? 'var(--danger)' : d.desviacion && d.desviacion < 0 ? 'var(--success)' : 'inherit',
                       fontWeight: 600,
                     }}>
-                      {d.desviacion === null ? '—' : (d.desviacion > 0 ? '−' : '+') + Math.abs(d.desviacion)}
+                      {d.desviacion === null ? '—' : (d.desviacion > 0 ? '−' : '+') + fmtNum(Math.abs(d.desviacion))}
                     </td>
-                    <td>{d.porcentaje_desviacion === null ? '—' : `${d.porcentaje_desviacion}%`}</td>
-                    <td style={{ color: 'var(--danger)', fontWeight: 600 }}>{d.coste_desviacion} €</td>
+                    <td>{d.porcentaje_desviacion === null ? '—' : `${fmtNum(d.porcentaje_desviacion)}%`}</td>
+                    <td style={{ color: 'var(--danger)', fontWeight: 600 }}>{fmtEuro(d.coste_desviacion)} €</td>
                     <td><span className={`badge ${badgeClass(d.estado)}`}>{badgeText(d.estado)}</span></td>
                     <td>
                       <button className="btn btn-sm btn-outline" onClick={() => abrirConteo(d)}>
@@ -220,7 +221,7 @@ export function Deviations() {
             <p>
               <strong>{editando.centro.nombre_centro}</strong> — {editando.producto.nombre_producto}
             </p>
-            <p className="stat-sub">Registrado en sistema: {editando.cantidad_actual} {editando.producto.unidad_medida}</p>
+            <p className="stat-sub">Registrado en sistema: {fmtNum(editando.cantidad_actual)} {editando.producto.unidad_medida}</p>
             <div className="form-group">
               <label className="form-label">Stock físico contado ({editando.producto.unidad_medida})</label>
               <input

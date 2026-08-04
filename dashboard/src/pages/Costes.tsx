@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getCostes, setPresupuesto, type CostesData, type CosteCentro } from '../lib/api'
+import { fmtNum, fmtEuro } from '../lib/format'
 import { GuiaAyuda } from '../components/GuiaAyuda'
 
 export function Costes() {
@@ -111,17 +112,17 @@ export function Costes() {
                     {badgeText(c.estado)}
                   </span>
                 </div>
-                <div className="coste-amount">{c.coste_material} € <span className="coste-sub">gastado</span></div>
+                <div className="coste-amount">{fmtEuro(c.coste_material)} € <span className="coste-sub">gastado</span></div>
                 {c.porcentaje_usado !== null ? (
                   <>
                     <div className="progress-bar">
                       <div className="progress-fill" style={{ width: `${Math.min(c.porcentaje_usado, 100)}%`, background: barColor(c.estado) }} />
                     </div>
                     <div className="coste-meta">
-                      {c.porcentaje_usado}% de tu presupuesto ({c.presupuesto_mensual} €)
+                      {fmtNum(c.porcentaje_usado)}% de tu presupuesto ({fmtEuro(c.presupuesto_mensual)} €)
                       {c.diferencia !== null && (
                         <span style={{ color: c.diferencia >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
-                          {c.diferencia >= 0 ? ` · Te sobran ${c.diferencia} €` : ` · Te pasas ${Math.abs(c.diferencia)} €`}
+                          {c.diferencia >= 0 ? ` · Te sobran ${fmtEuro(c.diferencia)} €` : ` · Te pasas ${fmtEuro(Math.abs(c.diferencia))} €`}
                         </span>
                       )}
                     </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login, getStoredUser } from '../lib/api'
+import { AssistantWidget } from '../components/AssistantChat'
 
 interface LoginProps {
   onLogin?: () => void
@@ -97,7 +98,11 @@ export function Login({ onLogin }: LoginProps) {
             {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
           </button>
         </form>
+        <p className="login-assistant-note">
+          💬 ¿Quieres saber cómo funciona este proyecto? Prueba el <strong>asistente técnico</strong> (botón abajo): responde con la documentación real de Kavana Warehouse.
+        </p>
       </div>
+      <AssistantWidget />
     </div>
   )
 }

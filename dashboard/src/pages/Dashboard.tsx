@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getConsumption, getAlerts, getCentros, getProductos, type ConsumptionData, type AlertsData, type Centro, type Producto } from '../lib/api'
 import { exportToCsv } from '../lib/csv'
+import { fmtNum, fmtEuro } from '../lib/format'
 import { GuiaAyuda } from '../components/GuiaAyuda'
 
 export function Dashboard() {
@@ -88,12 +89,12 @@ export function Dashboard() {
       <div className="stats-grid">
         <div className="stat-card primary">
           <span className="stat-label">Gasto OPEX Total</span>
-          <span className="stat-value">{consumption?.total_gasto_euros ?? 0} €</span>
-          <span className="stat-sub">{consumption?.total_consumo_unidades ?? 0} unidades consumidas</span>
+          <span className="stat-value">{fmtEuro(consumption?.total_gasto_euros)} €</span>
+          <span className="stat-sub">{fmtNum(consumption?.total_consumo_unidades)} unidades consumidas</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Movimientos</span>
-          <span className="stat-value">{consumption?.total_movimientos ?? 0}</span>
+          <span className="stat-value">{fmtNum(consumption?.total_movimientos)}</span>
           <span className="stat-sub">registros de consumo</span>
         </div>
         <div className="stat-card danger">
@@ -124,7 +125,7 @@ export function Dashboard() {
                   const mesLabel = p.mes.split('-').reverse().join('/')
                   return (
                     <div key={p.mes} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-                      <span style={{ fontSize: '.75rem', color: 'var(--text2)' }}>{p.unidades.toLocaleString()}</span>
+                      <span style={{ fontSize: '.75rem', color: 'var(--text2)' }}>{fmtNum(p.unidades)}</span>
                       <div style={{ width: '100%', maxWidth: '56px', height: `${h}px`, background: 'var(--primary)', borderRadius: '6px 6px 0 0', minHeight: '8px' }} />
                       <span style={{ fontSize: '.8rem', fontWeight: 600 }}>{mesLabel}</span>
                     </div>
@@ -216,7 +217,7 @@ export function Dashboard() {
                     <td><strong>{grupo.centro.nombre_centro}</strong></td>
                     <td>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <span>{grupo.presupuesto_mensual} €</span>
+                        <span>{fmtEuro(grupo.presupuesto_mensual)} €</span>
                         <div style={{ width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
                           <div 
                             style={{ 
@@ -236,7 +237,7 @@ export function Dashboard() {
                     <td>
                       {grupo.productos.map((p) => (
                         <span key={p.id_producto} className="badge badge-info" style={{ marginRight: '0.25rem', marginBottom: '0.25rem' }}>
-                          {p.nombre_producto}: {p.cantidad} ({p.gasto_euros} €)
+                          {p.nombre_producto}: {fmtNum(p.cantidad)} ({fmtEuro(p.gasto_euros)} €)
                         </span>
                       ))}
                     </td>
@@ -289,8 +290,8 @@ export function Dashboard() {
                     <td>{new Date(m.fecha_hora).toLocaleString('es-ES')}</td>
                     <td>{m.centro.nombre_centro}</td>
                     <td>{m.producto.nombre_producto}</td>
-                    <td style={{ color: 'var(--danger)' }}>{m.cantidad}</td>
-                    <td style={{ color: 'var(--danger)', fontWeight: 600 }}>{m.gasto_euros} €</td>
+                    <td style={{ color: 'var(--danger)' }}>{fmtNum(m.cantidad)}</td>
+                    <td style={{ color: 'var(--danger)', fontWeight: 600 }}>{fmtEuro(m.gasto_euros)} €</td>
                     <td>{m.usuario.nombre}</td>
                   </tr>
                 ))}

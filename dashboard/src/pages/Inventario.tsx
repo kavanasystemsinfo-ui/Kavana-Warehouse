@@ -5,6 +5,7 @@ import {
   type Producto,
 } from '../lib/api'
 import { exportToCsv } from '../lib/csv'
+import { fmtEuro } from '../lib/format'
 import { GuiaAyuda } from '../components/GuiaAyuda'
 
 export function Inventario() {
@@ -146,7 +147,7 @@ export function Inventario() {
         'Coste Estimado (€)': p.coste_estimado,
       }))
       exportToCsv(`propuesta-compra-${new Date().toISOString().split('T')[0]}`, rows)
-      setSuccess(`Propuesta exportada. Coste total estimado: ${proposal.total_coste_estimado} €`)
+      setSuccess(`Propuesta exportada. Coste total estimado: ${fmtEuro(proposal.total_coste_estimado)} €`)
       setTimeout(() => setSuccess(''), 5000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al generar propuesta')
