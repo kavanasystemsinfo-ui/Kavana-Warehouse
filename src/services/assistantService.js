@@ -180,22 +180,19 @@ async function responderPregunta(apiKey, pregunta) {
     `CONTEXTO (documentación del proyecto):\n${contexto}`,
   ].join('\n\n');
 
-  const compleja = esCompleja(pregunta);
-  const model = compleja ? MODELO_PRO : MODELO_FREE;
-
+  // Principal: DeepSeek (rápido, ~5s). El móvil corta la conexión si el modelo
+  // gratuito tarda 50s+ (OpenRouter satura gpt-oss-20b:free). El gratuito queda
+  // solo como respaldo. El rate-limit 25/día/IP controla el gasto.
+  let model = MODELO_PRO;
   let respuesta;
   try {
     respuesta = await llamarOpenRouter(apiKey, model, systemPrompt, userPrompt);
   } catch (err) {
-    // Si el modelo gratuito falla (límite de rate), reintentar con el de pago
-    if (!compleja) {
-      try {
-        respuesta = await llamarOpenRouter(apiKey, MODELO_PRO, systemPrompt, userPrompt);
-      } catch (err2) {
-        throw new Error(`Fallo al llamar a OpenRouter: ${err2.message}`);
-      }
-    } else {
-      throw err;
+    try {
+      model = MODELO_FREE;
+      respuesta = await llamarOpenRouter(apiKey, model, systemPrompt, userPrompt);
+    } catch (err2) {
+      throw new Error(`Fallo al llamar a OpenRouter: ${err2.message}`);
     }
   }
 

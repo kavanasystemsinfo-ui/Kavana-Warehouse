@@ -24,12 +24,12 @@ export function AssistantChat() {
   const [loading, setLoading] = useState(false)
   const boxRef = useRef<HTMLDivElement>(null)
 
-  const enviar = async (e: FormEvent) => {
-    e.preventDefault()
-    const pregunta = q.trim()
+  const enviar = async (e?: React.FormEvent, prompt?: string) => {
+    if (e) e.preventDefault()
+    const pregunta = (prompt || q).trim()
     if (!pregunta || loading) return
     setMsgs((m) => [...m, { role: 'user', text: pregunta }])
-    setQ('')
+    setQ(prompt ? '' : '')
     setLoading(true)
     try {
       const res = await fetch(API_ASSISTANT, {
@@ -65,7 +65,7 @@ export function AssistantChat() {
               <button
                 key={s}
                 type="button"
-                onClick={() => setQ(s)}
+                onClick={() => enviar(undefined, s)}
                 style={{
                   display: 'block', width: '100%', textAlign: 'left', marginBottom: 6, padding: '8px 10px',
                   background: 'var(--gray-100)', border: '1px solid var(--gray-200)', borderRadius: 8,
