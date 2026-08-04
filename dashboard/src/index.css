@@ -114,6 +114,30 @@ a:hover {
   border-left-color: var(--primary);
 }
 
+.sidebar-contacto-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.sidebar-contacto-toggle.active {
+  background: var(--gray-800);
+  color: white;
+  border-left-color: var(--primary);
+}
+
+.sidebar-contacto-opciones {
+  margin-left: 0.6rem;
+  border-left: 2px solid var(--gray-700);
+}
+
+.sidebar-contacto-opciones .sidebar-link {
+  padding-left: 1.1rem;
+}
+
 .sidebar-link-icon {
   font-size: 1.2rem;
   width: 1.5rem;

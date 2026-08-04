@@ -6,6 +6,7 @@ export function Layout() {
   const user = getStoredUser()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [contactoOpen, setContactoOpen] = useState(false)
 
   // Cerrar sidebar automáticamente al navegar (en móvil)
   const closeOnNav = () => {
@@ -97,6 +98,26 @@ export function Layout() {
             <span className="sidebar-link-icon">💬</span>
             Asistente técnico
           </NavLink>
+          {/* Contacto desplegable */}
+          <div className="sidebar-contacto">
+            <button
+              type="button"
+              className={`sidebar-link sidebar-contacto-toggle${contactoOpen ? ' active' : ''}`}
+              onClick={() => setContactoOpen(!contactoOpen)}
+              aria-expanded={contactoOpen}
+            >
+              <span className="sidebar-link-icon">📬</span>
+              <span style={{ flex: 1, textAlign: 'left' }}>Contacto</span>
+              <span style={{ fontSize: 10 }}>{contactoOpen ? '▲' : '▼'}</span>
+            </button>
+            {contactoOpen && (
+              <div className="sidebar-contacto-opciones">
+                <a className="sidebar-link" href="mailto:kavanasystems.info@gmail.com">📧 Email</a>
+                <a className="sidebar-link" href="https://www.linkedin.com/in/kavanasystems/" target="_blank" rel="noopener noreferrer">💼 LinkedIn</a>
+                <a className="sidebar-link" href="https://wa.me/34633422461" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
+              </div>
+            )}
+          </div>
         </nav>
         <div className="sidebar-footer">
           <div className="sidebar-user">
