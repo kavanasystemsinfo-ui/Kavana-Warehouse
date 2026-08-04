@@ -676,3 +676,48 @@ describe('Blindaje: supervisor demo no gestiona datos globales', () => {
     expect(res.status).toBe(403);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Filtro de periodo en /dashboard/consumption (desde/hasta)
+// ---------------------------------------------------------------------------
+describe('GET /api/v1/dashboard/consumption?desde=&hasta=', () => {
+  it('con rango futuro devuelve 0 movimientos (el filtro aplica de verdad)', async () => {
+    const res = await request(app)
+      .get('/api/v1/dashboard/consumption?desde=2099-01-01&hasta=2099-12-31')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.total_consumo_unidades).toBe(0);
+    expect(res.body.total_movimientos).toBe(0);
+    expect(res.body.evolucion_mensual.length).toBe(0);
+  });
+
+  it('sin filtro devuelve el histórico completo (compatibilidad)', async () => {
+    const res = await request(app)
+      .get('/api/v1/dashboard/consumption')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.evolucion_mensual)).toBe(true);
+    expect(res.body.evolucion_mensual.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Filtro de periodo en /api/v1/incidencias (desde/hasta)
+// ---------------------------------------------------------------------------
+describe('GET /api/v1/incidencias?desde=&hasta=', () => {
+  it('con rango futuro devuelve 0 incidencias', async () => {
+    const res = await request(app)
+      .get('/api/v1/incidencias?desde=2099-01-01&hasta=2099-12-31')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.incidencias.length).toBe(0);
+  });
+
+  it('sin filtro devuelve la lista completa (compatibilidad)', async () => {
+    const res = await request(app)
+      .get('/api/v1/incidencias')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.incidencias)).toBe(true);
+  });
+});

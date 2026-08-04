@@ -131,6 +131,11 @@ app.get('/api/v1/dashboard', auth, async (req, res) => {
 app.get('/api/v1/dashboard/consumption', auth, async (req, res) => {
   try {
     const idCliente = req.user.id_cliente;
+    // Filtro de periodo (desde/hasta): aplica a totales, evolución y movimientos.
+    const rangoParts = [];
+    if (req.query.desde) rangoParts.push(Prisma.sql`rm.fecha_hora >= ${String(req.query.desde)}::date`);
+    if (req.query.hasta) rangoParts.push(Prisma.sql`rm.fecha_hora < (${String(req.query.hasta)}::date + INTERVAL '1 day')`);
+    const rangoSql = rangoParts.length ? Prisma.sql`AND ${Prisma.join(rangoParts, ' AND ')}` : Prisma.empty;
     // Totales y evolución: sobre TODO el histórico del cliente (no solo 50 movs)
     const scope = idCliente ? Prisma.sql`AND c.id_cliente = ${idCliente}` : Prisma.empty;
     const evol = await prisma.$queryRaw`
@@ -140,7 +145,7 @@ app.get('/api/v1/dashboard/consumption', auth, async (req, res) => {
       FROM registro_movimientos rm
       JOIN productos p ON rm.id_producto = p.id_producto
       JOIN centros c ON rm.id_centro = c.id_centro
-      WHERE rm.cantidad < 0 ${scope}
+      WHERE rm.cantidad < 0 ${scope} ${rangoSql}
       GROUP BY 1 ORDER BY 1
     `;
     let movs;
@@ -152,7 +157,7 @@ app.get('/api/v1/dashboard/consumption', auth, async (req, res) => {
         JOIN productos p ON rm.id_producto = p.id_producto
         JOIN centros c ON rm.id_centro = c.id_centro
         JOIN usuarios u ON rm.id_usuario = u.id_usuario
-        WHERE rm.cantidad < 0 AND c.id_cliente = ${idCliente}
+        WHERE rm.cantidad < 0 AND c.id_cliente = ${idCliente} ${rangoSql}
         ORDER BY rm.fecha_hora DESC LIMIT 50
       `;
     } else {
@@ -163,7 +168,7 @@ app.get('/api/v1/dashboard/consumption', auth, async (req, res) => {
         JOIN productos p ON rm.id_producto = p.id_producto
         JOIN centros c ON rm.id_centro = c.id_centro
         JOIN usuarios u ON rm.id_usuario = u.id_usuario
-        WHERE rm.cantidad < 0
+        WHERE rm.cantidad < 0 ${rangoSql}
         ORDER BY rm.fecha_hora DESC LIMIT 50
       `;
     }
@@ -807,6 +812,9 @@ app.get('/api/v1/incidencias', auth, async (req, res) => {
     const where = req.user.id_cliente
       ? { centro: { id_cliente: req.user.id_cliente } }
       : {};
+    // Filtro de periodo global (desde/hasta) sobre fecha_creacion
+    if (req.query.desde) where.fecha_creacion = { ...(where.fecha_creacion || {}), gte: new Date(String(req.query.desde)) };
+    if (req.query.hasta) where.fecha_creacion = { ...(where.fecha_creacion || {}), lt: new Date(String(req.query.hasta) + 'T23:59:59') };
     const incs = await prisma.incidencia.findMany({ where, include: { centro: true, usuario: { select: { nombre: true } } }, orderBy: { fecha_creacion: 'desc' } });
     res.json({ incidencias: incs });
   } catch(e) { res.status(500).json({ error: 'Error interno' }); }

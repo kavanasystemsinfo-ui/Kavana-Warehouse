@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { getStoredUser, logout, clearTokens } from '../lib/api'
+import { PeriodoProvider, PeriodoSelector } from '../lib/PeriodoContext'
 
 export function Layout() {
   const user = getStoredUser()
@@ -132,7 +133,10 @@ export function Layout() {
         </div>
       </aside>
       <main className="main-content" onClick={() => setSidebarOpen(false)}>
-        <Outlet />
+        <PeriodoProvider>
+          <PeriodoSelector />
+          <Outlet />
+        </PeriodoProvider>
       </main>
     </div>
   )

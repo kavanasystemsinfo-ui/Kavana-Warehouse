@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getIncidencias, updateIncidencia, getCentros, type Incidencia, type Centro } from '../lib/api'
+import { usePeriodo } from '../lib/PeriodoContext'
 import { GuiaAyuda } from '../components/GuiaAyuda'
 
 const CATEGORIAS = [
@@ -27,6 +28,7 @@ const CATEGORIA_ICONS: Record<string, string> = {
 }
 
 export function Incidents() {
+  const { periodo } = usePeriodo()
   const [incidencias, setIncidencias] = useState<Incidencia[]>([])
   const [centros, setCentros] = useState<Centro[]>([])
   const [total, setTotal] = useState(0)
@@ -45,6 +47,8 @@ export function Incidents() {
           centro: filtroCentro ? Number(filtroCentro) : undefined,
           estado: filtroEstado || undefined,
           categoria: filtroCategoria || undefined,
+          desde: periodo.from || undefined,
+          hasta: periodo.to || undefined,
         }),
         getCentros(),
       ])
@@ -58,7 +62,7 @@ export function Incidents() {
     }
   }
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { loadData() }, [periodo.from, periodo.to])
 
   const handleFilter = (e: React.FormEvent) => {
     e.preventDefault()

@@ -442,11 +442,13 @@ export interface Incidencia {
   usuario: { id_usuario: number; nombre: string }
 }
 
-export async function getIncidencias(filters?: { centro?: number; estado?: string; categoria?: string }): Promise<{ total: number; incidencias: Incidencia[] }> {
+export async function getIncidencias(filters?: { centro?: number; estado?: string; categoria?: string; desde?: string; hasta?: string }): Promise<{ total: number; incidencias: Incidencia[] }> {
   const params = new URLSearchParams()
   if (filters?.centro) params.set('centro', String(filters.centro))
   if (filters?.estado) params.set('estado', filters.estado)
   if (filters?.categoria) params.set('categoria', filters.categoria)
+  if (filters?.desde) params.set('desde', filters.desde)
+  if (filters?.hasta) params.set('hasta', filters.hasta)
   const qs = params.toString()
   return apiFetch(`/incidencias${qs ? `?${qs}` : ''}`)
 }

@@ -2,9 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { getConsumption, getAlerts, getCentros, getProductos, type ConsumptionData, type AlertsData, type Centro, type Producto } from '../lib/api'
 import { exportToCsv } from '../lib/csv'
 import { fmtNum, fmtEuro } from '../lib/format'
+import { usePeriodo } from '../lib/PeriodoContext'
 import { GuiaAyuda } from '../components/GuiaAyuda'
 
 export function Dashboard() {
+  const { periodo } = usePeriodo()
   const [consumption, setConsumption] = useState<ConsumptionData | null>(null)
   const [alerts, setAlerts] = useState<AlertsData | null>(null)
   const [centros, setCentros] = useState<Centro[]>([])
@@ -15,8 +17,6 @@ export function Dashboard() {
   // Filters
   const [filtroCentro, setFiltroCentro] = useState('')
   const [filtroProducto, setFiltroProducto] = useState('')
-  const [filtroDesde, setFiltroDesde] = useState('')
-  const [filtroHasta, setFiltroHasta] = useState('')
 
   const loadData = async () => {
     setLoading(true)
@@ -26,8 +26,8 @@ export function Dashboard() {
         getConsumption({
           centro: filtroCentro ? Number(filtroCentro) : undefined,
           producto: filtroProducto ? Number(filtroProducto) : undefined,
-          desde: filtroDesde || undefined,
-          hasta: filtroHasta || undefined,
+          desde: periodo.from || undefined,
+          hasta: periodo.to || undefined,
         }),
         getAlerts(),
         getCentros(),
@@ -46,12 +46,8 @@ export function Dashboard() {
 
   useEffect(() => {
     loadData()
-  }, [])
-
-  const handleFilter = (e: React.FormEvent) => {
-    e.preventDefault()
-    loadData()
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodo.from, periodo.to, filtroCentro, filtroProducto])
 
   if (loading && !consumption) {
     return (
@@ -79,7 +75,7 @@ export function Dashboard() {
             <li><strong>Consumo por centro:</strong> qué centro gasta más.</li>
             <li><strong>Alertas de stock:</strong> productos que están por debajo de su mínimo (rojo = crítico, ámbar = aviso).</li>
           </ul>
-          <p>Puedes filtrar por centro y mes, y descargar los datos en CSV con el botón de descarga.</p>
+          <p>Puedes filtrar por centro y periodo, y descargar los datos en CSV con el botón de descarga.</p>
         </GuiaAyuda>
       </div>
 
@@ -119,15 +115,15 @@ export function Dashboard() {
               <div className="card-header">
                 <h2 className="card-title">Evolución de consumo (últimos meses)</h2>
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', height: '160px', padding: '1rem 0' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', height: '200px', padding: '0.5rem 0', overflowX: 'auto' }}>
                 {evol.map((p) => {
                   const h = Math.max(8, Math.round((p.unidades / max) * 140))
                   const mesLabel = p.mes.split('-').reverse().join('/')
                   return (
-                    <div key={p.mes} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-                      <span style={{ fontSize: '.75rem', color: 'var(--text2)' }}>{fmtNum(p.unidades)}</span>
-                      <div style={{ width: '100%', maxWidth: '56px', height: `${h}px`, background: 'var(--primary)', borderRadius: '6px 6px 0 0', minHeight: '8px' }} />
-                      <span style={{ fontSize: '.8rem', fontWeight: 600 }}>{mesLabel}</span>
+                    <div key={p.mes} style={{ flex: '1 0 auto', minWidth: 46, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ fontSize: '.7rem', color: 'var(--text2)', whiteSpace: 'nowrap', flexShrink: 0 }}>{fmtNum(p.unidades)}</span>
+                      <div style={{ width: '100%', maxWidth: '56px', height: `${h}px`, background: 'var(--primary)', borderRadius: '6px 6px 0 0', minHeight: '8px', flexShrink: 0 }} />
+                      <span style={{ fontSize: '.8rem', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{mesLabel}</span>
                     </div>
                   )
                 })}
@@ -142,7 +138,7 @@ export function Dashboard() {
 
       {/* Filters */}
       <div className="card">
-        <form className="filters-bar" onSubmit={handleFilter}>
+        <div className="filters-bar">
           <div className="form-group">
             <label className="form-label">Centro</label>
             <select className="form-select" value={filtroCentro} onChange={(e) => setFiltroCentro(e.target.value)}>
@@ -161,16 +157,7 @@ export function Dashboard() {
               ))}
             </select>
           </div>
-          <div className="form-group">
-            <label className="form-label">Desde</label>
-            <input className="form-input" type="date" value={filtroDesde} onChange={(e) => setFiltroDesde(e.target.value)} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Hasta</label>
-            <input className="form-input" type="date" value={filtroHasta} onChange={(e) => setFiltroHasta(e.target.value)} />
-          </div>
-          <button className="btn btn-primary" type="submit">Filtrar</button>
-        </form>
+        </div>
       </div>
 
       {/* Consumption by Center */}
