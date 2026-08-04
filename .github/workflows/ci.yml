@@ -57,7 +57,7 @@ jobs:
       - name: Run tests
         run: npm test
         env:
-          DATABASE_URL: postgresql://kavana:***@localhost:5432/kavana_warehouse_test
+          DATABASE_URL: postgresql://kavana:kavana_test@localhost:5432/kavana_warehouse_test
           JWT_SECRET: ci-test-secret
           NODE_ENV: test
 
