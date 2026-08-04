@@ -112,6 +112,30 @@ npm test                   # 35 tests
 - **Aplicación**: https://warehouse.kavanasystems.com
 - **Usuario demo**: `warehouse` · **Contraseña**: `kavana`
 
+## 📸 Capturas reales
+
+Capturas de la demo desplegada (no mockups): cada pantalla corresponde al código de este repositorio.
+
+#### Login
+![Login](screenshots/login.jpg)
+
+#### Dashboard (KPIs, evolución mensual, alertas)
+![Dashboard](screenshots/dashboard.jpg)
+
+#### Costes por centro (presupuesto vs consumo)
+![Costes](screenshots/costes.jpg)
+
+#### Desviaciones (stock registrado vs conteo físico)
+![Desviaciones](screenshots/desviaciones.jpg)
+
+#### Inventario multi-centro
+![Inventario](screenshots/inventario.jpg)
+
+#### Gestión de centros
+![Centros](screenshots/centros.jpg)
+
+> También se muestran en la landing: https://www.kavanasystems.com/warehouse/#capturas
+
 ---
 
 ## 📄 Licencia
