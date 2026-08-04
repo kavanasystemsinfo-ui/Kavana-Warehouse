@@ -890,3 +890,26 @@ describe('Blindaje: presupuesto y stock/consume para la cuenta demo', () => {
     expect(res.status).toBe(403);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Login móvil: mayúsculas en el password de la cuenta demo
+// ---------------------------------------------------------------------------
+describe('Login de la cuenta demo con mayúsculas (móvil)', () => {
+  it('"Kavana" entra en la cuenta demo (teclado móvil autocapitaliza)', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: 'warehouse', password: 'Kavana' });
+    expect(res.status).toBe(200);
+    expect(res.body.usuario.demo).toBe(true);
+  });
+
+  it('una empresa real sigue con bcrypt estricto (mayúscula = 401)', async () => {
+    const email = `estricto-${Date.now()}@yagni.com`;
+    await request(app).post('/api/v1/auth/register-empresa')
+      .send({ nombre_empresa: 'Estricto SL', email, password: 'Clave123', nombre_responsable: 'E' });
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email, password: 'clave123' }); // minúsculas != Clave123
+    expect(res.status).toBe(401);
+  });
+});
