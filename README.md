@@ -56,8 +56,10 @@ La demo pública simula una empresa viva con 3 meses de histórico (10 centros, 
 | BD | Supabase, VPS | Neon serverless | IPv4 nativo, compatible con Render free |
 | Deploy | VPS, serverless | Vercel + Render + Neon | Coste cero, auto-deploy por push, demo viva (ADR-004) |
 | Migraciones | En el start | Manuales | `migrate deploy` en el arranque rompía los deploys |
+| Asistente técnico | Embeddings + pgvector, OpenAI API | TF-IDF en memoria + OpenRouter (free → DeepSeek) | Corpus < 100 KB: sin vector DB, gratis, honesto (ADR-005) |
+| Blindaje demo | Bloquear todo a visitantes | `officeOnly`: visita = lectura + recuento | El supervisor de visita (24h) no gestiona ni resetea la demo (ADR-005) |
 
-> Todas las decisiones consolidadas con detalle en [`DECISIONS.md`](DECISIONS.md) (4 ADRs + decisiones de implementación).
+> Todas las decisiones consolidadas con detalle en [`DECISIONS.md`](DECISIONS.md) (5 ADRs + decisiones de implementación).
 
 ---
 
@@ -75,9 +77,11 @@ La demo pública simula una empresa viva con 3 meses de histórico (10 centros, 
 | Propuesta de compra | ✅ |
 | Incidencias | ✅ |
 | Supervisores demo (caducan a las 24h) | ✅ |
+| Asistente técnico RAG (responde con la documentación real) | ✅ |
+| Blindaje demo (visitante no gestiona ni resetea datos compartidos) | ✅ |
 | Multi-tenant verificado con tests | ✅ |
 | CI/CD (GitHub Actions) | ✅ |
-| 38 tests de API + 3 tests de frontend | ✅ |
+| 45 tests de API + 3 tests de frontend | ✅ |
 | App móvil | ❌ Descartada (gestión de stock web) |
 
 ---

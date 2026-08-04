@@ -17,6 +17,7 @@ de implementación. Git describe qué cambió; este documento explica por qué.
 | 002 | Autenticación JWT con refresh tokens (no sesiones en servidor) | [`docs/adr/002-auth-jwt-refresh-tokens.md`](docs/adr/002-auth-jwt-refresh-tokens.md) |
 | 003 | Prisma ORM en vez de SQL raw | [`docs/adr/003-prisma-orm.md`](docs/adr/003-prisma-orm.md) |
 | 004 | Despliegue Vercel + Render + Neon, migraciones fuera del start | [`docs/adr/004-deploy-vercel-render-neon.md`](docs/adr/004-deploy-vercel-render-neon.md) |
+| 005 | Asistente técnico RAG (TF-IDF + OpenRouter) y blindaje de la demo (officeOnly) | [`docs/adr/005-asistente-rag-y-blindaje-demo.md`](docs/adr/005-asistente-rag-y-blindaje-demo.md) |
 
 ## Decisiones de implementación (resumen)
 
