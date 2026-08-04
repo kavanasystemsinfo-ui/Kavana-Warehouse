@@ -53,6 +53,7 @@ const auth = async (req, res, next) => {
       rol: u.rol,
       is_super_admin: u.is_super_admin,
       id_cliente: idCliente,
+      session_id: u.session_id,
     };
     next();
   } catch (e) {
@@ -65,6 +66,17 @@ const supervisorOnly = (req, res, next) => {
   // operar. 'oficina' es el nombre nuevo; 'supervisor' se mantiene por
   // compatibilidad hasta que toda la BD migre.
   if (req.user.rol !== 'supervisor' && req.user.rol !== 'oficina') return res.status(403).json({ error: 'Solo personal autorizado' });
+  next();
+};
+const officeOnly = (req, res, next) => {
+  // Blindaje de la demo: la gestión global (crear/editar/borrar productos,
+  // centros, usuarios, reset) requiere oficina O un supervisor permanente
+  // (sin session_id). Los supervisores de visita (session_id, caducan en 24h)
+  // solo leen y hacen recuentos: no tocan los datos compartidos.
+  const esVisitante = Boolean(req.user.session_id);
+  if (req.user.rol !== 'oficina' && (req.user.rol !== 'supervisor' || esVisitante)) {
+    return res.status(403).json({ error: 'Solo la oficina puede realizar esta acción' });
+  }
   next();
 };
 const superAdminOnly = (req, res, next) => {
@@ -238,7 +250,7 @@ app.get('/api/v1/dashboard/costes', auth, costeController.getCostes);
 app.post('/api/v1/centros/:id_centro/presupuesto', auth, costeController.setPresupuesto);
 
 // Reset de datos de demostración (solo borra clientes marcados es_demo)
-app.post('/api/v1/demo/reset', auth, async (req, res) => {
+app.post('/api/v1/demo/reset', auth, officeOnly, async (req, res) => {
   try {
     const usuario = req.user;
     if (!usuario) return res.status(401).json({ error: 'No autenticado' });
@@ -269,7 +281,7 @@ app.get('/api/v1/categorias', auth, async (req, res) => {
   }
   catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
-app.post('/api/v1/categorias', auth, supervisorOnly, async (req, res) => {
+app.post('/api/v1/categorias', auth, officeOnly, async (req, res) => {
   try {
     const c = await prisma.categoria.create({
       data: {
@@ -294,7 +306,7 @@ app.get('/api/v1/productos', auth, async (req, res) => {
     res.json({ productos: prods });
   } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
-app.post('/api/v1/productos', auth, supervisorOnly, async (req, res) => {
+app.post('/api/v1/productos', auth, officeOnly, async (req, res) => {
   try {
     const p = await prisma.producto.create({
       data: {
@@ -309,7 +321,7 @@ app.post('/api/v1/productos', auth, supervisorOnly, async (req, res) => {
   }
   catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
-app.put('/api/v1/productos/:id', auth, supervisorOnly, async (req, res) => {
+app.put('/api/v1/productos/:id', auth, officeOnly, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const data = {};
@@ -321,7 +333,7 @@ app.put('/api/v1/productos/:id', auth, supervisorOnly, async (req, res) => {
     res.json({ producto: p });
   } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
-app.delete('/api/v1/productos/:id', auth, supervisorOnly, async (req, res) => {
+app.delete('/api/v1/productos/:id', auth, officeOnly, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const usos = await prisma.inventarioCentro.count({ where: { id_producto: id } });
@@ -354,7 +366,7 @@ app.get('/api/v1/centros', auth, async (req, res) => {
     res.json({ centros });
   } catch (e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
-app.post('/api/v1/centros', auth, supervisorOnly, async (req, res) => {
+app.post('/api/v1/centros', auth, officeOnly, async (req, res) => {
   try {
     const idCliente = req.user.id_cliente;
     if (!idCliente) return res.status(403).json({ error: 'Sin empresa asociada' });
@@ -370,7 +382,7 @@ app.post('/api/v1/centros', auth, supervisorOnly, async (req, res) => {
   }
   catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
-app.put('/api/v1/centros/:id', auth, supervisorOnly, async (req, res) => {
+app.put('/api/v1/centros/:id', auth, officeOnly, async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Centro inválido' });
@@ -402,7 +414,7 @@ app.put('/api/v1/centros/:id', auth, supervisorOnly, async (req, res) => {
 // =============================================================================
 
 // Crear usuario responsable (solo supervisor)
-app.post('/api/v1/usuarios', auth, supervisorOnly, async (req, res) => {
+app.post('/api/v1/usuarios', auth, officeOnly, async (req, res) => {
   try {
     const idCliente = req.user.id_cliente;
     if (!idCliente) return res.status(403).json({ error: 'Sin empresa asociada' });
@@ -430,7 +442,7 @@ app.post('/api/v1/usuarios', auth, supervisorOnly, async (req, res) => {
 });
 
 // Asignar centros a un responsable mediante checkboxes (sincroniza AsignacionPersonal)
-app.post('/api/v1/usuarios/:id/centros', auth, supervisorOnly, async (req, res) => {
+app.post('/api/v1/usuarios/:id/centros', auth, officeOnly, async (req, res) => {
   try {
     const idCliente = req.user.id_cliente;
     if (!idCliente) return res.status(403).json({ error: 'Sin empresa asociada' });
@@ -565,7 +577,7 @@ app.get('/api/v1/empleados', auth, supervisorOnly, async (req, res) => {
     res.json({ empleados: emps });
   } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
-app.post('/api/v1/empleados', auth, supervisorOnly, async (req, res) => {
+app.post('/api/v1/empleados', auth, officeOnly, async (req, res) => {
   try {
     const { nombre, email, password, numero_empleado, id_centro } = req.body;
     if (!nombre || !email) return res.status(400).json({ error: 'Nombre y email obligatorios' });
@@ -660,7 +672,7 @@ app.get('/api/v1/inventario', auth, async (req, res) => {
     res.json({ inventario: result });
   } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
-app.post('/api/v1/inventario', auth, supervisorOnly, async (req, res) => {
+app.post('/api/v1/inventario', auth, officeOnly, async (req, res) => {
   try {
     const { id_centro, id_producto, cantidad_actual, stock_minimo } = req.body;
     if (!(await requireCentroDelCliente(id_centro, req.user.id_cliente))) {
@@ -674,7 +686,7 @@ app.post('/api/v1/inventario', auth, supervisorOnly, async (req, res) => {
     res.json({ inventario: item });
   } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
-app.post('/api/v1/inventario/reponer', auth, supervisorOnly, async (req, res) => {
+app.post('/api/v1/inventario/reponer', auth, officeOnly, async (req, res) => {
   try {
     const { id_centro, id_producto, cantidad } = req.body;
     if (!(await requireCentroDelCliente(id_centro, req.user.id_cliente))) {
@@ -985,6 +997,35 @@ app.get('/api/v1/admin/stats', auth, superAdminOnly, async (req, res) => {
 
 // Login ahora también devuelve is_super_admin
 // (modificar endpoint existente arriba si hace falta)
+
+// ----- Asistente técnico (RAG sobre la documentación del repo) -----
+// Público (sin auth): un reclutador pregunta cómo funciona el proyecto.
+// Límite por IP: 25 preguntas/día para no gastar el crédito de OpenRouter.
+const assistantLimits = new Map(); // ip -> {count, resetAt}
+app.post('/api/v1/assistant', async (req, res) => {
+  const question = (req.body?.question || '').trim();
+  if (question.length < 4 || question.length > 500) {
+    return res.status(400).json({ error: 'La pregunta debe tener entre 4 y 500 caracteres.' });
+  }
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const lim = assistantLimits.get(ip);
+  if (!lim || now > lim.resetAt) {
+    assistantLimits.set(ip, { count: 1, resetAt: now + 24 * 3600 * 1000 });
+  } else if (lim.count >= 25) {
+    return res.status(429).json({ error: 'Has alcanzado el límite de preguntas de hoy (25). Vuelve mañana.' });
+  } else {
+    lim.count += 1;
+  }
+  try {
+    const { responderPregunta } = require('./services/assistantService');
+    const resultado = await responderPregunta(process.env.OPENROUTER_API_KEY, question);
+    return res.json({ success: true, respuesta: resultado.respuesta, fuentes: resultado.fuentes, modelo: resultado.modelo });
+  } catch (err) {
+    logger.error('Asistente: ' + err.message);
+    return res.status(500).json({ error: 'Asistente no configurado o error interno. Inténtalo más tarde.' });
+  }
+});
 
 // Health check
 app.get('/api/v1/health', (req, res) => res.json({ status: 'ok' }));

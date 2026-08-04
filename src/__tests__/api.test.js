@@ -635,3 +635,44 @@ describe('Flujo conteo → desviación → propuesta de compra', () => {
     }
   });
 });
+// ---------------------------------------------------------------------------
+// Blindaje demo: un supervisor de visita (24h) NO gestiona datos globales
+// ---------------------------------------------------------------------------
+describe('Blindaje: supervisor demo no gestiona datos globales', () => {
+  let supToken = '';
+
+  beforeAll(async () => {
+    const emailSup = `sup-blink-${Date.now()}@demo.local`;
+    await request(app)
+      .post('/api/v1/supervisores')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre: 'Sup Blindaje', email: emailSup, password: 'demo1234', session_id: `blink-${Date.now()}` });
+    const login = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: emailSup, password: 'demo1234' });
+    supToken = login.body.token;
+    expect(supToken).toBeTruthy();
+  });
+
+  it('403 al borrar un producto', async () => {
+    const res = await request(app)
+      .delete('/api/v1/productos/1')
+      .set('Authorization', `Bearer ${supToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('403 al crear un producto', async () => {
+    const res = await request(app)
+      .post('/api/v1/productos')
+      .set('Authorization', `Bearer ${supToken}`)
+      .send({ nombre: 'Producto X', unidad_medida: 'unidad' });
+    expect(res.status).toBe(403);
+  });
+
+  it('403 al resetear la demo', async () => {
+    const res = await request(app)
+      .post('/api/v1/demo/reset')
+      .set('Authorization', `Bearer ${supToken}`);
+    expect(res.status).toBe(403);
+  });
+});
