@@ -138,7 +138,7 @@ export function AssistantWidget() {
           borderRadius: '50%', border: 'none', background: 'var(--primary)', color: '#fff',
           fontSize: 26, cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,.4)',
         }}
-        title="Pregunta sobre Kavana Warehouse"
+        title="Asistente técnico: pregunta sobre el código de Kavana Warehouse"
       >
         💬
       </button>

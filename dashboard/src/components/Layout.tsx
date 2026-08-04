@@ -95,7 +95,7 @@ export function Layout() {
           </NavLink>
           <NavLink to="/asistente" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`} onClick={closeOnNav}>
             <span className="sidebar-link-icon">💬</span>
-            Asistente
+            Asistente técnico
           </NavLink>
         </nav>
         <div className="sidebar-footer">
