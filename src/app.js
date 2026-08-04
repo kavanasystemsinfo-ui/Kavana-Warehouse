@@ -174,12 +174,63 @@ app.get('/api/v1/dashboard/consumption', auth, async (req, res) => {
     }
     const total = evol.reduce((s, m) => s + Number(m.unidades), 0);
     const totalEuro = evol.reduce((s, m) => s + Number(m.gasto), 0);
+    // Conteo REAL de movimientos del periodo (no el length de los últimos 50)
+    const countMovs = await prisma.$queryRaw`
+      SELECT COUNT(*)::int AS n
+      FROM registro_movimientos rm
+      JOIN centros c ON rm.id_centro = c.id_centro
+      WHERE rm.cantidad < 0 ${scope} ${rangoSql}
+    `;
+    const totalMovimientos = parseInt(countMovs[0]?.n || 0, 10);
+    // Resumen por centro (con el filtro de periodo): consumos agrupados + desglose por producto
+    const porCentro = await prisma.$queryRaw`
+      SELECT c.id_centro, c.nombre_centro, c.presupuesto_mensual,
+             SUM(ABS(rm.cantidad))::int AS unidades,
+             ROUND(SUM(ABS(rm.cantidad) * p.coste_unitario)::numeric, 2) AS gasto,
+             COUNT(*)::int AS movimientos
+      FROM registro_movimientos rm
+      JOIN productos p ON rm.id_producto = p.id_producto
+      JOIN centros c ON rm.id_centro = c.id_centro
+      WHERE rm.cantidad < 0 ${scope} ${rangoSql}
+      GROUP BY c.id_centro, c.nombre_centro, c.presupuesto_mensual
+      ORDER BY gasto DESC
+    `;
+    const porProducto = await prisma.$queryRaw`
+      SELECT c.id_centro, p.id_producto, p.nombre_producto, p.unidad_medida,
+             SUM(ABS(rm.cantidad))::int AS cantidad,
+             ROUND(SUM(ABS(rm.cantidad) * p.coste_unitario)::numeric, 2) AS gasto
+      FROM registro_movimientos rm
+      JOIN productos p ON rm.id_producto = p.id_producto
+      JOIN centros c ON rm.id_centro = c.id_centro
+      WHERE rm.cantidad < 0 ${scope} ${rangoSql}
+      GROUP BY c.id_centro, p.id_producto, p.nombre_producto, p.unidad_medida
+      ORDER BY c.id_centro, gasto DESC
+    `;
+    const prodPorCentro = new Map();
+    for (const pp of porProducto) {
+      const arr = prodPorCentro.get(pp.id_centro) || [];
+      arr.push({ id_producto: pp.id_producto, nombre_producto: pp.nombre_producto, unidad_medida: pp.unidad_medida, cantidad: Number(pp.cantidad), gasto_euros: Number(pp.gasto) });
+      prodPorCentro.set(pp.id_centro, arr);
+    }
+    const resumen_por_centro = porCentro.map((c) => {
+      const presupuesto = Number(c.presupuesto_mensual || 0);
+      const gasto = Number(c.gasto);
+      return {
+        centro: { id_centro: c.id_centro, nombre_centro: c.nombre_centro },
+        presupuesto_mensual: presupuesto || null,
+        total_consumo_unidades: Number(c.unidades),
+        gasto_total_euros: gasto,
+        porcentaje_consumido: presupuesto > 0 ? Math.round((gasto / presupuesto) * 1000) / 10 : null,
+        movimientos: Number(c.movimientos),
+        productos: prodPorCentro.get(c.id_centro) || [],
+      };
+    });
     res.json({
       total_consumo_unidades: total,
       total_gasto_euros: Math.round(totalEuro * 100) / 100,
-      total_movimientos: movs.length,
+      total_movimientos: totalMovimientos,
       evolucion_mensual: evol.map(m => ({ mes: m.mes, unidades: Number(m.unidades), gasto_euros: Number(m.gasto) })),
-      resumen_por_centro: [],
+      resumen_por_centro,
       movimientos: movs.map(m => ({
         id_movimiento: m.id_movimiento,
         fecha_hora: m.fecha_hora,

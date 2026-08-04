@@ -96,12 +96,12 @@ export function Dashboard() {
         <div className="stat-card danger">
           <span className="stat-label">Alertas Críticas</span>
           <span className="stat-value">{alerts?.criticas.length ?? 0}</span>
-          <span className="stat-sub">stock agotado</span>
+          <span className="stat-sub">stock agotado ahora</span>
         </div>
         <div className="stat-card warning">
           <span className="stat-label">Advertencias</span>
           <span className="stat-value">{alerts?.advertencias.length ?? 0}</span>
-          <span className="stat-sub">stock por debajo del mínimo</span>
+          <span className="stat-sub">stock por debajo del mínimo ahora</span>
         </div>
       </div>
 
@@ -215,12 +215,12 @@ export function Dashboard() {
                             }} 
                           />
                         </div>
-                        <small style={{ fontSize: '11px', color: 'var(--gray-500)' }}>{grupo.porcentaje_consumido}% consumido</small>
+                        <small style={{ fontSize: '11px', color: 'var(--gray-500)' }}>{fmtNum(grupo.porcentaje_consumido)}% consumido</small>
                       </div>
                     </td>
-                    <td style={{ fontWeight: 600 }}>{grupo.gasto_total_euros} €</td>
-                    <td>{grupo.total_consumo_unidades}</td>
-                    <td>{grupo.movimientos}</td>
+                    <td style={{ fontWeight: 600 }}>{fmtEuro(grupo.gasto_total_euros)} €</td>
+                    <td>{fmtNum(grupo.total_consumo_unidades)}</td>
+                    <td>{fmtNum(grupo.movimientos)}</td>
                     <td>
                       {grupo.productos.map((p) => (
                         <span key={p.id_producto} className="badge badge-info" style={{ marginRight: '0.25rem', marginBottom: '0.25rem' }}>

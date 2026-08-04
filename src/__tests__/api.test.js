@@ -721,3 +721,43 @@ describe('GET /api/v1/incidencias?desde=&hasta=', () => {
     expect(Array.isArray(res.body.incidencias)).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// KPI Movimientos: conteo REAL del periodo (no los últimos 50)
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// KPI Movimientos: conteo REAL del periodo (no los últimos 50)
+// ---------------------------------------------------------------------------
+describe('GET /api/v1/dashboard/consumption — total_movimientos', () => {
+  it('cuenta TODOS los movimientos del periodo, no solo los últimos 50', async () => {
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+    try {
+      const cliente = await prisma.cliente.findFirst({ where: { es_demo: true } });
+      const centro = await prisma.centro.findFirst({ where: { id_cliente: cliente.id_cliente } });
+      const producto = await prisma.producto.findFirst();
+      const usuario = await prisma.usuario.findFirst({ where: { id_cliente: cliente.id_cliente } });
+      const ahora = new Date();
+      await prisma.registroMovimiento.createMany({
+        data: Array.from({ length: 60 }, () => ({
+          id_centro: centro.id_centro,
+          id_producto: producto.id_producto,
+          id_usuario: usuario.id_usuario,
+          cantidad: -1,
+          fecha_hora: ahora,
+        })),
+      });
+      const res = await request(app)
+        .get('/api/v1/dashboard/consumption')
+        .set('Authorization', `Bearer ${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body.total_movimientos).toBeGreaterThanOrEqual(60);
+      await prisma.registroMovimiento.deleteMany({
+        where: { id_usuario: usuario.id_usuario, cantidad: -1, fecha_hora: { gte: new Date(ahora.getTime() - 60000) } },
+      });
+    } finally {
+      await prisma.$disconnect();
+    }
+  });
+});
