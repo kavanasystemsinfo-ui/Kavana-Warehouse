@@ -10,6 +10,22 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// Neon free tier duerme la BD tras inactividad; el primer arranque puede tardar.
+// Reintenta la conexión inicial (3 intentos, espera creciente) antes de rendirse.
+async function conectarConReintentos() {
+  const esperas = [5_000, 15_000, 30_000];
+  for (const ms of esperas) {
+    try {
+      await prisma.$connect();
+      return;
+    } catch (e) {
+      console.error(`  ⚠ Conexión fallida, reintento en ${ms / 1000}s: ${String(e.message).split('\n')[0]}`);
+      await new Promise((r) => setTimeout(r, ms));
+    }
+  }
+  throw new Error('No se pudo conectar a la BD tras 3 intentos.');
+}
+
 const EMPRESA_DEMO = 'Limpiezas Valencia Centro, S.L.';
 const USUARIO_SISTEMA = 'sistema.demo@kavanawarehouse.com'; // marcador de idempotencia
 
@@ -23,6 +39,7 @@ function rnd() {
 function entre(min, max) { return Math.round(min + rnd() * (max - min)); }
 
 async function main() {
+  await conectarConReintentos();
   const cliente = await prisma.cliente.findFirst({ where: { nombre_empresa: EMPRESA_DEMO } });
   if (!cliente) {
     console.log('Cliente demo no existe, nada que simular.');
