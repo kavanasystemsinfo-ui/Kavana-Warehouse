@@ -26,8 +26,8 @@ function cargarCorpus() {
   ];
   const adrDir = path.join(REPO_ROOT, 'docs/adr');
   const techDir = path.join(REPO_ROOT, 'docs/technical');
-  for (const f of fs.readdirSync(adrDir).filter((f) => f.endsWith('.md')).sort()) fuentes.push(`docs/adr/${f}`);
-  for (const f of fs.readdirSync(techDir).filter((f) => f.endsWith('.md')).sort()) fuentes.push(`docs/technical/${f}`);
+  for (const f of fs.readdirSync(adrDir).filter((f) => f.endsWith('.md') && !f.toLowerCase().includes('template')).sort()) fuentes.push(`docs/adr/${f}`);
+  for (const f of fs.readdirSync(techDir).filter((f) => f.endsWith('.md') && !f.toLowerCase().includes('template')).sort()) fuentes.push(`docs/technical/${f}`);
 
   const chunks = [];
   for (const rel of fuentes) {
@@ -216,4 +216,4 @@ function estadisticasCorpus() {
   return { chunks: idx.chunks.length, fuentes: new Set(idx.chunks.map((c) => c.fuente)).size };
 }
 
-module.exports = { responderPregunta, estadisticasCorpus, buscar, esCompleja };
+module.exports = { responderPregunta, estadisticasCorpus, cargarCorpus, buscar, esCompleja };

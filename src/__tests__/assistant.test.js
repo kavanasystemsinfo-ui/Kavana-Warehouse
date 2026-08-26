@@ -40,4 +40,11 @@ describe('assistantService corpus', () => {
     expect(stats.chunks).toBeGreaterThan(10);
     expect(stats.fuentes).toBeGreaterThanOrEqual(3);
   });
+
+  it('no indexa plantillas en el corpus', () => {
+    const { cargarCorpus } = require('../services/assistantService');
+    const corpus = cargarCorpus();
+    const fuentes = new Set(corpus.map((c) => c.fuente));
+    expect([...fuentes].some((f) => f.toLowerCase().includes('template'))).toBe(false);
+  });
 });
