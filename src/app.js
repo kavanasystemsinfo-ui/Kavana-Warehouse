@@ -15,7 +15,7 @@ const { validate, loginSchema, centroSchema, categoríaSchema } = require('./mid
 const app = express();
 app.set('trust proxy', true);
 // CORS: whitelist de orígenes (evita reflejar cualquier dominio con credentials)
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:4001,http://localhost:4000')
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:4001,http://localhost:4000,https://www.kavanasystems.com')
   .split(',').map(o => o.trim()).filter(Boolean);
 app.use(cors({
   origin: (origin, cb) => {
