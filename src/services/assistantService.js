@@ -151,7 +151,7 @@ async function llamarOpenRouter(apiKey, model, systemPrompt, userPrompt) {
 // ------------------------------------------------------------ respuesta
 
 async function responderPregunta(apiKey, pregunta) {
-  if (!apiKey) throw new Error('OPENROUTER_API_KEY no configurada');
+  if (!apiKey) throw new Error('API key de LLM no configurada (DEEPSEEK_API_KEY u OPENROUTER_API_KEY)');
   const indice = getIndice();
   const docs = buscar(indice, pregunta);
 

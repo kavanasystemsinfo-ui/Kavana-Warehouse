@@ -1093,7 +1093,7 @@ app.get('/api/v1/admin/stats', auth, superAdminOnly, async (req, res) => {
 
 // ----- Asistente técnico (RAG sobre la documentación del repo) -----
 // Público (sin auth): un reclutador pregunta cómo funciona el proyecto.
-// Límite por IP: 25 preguntas/día para no gastar el crédito de OpenRouter.
+// Límite por IP: 15 preguntas/día (decisión Jorge 2026-09-01, DeepSeek).
 const assistantLimits = new Map(); // ip -> {count, resetAt}
 app.post('/api/v1/assistant', async (req, res) => {
   const question = (req.body?.question || '').trim();
@@ -1105,14 +1105,14 @@ app.post('/api/v1/assistant', async (req, res) => {
   const lim = assistantLimits.get(ip);
   if (!lim || now > lim.resetAt) {
     assistantLimits.set(ip, { count: 1, resetAt: now + 24 * 3600 * 1000 });
-  } else if (lim.count >= 25) {
-    return res.status(429).json({ error: 'Has alcanzado el límite de preguntas de hoy (25). Vuelve mañana.' });
+  } else if (lim.count >= 15) {
+    return res.status(429).json({ error: 'Has alcanzado el límite de preguntas de hoy (15). Vuelve mañana.' });
   } else {
     lim.count += 1;
   }
   try {
     const { responderPregunta } = require('./services/assistantService');
-    const resultado = await responderPregunta(process.env.OPENROUTER_API_KEY, question);
+    const resultado = await responderPregunta(process.env.DEEPSEEK_API_KEY || process.env.OPENROUTER_API_KEY, question);
     return res.json({ success: true, respuesta: resultado.respuesta, fuentes: resultado.fuentes, modelo: resultado.modelo });
   } catch (err) {
     logger.error('Asistente: ' + err.message);
