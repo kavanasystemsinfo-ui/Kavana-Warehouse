@@ -118,8 +118,11 @@ function esCompleja(pregunta) {
 
 // ------------------------------------------------------------ LLM (OpenRouter)
 
+// Base URL del proveedor (OpenRouter por defecto; DeepSeek: https://api.deepseek.com/v1)
+const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://openrouter.ai/api/v1';
+
 async function llamarOpenRouter(apiKey, model, systemPrompt, userPrompt) {
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const res = await fetch(`${LLM_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
