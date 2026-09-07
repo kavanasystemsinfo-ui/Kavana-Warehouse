@@ -1105,8 +1105,8 @@ app.post('/api/v1/assistant', async (req, res) => {
   const lim = assistantLimits.get(ip);
   if (!lim || now > lim.resetAt) {
     assistantLimits.set(ip, { count: 1, resetAt: now + 24 * 3600 * 1000 });
-  } else if (lim.count >= 15) {
-    return res.status(429).json({ error: 'Has alcanzado el límite de preguntas de hoy (15). Vuelve mañana.' });
+  } else if (lim.count >= 10000) {
+    return res.status(429).json({ error: 'Has alcanzado el límite de preguntas de hoy (10000). Vuelve mañana.' });
   } else {
     lim.count += 1;
   }

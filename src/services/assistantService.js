@@ -54,13 +54,7 @@ function tokenizar(texto) {
     .filter((w) => w.length > 2 && !STOPWORDS.has(w));
 }
 
-const STOPWORDS = new Set(`
-  para por con los las el la un una que como del al se su sus en de y o a
-  este esta estos estas eso esa su donde cuando cual cuales sobre entre
-  mediante desde hasta tiene tienen hacer hace sido ser está estan fue eran
-  warehouse kavana sistema aplicacion app proyecto datos demuestra mostrar
-  stock inventario limpieza limpiador centro
-`.trim().split(/\s+/));
+const STOPWORDS = new Set([]);
 
 function construirIndice(chunks) {
   // idf por término
@@ -155,7 +149,7 @@ async function responderPregunta(apiKey, pregunta) {
   const indice = getIndice();
   const docs = buscar(indice, pregunta);
 
-  if (docs.length === 0 || docs[0].score < 0.02) {
+  if (docs.length === 0) {
     return {
       respuesta: 'No encuentro nada en la documentación del proyecto que responda a eso. Si quieres, pregúntaselo directamente a Jorge (el creador de Kavana Warehouse): es el único que puede responder sobre lo que no está documentado.',
       fuentes: [],
