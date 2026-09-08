@@ -54,7 +54,7 @@ function tokenizar(texto) {
     .filter((w) => w.length > 2 && !STOPWORDS.has(w));
 }
 
-const STOPWORDS: Set<string> = new Set([]);
+const STOPWORDS = new Set([]);
 
 function construirIndice(chunks) {
   // idf por término
