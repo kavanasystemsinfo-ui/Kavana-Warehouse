@@ -56,10 +56,25 @@ La demo pública simula una empresa viva con 3 meses de histórico (10 centros, 
 | BD | Supabase, VPS | Neon serverless | IPv4 nativo, compatible con Render free |
 | Deploy | VPS, serverless | Vercel + Render + Neon | Coste cero, auto-deploy por push, demo viva (ADR-004) |
 | Migraciones | En el start | Manuales | `migrate deploy` en el arranque rompía los deploys |
-| Asistente técnico | Embeddings + pgvector, OpenAI API | TF-IDF en memoria + OpenRouter (free → DeepSeek) | Corpus < 100 KB: sin vector DB, gratis, honesto (ADR-005) |
+| Asistente técnico | Embeddings + pgvector, OpenAI API | TF-IDF en memoria + modelo gratuito de OpenRouter | Corpus < 100 KB: sin vector DB, gratis, honesto (ADR-005, ADR-006) |
 | Blindaje demo | Bloquear todo a visitantes | `officeOnly`: visita = lectura + recuento | El supervisor de visita (24h) no gestiona ni resetea la demo (ADR-005) |
 
-> Todas las decisiones consolidadas con detalle en [`DECISIONS.md`](DECISIONS.md) (5 ADRs + decisiones de implementación).
+> Todas las decisiones consolidadas con detalle en [`DECISIONS.md`](DECISIONS.md) (6 ADRs + decisiones de implementación).
+
+---
+
+## 💰 Cómo está construido y cómo lo construiría con presupuesto
+
+KAVANA Warehouse es una demo con **un solo usuario real (su autor)** y coste objetivo de **0 €/mes**. No es una carencia disimulada: es una restricción elegida, y cada punto de abajo lleva al lado qué cambiaría con usuarios reales y presupuesto. El detalle con alternativas está en el [ADR-006](docs/adr/006-coste-cero-y-modelos-gratuitos.md).
+
+- **Asistente técnico:** recuperación por **TF-IDF en memoria** (sin embeddings ni base vectorial, coste 0) y un **modelo gratuito** de OpenRouter para redactar. Medido con la misma pregunta: **11,2 s** frente a los 26,3 s del modelo de pago que usaba antes. Con usuarios reales: modelo de pago con SLA y modelo de respaldo, y búsqueda semántica con embeddings si el corpus crece.
+- **Base de datos:** Neon serverless en nivel gratuito (escala a cero, IPv4 nativo). Con usuarios reales: plan con restauración amplia, réplicas de lectura y copias gestionadas.
+- **Cómputo:** Vercel para el front y Render free para la API (una instancia, arranque en frío). Con usuarios reales: instancias dedicadas y autoescalado.
+- **Demo y datos:** datos de sesión con caducidad de 24 h y un supervisor de visita que no puede gestionar ni resetear (ADR-005). Con usuarios reales: tenants reales aislados, auditoría de accesos y borrado garantizado.
+- **Migraciones:** `migrate deploy` manual, nunca en el arranque (en el arranque rompía los despliegues). Con usuarios reales: pipeline de migraciones con ventana, verificación y vuelta atrás.
+- **Secretos y límites:** variables de entorno en el proveedor y límite de peticiones en la API. Con usuarios reales: gestor de secretos con rotación y cuotas por usuario y plan.
+
+Lo que **no** cambia entre los dos escenarios es lo que se evalúa aquí: multi-tenancy por `client_id` verificada con tests, autenticación con JWT corto y refresh revocable sin Redis, roles reducidos a lo que el dominio necesita, blindaje de la demo probado y documentación que no miente sobre lo que hay.
 
 ---
 

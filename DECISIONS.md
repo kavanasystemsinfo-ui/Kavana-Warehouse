@@ -18,6 +18,7 @@ de implementación. Git describe qué cambió; este documento explica por qué.
 | 003 | Prisma ORM en vez de SQL raw | [`docs/adr/003-prisma-orm.md`](docs/adr/003-prisma-orm.md) |
 | 004 | Despliegue Vercel + Render + Neon, migraciones fuera del start | [`docs/adr/004-deploy-vercel-render-neon.md`](docs/adr/004-deploy-vercel-render-neon.md) |
 | 005 | Asistente técnico RAG (TF-IDF + OpenRouter) y blindaje de la demo (officeOnly) | [`docs/adr/005-asistente-rag-y-blindaje-demo.md`](docs/adr/005-asistente-rag-y-blindaje-demo.md) |
+| 006 | Coste cero y modelos gratuitos como decisión explícita (asistente con modelo gratuito, 11,2 s medidos frente a 26,3 s del de pago) | [`docs/adr/006-coste-cero-y-modelos-gratuitos.md`](docs/adr/006-coste-cero-y-modelos-gratuitos.md) |
 
 ## Decisiones de implementación (resumen)
 
