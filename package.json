@@ -13,19 +13,19 @@
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
-    "@prisma/client": "^6.6.0",
+    "@prisma/client": "^7.10.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^9.0.3",
+    "nodemailer": "^10.0.10",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "jest": "^29.7.0",
     "node-mocks-http": "^1.17.2",
-    "prisma": "^6.6.0",
+    "prisma": "^8.0.0-rc.15",
     "supertest": "^7.1.0"
   }
 }
