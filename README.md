@@ -8,7 +8,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)
 ![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript)
-![Tests](https://img.shields.io/badge/Tests-35-success)
+![Tests](https://img.shields.io/badge/Tests-61-success)
 ![License](https://img.shields.io/badge/License-MIT-success)
 
 ---
@@ -96,7 +96,7 @@ Lo que **no** cambia entre los dos escenarios es lo que se evalúa aquí: multi-
 | Blindaje demo (visitante no gestiona ni resetea datos compartidos) | ✅ |
 | Multi-tenant verificado con tests | ✅ |
 | CI/CD (GitHub Actions) | ✅ |
-| 45 tests de API + 3 tests de frontend | ✅ |
+| 61 tests de API + 3 tests de frontend | ✅ |
 | App móvil | ❌ Descartada (gestión de stock web) |
 
 ---
@@ -106,7 +106,7 @@ Lo que **no** cambia entre los dos escenarios es lo que se evalúa aquí: multi-
 | Documento | Descripción |
 |-----------|-------------|
 | `DECISIONS.md` | Consolidación de todas las decisiones (ADRs + implementación) |
-| `docs/adr/` | Architecture Decision Records (4) |
+| `docs/adr/` | Architecture Decision Records (6) |
 | `docs/technical/` | Arquitectura, despliegue, auditoría, roadmap |
 | `docs/commercial/` | Documentación de producto y plan de mejoras |
 | `docs/deployment.md` | Despliegue real (Vercel + Render + Neon) y credenciales demo |
@@ -120,7 +120,7 @@ cp .env.example .env       # configura DATABASE_URL, JWT_SECRET
 docker compose up -d       # levanta db + api + dashboard
 npm install
 npx prisma migrate deploy  # aplica migraciones (nunca en el start)
-npm test                   # 35 tests
+npm test                   # 61 tests
 ```
 
 ---
