@@ -9,7 +9,8 @@
 //     stock_fisico, desviacion, porcentaje_desviacion, coste_desviacion, estado }] }
 
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { PrismaPg } = require('@prisma/adapter-pg');
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
 function calcularEstado(desviacion) {
   if (desviacion === null || desviacion === undefined) return 'pendiente';

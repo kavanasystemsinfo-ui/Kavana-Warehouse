@@ -5,7 +5,8 @@
 const request = require('supertest');
 const app = require('../app');
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { PrismaPg } = require('@prisma/adapter-pg');
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
 let token = '';
 let testEmail = `test-${Date.now()}@yagni.com`;
@@ -782,7 +783,8 @@ describe('GET /api/v1/incidencias?desde=&hasta=', () => {
 describe('GET /api/v1/dashboard/consumption — total_movimientos', () => {
   it('cuenta TODOS los movimientos del periodo, no solo los últimos 50', async () => {
     const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
+const { PrismaPg } = require('@prisma/adapter-pg');
+    const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
     try {
       const cliente = await prisma.cliente.findFirst({ where: { es_demo: true } });
       const centro = await prisma.centro.findFirst({ where: { id_cliente: cliente.id_cliente } });

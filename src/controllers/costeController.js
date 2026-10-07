@@ -14,7 +14,8 @@
 //     presupuesto_mensual, porcentaje_usado, diferencia, estado }] }
 
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { PrismaPg } = require('@prisma/adapter-pg');
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
 function estadoSegunPorcentaje(pct) {
   if (pct >= 100) return 'rojo';     // se pasa del presupuesto
