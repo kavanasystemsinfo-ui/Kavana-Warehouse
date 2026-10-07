@@ -9,7 +9,8 @@
 //                    cantidad_pedido, coste_estimado }] }
 
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { PrismaPg } = require('@prisma/adapter-pg');
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
 async function getProposal(req, res) {
   try {

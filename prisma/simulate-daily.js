@@ -7,8 +7,9 @@
 
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
 // Neon free tier duerme la BD tras inactividad; el primer arranque puede tardar.
 // Reintenta la conexión inicial (3 intentos, espera creciente) antes de rendirse.

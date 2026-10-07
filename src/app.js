@@ -9,6 +9,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const { PrismaClient, Prisma } = require('@prisma/client');
+const { PrismaPg } = require('@prisma/adapter-pg');
 const logger = require('./lib/logger');
 const { validate, loginSchema, centroSchema, categoríaSchema } = require('./middleware/validate');
 
@@ -27,7 +28,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 const jwtSecretRaw = process.env.JWT_SECRET;
 if (process.env.NODE_ENV === 'production' && !jwtSecretRaw) {
   console.error('[FATAL] JWT_SECRET no definido en producción. Abortando arranque.');
