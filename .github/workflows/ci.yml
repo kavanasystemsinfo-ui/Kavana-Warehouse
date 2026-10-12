@@ -38,26 +38,42 @@ jobs:
         run: npm ci
 
       - name: Generate Prisma client
-        run: npx prisma generate
+        run: DATABASE_URL="postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}" npx prisma generate
         env:
-          DATABASE_URL: postgresql://kavana:kavana_test@localhost:5432/kavana_warehouse_test
+          PGHOST: localhost
+          PGPORT: '5432'
+          PGUSER: kavana
+          PGPASSWORD: kavana_test
+          PGDATABASE: kavana_warehouse_test
 
       - name: Run Prisma migrations
-        run: npx prisma migrate deploy
+        run: DATABASE_URL="postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}" npx prisma migrate deploy
         env:
-          DATABASE_URL: postgresql://kavana:kavana_test@localhost:5432/kavana_warehouse_test
+          PGHOST: localhost
+          PGPORT: '5432'
+          PGUSER: kavana
+          PGPASSWORD: kavana_test
+          PGDATABASE: kavana_warehouse_test
 
       - name: Seed database
-        run: npx prisma db seed
+        run: DATABASE_URL="postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}" npx prisma db seed
         env:
-          DATABASE_URL: postgresql://kavana:kavana_test@localhost:5432/kavana_warehouse_test
+          PGHOST: localhost
+          PGPORT: '5432'
+          PGUSER: kavana
+          PGPASSWORD: kavana_test
+          PGDATABASE: kavana_warehouse_test
           JWT_SECRET: ci-test-secret
           NODE_ENV: test
 
       - name: Run tests
-        run: npm test
+        run: DATABASE_URL="postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}" npm test
         env:
-          DATABASE_URL: postgresql://kavana:kavana_test@localhost:5432/kavana_warehouse_test
+          PGHOST: localhost
+          PGPORT: '5432'
+          PGUSER: kavana
+          PGPASSWORD: kavana_test
+          PGDATABASE: kavana_warehouse_test
           JWT_SECRET: ci-test-secret
           NODE_ENV: test
 
@@ -81,3 +97,15 @@ jobs:
       - name: Run frontend tests (Vitest)
         run: npm test
         working-directory: dashboard
+
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run gitleaks
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest \
+            detect --source /repo --redact --no-banner --exit-code 1
