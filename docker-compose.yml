@@ -43,7 +43,7 @@ services:
         condition: service_healthy
     environment:
       # Database — uses Docker service name 'db' instead of localhost
-      DATABASE_URL: "postgresql://kavana:***@db:5432/kavana_warehouse"
+      DATABASE_URL: "${DATABASE_URL:-postgresql://kavana@db:5432/kavana_warehouse}"
       # JWT
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET requerido}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
