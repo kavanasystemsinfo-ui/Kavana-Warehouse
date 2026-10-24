@@ -1,47 +1,42 @@
-// Seed de HISTÓRICO — Empresa ficticia "Limpiezas Valencia Centro, S.L."
-// Genera 3 meses de datos realistas (mayo-julio 2026) para que los
-// reclutadores vean la app como si estuviera en producción: consumos,
-// reposiciones, recuentos, costes y alertas con historia real.
+// Seed de HISTÓRICO — Empresa ficticia "Industrias Metálicas Demo, S.L."
+// Genera 3 meses de datos realistas para que los reclutadores vean la app como
+// si estuviera en producción: consumos, reposiciones, recuentos, costes y
+// alertas con historia real.
 //
-// Uso: node prisma/seed-historico.js
+// Cada sección solo consume lo que tiene en su inventario (no el catálogo
+// global), con el consumo diario definido en demo-industrial-data.js.
+//
+// Uso: node prisma/seed-historico.js   (antes: node prisma/seed.js)
 // Idempotente: si el cliente demo ya tiene movimientos históricos, NO duplica.
+// HISTORICO_DIAS (opcional) acorta el histórico, p. ej. para pruebas en CI.
 
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import {
+  EMPRESA_DEMO,
+  perfilesPorPar,
+  clavePar,
+  crearRnd,
+  entre,
+  consumoDelDia,
+  nivelObjetivo,
+} from './demo-industrial-data.js';
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
-const EMPRESA_DEMO = 'Limpiezas Valencia Centro, S.L.';
+const DIAS = Math.max(1, parseInt(process.env.HISTORICO_DIAS || '90', 10) || 90);
+const DIA_MS = 24 * 60 * 60 * 1000;
+const LOTE = 500;
 
-// Centros adicionales (los 4 del seed base + 3 nuevos = 7)
-// Presupuestos realistas: consumo medio ~3.600€/mes por centro
-const CENTROS_NUEVOS = [
-  { nombre: 'Hospital General Universitario', presu: 3650, dir: 'Av. Tres Cruces, 2, Valencia' },
-  { nombre: 'Oficinas Parque Empresarial', presu: 3600, dir: 'C/ de la Reina, Parque Empresarial Táctica, Paterna' },
-  { nombre: 'Colegio Público Cervantes', presu: 3400, dir: 'C/ Cervantes, 12, Valencia' },
-];
-
-// Productos adicionales (catálogo más amplio para una empresa grande)
-const PRODUCTOS_NUEVOS = [
-  { nombre: 'Gel hidroalcohólico (500ml)', unidad: 'unidades', coste: 1.8, min: 10 },
-  { nombre: 'Papel secamanos (paq)', unidad: 'paquetes', coste: 3.0, min: 5 },
-  { nombre: 'Bolsas basura 30L (paq)', unidad: 'paquetes', coste: 1.5, min: 6 },
-  { nombre: 'Quitagrasas cocina', unidad: 'litros', coste: 2.8, min: 3 },
-  { nombre: 'Ambientador industrial', unidad: 'litros', coste: 4.2, min: 3 },
-  { nombre: 'Cepillo de fregar (ud)', unidad: 'unidades', coste: 1.2, min: 8 },
-];
-
-// Semilla determinista para reproducibilidad (misma BD = mismos datos)
-let seedRnd = 42;
-function rnd() {
-  seedRnd = (seedRnd * 1103515245 + 12345) % 2147483648;
-  return seedRnd / 2147483648;
+async function insertarMovimientos(filas) {
+  for (let i = 0; i < filas.length; i += LOTE) {
+    await prisma.registroMovimiento.createMany({ data: filas.slice(i, i + LOTE) });
+  }
 }
-function entre(min, max) { return Math.round(min + rnd() * (max - min)); }
 
 async function main() {
-  console.log('→ Seed HISTÓRICO (3 meses) — empresa ficticia en producción...');
+  console.log(`→ Seed HISTÓRICO (${DIAS} días) — planta ficticia en producción...`);
 
   const cliente = await prisma.cliente.findFirst({ where: { nombre_empresa: EMPRESA_DEMO } });
   if (!cliente) {
@@ -51,178 +46,144 @@ async function main() {
   const idCliente = cliente.id_cliente;
 
   // Si ya hay un histórico real (miles de movimientos), no duplicar.
-  // El seed base de la cuñada crea ~5 movimientos; un histórico de 90 días
-  // genera varios miles. Umbral de 200 distingue ambos casos.
+  // El seed base crea 0 movimientos; un histórico genera varios miles.
+  // Umbral de 200 distingue ambos casos.
   const yaTieneHistorico = await prisma.registroMovimiento.count({
-    where: { centro: { id_cliente: idCliente }, fecha_hora: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+    where: { centro: { id_cliente: idCliente }, fecha_hora: { lt: new Date(Date.now() - DIA_MS) } },
   });
   if (yaTieneHistorico > 200) {
     console.log(`  • Ya existe histórico (${yaTieneHistorico} movimientos). No se duplica.`);
     return;
   }
 
-  // 1. Crear centros nuevos (los 4 del seed base ya existen)
-  const centros = {};
-  for (const def of CENTROS_NUEVOS) {
-    let c = await prisma.centro.findFirst({ where: { nombre_centro: def.nombre, id_cliente: idCliente } });
-    if (!c) {
-      c = await prisma.centro.create({
-        data: { nombre_centro: def.nombre, direccion: def.dir, presupuesto_mensual: def.presu, id_cliente: idCliente },
-      });
-      console.log('  ✓ Centro creado:', c.nombre_centro, `(presu ${def.presu}€)`);
-    }
-    centros[def.nombre] = c.id_centro;
+  // 1. Inventario real de la demo: solo los pares sección-producto del seed base
+  const perfiles = perfilesPorPar();
+  const filasInv = await prisma.inventarioCentro.findMany({
+    where: { centro: { id_cliente: idCliente } },
+    include: { centro: { select: { nombre_centro: true } }, producto: { select: { nombre_producto: true } } },
+  });
+  const pares = [];
+  for (const inv of filasInv) {
+    const perfil = perfiles.get(clavePar(inv.centro.nombre_centro, inv.producto.nombre_producto));
+    if (!perfil) continue;
+    pares.push({
+      id_centro: inv.id_centro,
+      id_producto: inv.id_producto,
+      perfil,
+      stock: inv.cantidad_actual,
+    });
+  }
+  if (pares.length === 0) {
+    console.error('  ✗ Sin inventario demo. Ejecuta primero: node prisma/seed.js');
+    process.exit(1);
   }
 
-  // 2. Crear productos nuevos
-  const productosExtra = {};
-  for (const p of PRODUCTOS_NUEVOS) {
-    let prod = await prisma.producto.findFirst({ where: { nombre_producto: p.nombre } });
-    if (!prod) {
-      prod = await prisma.producto.create({
-        data: { nombre_producto: p.nombre, unidad_medida: p.unidad, coste_unitario: p.coste, stock_minimo_alerta: p.min },
-      });
-      console.log('  ✓ Producto creado:', prod.nombre_producto);
-    }
-    productosExtra[p.nombre] = prod.id_producto;
-  }
-
-  // 3. Todos los centros del cliente (4 base + 3 nuevos)
-  const todosCentros = await prisma.centro.findMany({ where: { id_cliente: idCliente }, select: { id_centro: true } });
-  const todosProductos = await prisma.producto.findMany({ select: { id_producto: true, nombre_producto: true } });
-
-  // 4. Generar 3 meses de movimientos (desde ~90 días atrás hasta hoy)
-  const hoy = new Date();
-  const inicio = new Date(hoy.getTime() - 90 * 24 * 60 * 60 * 1000);
+  // 2. Autores de los movimientos
   const usuarios = await prisma.usuario.findMany({
-    where: { id_cliente: idCliente, rol: { in: ['limpiador', 'supervisor', 'oficina'] } },
-    select: { id_usuario: true },
+    where: { id_cliente: idCliente, estado: 'activo', rol: { in: ['operario', 'supervisor', 'oficina'] } },
+    select: { id_usuario: true, rol: true },
   });
   if (usuarios.length === 0) {
     console.error('  ✗ Sin usuarios del cliente demo. Ejecuta primero: node prisma/seed.js');
     process.exit(1);
   }
+  const quienCuenta = usuarios.find((u) => u.rol === 'oficina' || u.rol === 'supervisor') || usuarios[0];
+  const rnd = crearRnd(42);
+  const autor = () => usuarios[Math.floor(rnd() * usuarios.length)].id_usuario;
 
-  // Inventario inicial por centro-producto (para descontar consumos)
-  const stockActual = new Map(); // "centroId:prodId" -> cantidad
-  const inventarioInit = await prisma.inventarioCentro.findMany({
-    where: { centro: { id_cliente: idCliente } },
-    select: { id_centro: true, id_producto: true, cantidad_actual: true },
-  });
-  for (const inv of inventarioInit) stockActual.set(`${inv.id_centro}:${inv.id_producto}`, inv.cantidad_actual);
+  // 3. Simulación día a día: consumo diario + reposición semanal + recuento mensual
+  const ahora = Date.now();
+  const hoy = new Date();
+  const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  inicio.setTime(inicio.getTime() - DIAS * DIA_MS);
 
-  let totalMov = 0;
-  // Consumo base por producto (unidades/mes) según categoría
-  const consumoPorProducto = new Map();
-  for (const p of todosProductos) {
-    const n = p.nombre_producto.toLowerCase();
-    if (n.includes('papel higiénico')) consumoPorProducto.set(p.id_producto, 40);
-    else if (n.includes('papel')) consumoPorProducto.set(p.id_producto, 20);
-    else if (n.includes('lejía') || n.includes('amoníaco') || n.includes('desengrasante')) consumoPorProducto.set(p.id_producto, 15);
-    else if (n.includes('bolsas')) consumoPorProducto.set(p.id_producto, 12);
-    else if (n.includes('guantes')) consumoPorProducto.set(p.id_producto, 25);
-    else if (n.includes('gel') || n.includes('secamanos')) consumoPorProducto.set(p.id_producto, 30);
-    else consumoPorProducto.set(p.id_producto, 10);
-  }
-
-  // Recorremos días: consumo diario + reposición semanal + recuento mensual
+  const movimientos = [];
   const fecha = new Date(inicio);
   while (fecha <= hoy) {
     const diaSemana = fecha.getDay();
     const esFinSemana = diaSemana === 0 || diaSemana === 6;
 
-    for (const centro of todosCentros) {
-      // Consumo diario (menor en fin de semana)
-      for (const p of todosProductos) {
-        const base = consumoPorProducto.get(p.id_producto) || 8;
-        const consumo = esFinSemana ? entre(0, Math.ceil(base / 3)) : entre(1, Math.ceil(base / 20) + 1);
-        if (consumo <= 0) continue;
+    for (const par of pares) {
+      const { consumoDia, minimo } = par.perfil;
 
-        const key = `${centro.id_centro}:${p.id_producto}`;
-        const stock = stockActual.get(key) ?? 0;
-        stockActual.set(key, Math.max(0, stock - consumo));
-
-        // Usuario aleatorio (limpiador preferentemente)
-        const u = usuarios[Math.floor(rnd() * usuarios.length)];
-        await prisma.registroMovimiento.create({
-          data: {
-            id_usuario: u.id_usuario,
-            id_centro: centro.id_centro,
-            id_producto: p.id_producto,
-            cantidad: -consumo,
-            tipo: 'movimiento',
-            fecha_hora: new Date(fecha.getTime() + entre(6, 20) * 60 * 60 * 1000), // 6:00-20:00
-          },
+      // Consumo diario (la planta casi para en fin de semana). No se consume lo que no hay.
+      const consumo = Math.min(consumoDelDia(consumoDia, rnd, esFinSemana), par.stock);
+      const tsConsumo = fecha.getTime() + entre(rnd, 6, 20) * 60 * 60 * 1000; // 6:00-20:00
+      if (consumo > 0 && tsConsumo <= ahora) {
+        par.stock -= consumo;
+        movimientos.push({
+          id_usuario: autor(),
+          id_centro: par.id_centro,
+          id_producto: par.id_producto,
+          cantidad: -consumo,
+          tipo: 'movimiento',
+          fecha_hora: new Date(tsConsumo),
         });
-        totalMov++;
       }
 
-      // Reposición semanal (lunes): devuelve stock hacia el máximo
+      // Reposición semanal (lunes): si está en el punto de pedido, repone al nivel objetivo
       if (diaSemana === 1) {
-        for (const p of todosProductos) {
-          const key = `${centro.id_centro}:${p.id_producto}`;
-          const stock = stockActual.get(key) ?? 0;
-          const maxReposicion = entre(20, 60);
-          if (stock < maxReposicion) {
-            const repo = maxReposicion - stock;
-            stockActual.set(key, maxReposicion);
-            const u = usuarios[Math.floor(rnd() * usuarios.length)];
-            await prisma.registroMovimiento.create({
-              data: {
-                id_usuario: u.id_usuario,
-                id_centro: centro.id_centro,
-                id_producto: p.id_producto,
-                cantidad: repo,
-                tipo: 'movimiento',
-                fecha_hora: new Date(fecha.getTime() + 8 * 60 * 60 * 1000),
-              },
+        const puntoPedido = minimo + Math.ceil(consumoDia * 5);
+        if (par.stock <= puntoPedido) {
+          const repo = nivelObjetivo(minimo, consumoDia) - par.stock;
+          const tsRepo = fecha.getTime() + 8 * 60 * 60 * 1000;
+          if (repo > 0 && tsRepo <= ahora) {
+            par.stock += repo;
+            movimientos.push({
+              id_usuario: autor(),
+              id_centro: par.id_centro,
+              id_producto: par.id_producto,
+              cantidad: repo,
+              tipo: 'movimiento',
+              fecha_hora: new Date(tsRepo),
             });
-            totalMov++;
           }
         }
       }
     }
 
-    // Recuento mensual (día 1): el supervisor hace conteo físico
+    // Recuento mensual (día 1): el responsable hace conteo físico
     if (fecha.getDate() === 1) {
-      const sup = usuarios.find((u) => u.id_usuario) || usuarios[0];
-      for (const centro of todosCentros) {
-        for (const p of todosProductos) {
-          if (rnd() < 0.3) continue; // no todos los productos se cuentan
-          const key = `${centro.id_centro}:${p.id_producto}`;
-          const stock = stockActual.get(key) ?? 0;
-          const fisico = Math.max(0, stock + entre(-3, 2)); // pequeña merma realista
-          stockActual.set(key, fisico);
-          await prisma.registroMovimiento.create({
-            data: {
-              id_usuario: sup.id_usuario,
-              id_centro: centro.id_centro,
-              id_producto: p.id_producto,
-              cantidad: fisico,
-              tipo: 'recuento',
-              fecha_hora: new Date(fecha.getTime() + 10 * 60 * 60 * 1000),
-            },
-          });
-          totalMov++;
-        }
+      for (const par of pares) {
+        if (rnd() < 0.3) continue; // no todo se cuenta
+        const tsRecuento = fecha.getTime() + 10 * 60 * 60 * 1000;
+        if (tsRecuento > ahora) continue;
+        // Pequeña merma realista: de -4 % a +2 % del stock (mínimo ±1 unidad)
+        const tope = Math.max(1, Math.ceil(par.stock * 0.04));
+        const fisico = Math.max(0, par.stock + entre(rnd, -tope, Math.max(1, Math.ceil(par.stock * 0.02))));
+        par.stock = fisico;
+        movimientos.push({
+          id_usuario: quienCuenta.id_usuario,
+          id_centro: par.id_centro,
+          id_producto: par.id_producto,
+          cantidad: fisico,
+          tipo: 'recuento',
+          fecha_hora: new Date(tsRecuento),
+        });
       }
     }
 
     fecha.setDate(fecha.getDate() + 1);
   }
 
-  // 5. Sincronizar inventario_centros con el stock final simulado
-  for (const [key, cantidad] of stockActual) {
-    const [idCentro, idProd] = key.split(':').map(Number);
+  await insertarMovimientos(movimientos);
+
+  // 4. Sincronizar inventario_centros con el stock final simulado y fijar los
+  //    escenarios diseñados: la demo debe enseñar siempre las mismas diferencias
+  //    (merma estrella, sección sin contar, producto bajo mínimo).
+  for (const par of pares) {
+    const { registrado, fisico, minimo } = par.perfil;
+    const cantidad = registrado < minimo ? registrado : par.stock;
+    const stockFisico = fisico === null ? null : Math.max(0, cantidad + (fisico - registrado));
     await prisma.inventarioCentro.updateMany({
-      where: { id_centro: idCentro, id_producto: idProd },
-      data: { cantidad_actual: cantidad, fecha_actualizacion: new Date() },
+      where: { id_centro: par.id_centro, id_producto: par.id_producto },
+      data: { cantidad_actual: cantidad, stock_fisico: stockFisico, fecha_actualizacion: new Date() },
     });
   }
 
-  console.log(`\n✅ Histórico generado: ${totalMov} movimientos en 90 días`);
-  console.log('   Centros: 7 · Productos: ' + (todosProductos.length + Object.keys(productosExtra).length));
-  console.log('   Login oficina: warehouse / kavana');
+  console.log(`\n✅ Histórico generado: ${movimientos.length} movimientos en ${DIAS} días`);
+  console.log(`   Pares sección-producto: ${pares.length}`);
+  console.log('   Login: warehouse / kavana');
 }
 
 main()
