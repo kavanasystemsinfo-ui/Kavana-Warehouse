@@ -230,7 +230,7 @@ app.get('/api/v1/dashboard', auth, async (req, res) => {
     const filtro = idCliente ? { id_cliente: idCliente } : {};
     const tp = await prisma.producto.count();
     const tc = await prisma.centro.count({ where: filtro });
-    const te = await prisma.usuario.count({ where: { rol: 'limpiador', ...(idCliente ? { id_cliente: idCliente } : {}) } });
+    const te = await prisma.usuario.count({ where: { rol: 'operario', ...(idCliente ? { id_cliente: idCliente } : {}) } });
     const bs = await prisma.$queryRaw`
       SELECT COUNT(*) as c FROM inventario_centros ic
       JOIN centros c ON ic.id_centro = c.id_centro
@@ -750,7 +750,7 @@ app.get('/api/v1/empleados', auth, supervisorOnly, async (req, res) => {
       idCliente = u?.id_cliente;
     }
     const emps = await prisma.usuario.findMany({
-      where: { rol: 'limpiador', id_cliente: idCliente ?? undefined },
+      where: { rol: 'operario', id_cliente: idCliente ?? undefined },
       include: { asignaciones: { include: { centro: true }, where: { fecha_fin: null } } },
       orderBy: { nombre: 'asc' },
     });
@@ -770,7 +770,7 @@ app.post('/api/v1/empleados', auth, officeOnly, async (req, res) => {
     const hash = await bcrypt.hash(password, 12);
     const result = await prisma.$transaction(async (tx) => {
       const u = await tx.usuario.create({
-        data: { nombre, email, password_hash: hash, numero_empleado, id_cliente: idCliente, rol: 'limpiador' },
+        data: { nombre, email, password_hash: hash, numero_empleado, id_cliente: idCliente, rol: 'operario' },
       });
       if (id_centro) {
         await tx.asignacionPersonal.create({ data: { id_usuario: u.id_usuario, id_centro, fecha_inicio: new Date() } });

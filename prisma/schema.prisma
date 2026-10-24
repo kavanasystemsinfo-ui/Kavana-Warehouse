@@ -22,7 +22,7 @@ model Usuario {
   email         String    @unique
   username      String?   @unique
   password_hash String
-  rol           String    @default("limpiador") // limpiador | supervisor | admin
+  rol           String    @default("operario")  // operario | responsable | supervisor | oficina | admin
   estado        String    @default("activo")    // activo | baja_medica | inactivo
   id_cliente    Int?                              // NULL para super admin
   is_super_admin Boolean  @default(false)
@@ -225,7 +225,7 @@ model ReglaNotificacion {
   id_regla       Int     @id @default(autoincrement())
   id_supervisor  Int     // Quién recibe la notificación
   id_centro      Int?    // Opcional: Filtrar por centro
-  id_operario    Int?    // Opcional: Filtrar por limpiador específico
+  id_operario    Int?    // Opcional: Filtrar por operario específico
   id_producto    Int?    // Opcional: Filtrar por producto específico
   activa         Boolean @default(true)
 

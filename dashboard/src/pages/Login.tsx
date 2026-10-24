@@ -17,7 +17,7 @@ export function Login({ onLogin }: LoginProps) {
   // Redirect if already logged in (useEffect to avoid render-time navigation)
   useEffect(() => {
     const existingUser = getStoredUser()
-    if (existingUser && existingUser.rol !== 'limpiador') {
+    if (existingUser && existingUser.rol !== 'operario') {
       navigate('/', { replace: true })
       return
     }
@@ -36,7 +36,7 @@ export function Login({ onLogin }: LoginProps) {
 
     try {
       const data = await login(email, password)
-      if (data.usuario.rol === 'limpiador') {
+      if (data.usuario.rol === 'operario') {
         setError('Acceso denegado. Este panel es para oficina y supervisores.')
         return
       }

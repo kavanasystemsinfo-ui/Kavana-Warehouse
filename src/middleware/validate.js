@@ -69,8 +69,8 @@ const registerSchema = z.object({
     .string({ required_error: 'Contraseña requerida' })
     .min(6, 'La contraseña debe tener al menos 6 caracteres'),
   rol: z
-    .enum(['limpiador', 'supervisor', 'admin'], {
-      errorMap: () => ({ message: 'Rol inválido (limpiador/supervisor/admin)' }),
+    .enum(['operario', 'supervisor', 'admin'], {
+      errorMap: () => ({ message: 'Rol inválido (operario/supervisor/admin)' }),
     }),
 });
 
