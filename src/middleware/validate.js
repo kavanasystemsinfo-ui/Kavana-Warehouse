@@ -101,7 +101,7 @@ const registroEmpresaSchema = z.object({
   nombre_empresa: z.string().trim().min(2, 'Nombre de empresa demasiado corto').max(120),
   email: z.string().trim().toLowerCase().email('Email inválido'),
   password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').max(128),
-  nombre_responsable: z.string().trim().min(2, 'Nombre del responsable demasiado corto').max(120),
+  nombre_responsable: z.string().trim().min(1, 'Nombre del responsable requerido').max(120),
   telefono: z.string().trim().max(30).optional(),
 });
 
