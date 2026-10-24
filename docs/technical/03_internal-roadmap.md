@@ -47,8 +47,8 @@
 
 | Módulo | Estado | Notas |
 |--------|--------|-------|
-| App móvil (PWA del limpiador) | ❌ Eliminada (2026-08-01) | La visión es solo gestión de stock web |
-| Control de empleados (UI) | ❌ Eliminada (2026-08-01) | El rol limpiador queda solo como dato interno de la simulación |
+| App móvil (PWA del operario) | ❌ Eliminada (2026-08-01) | La visión es solo gestión de stock web |
+| Control de empleados (UI) | ❌ Eliminada (2026-08-01) | El rol operario (antes limpiador) queda solo como dato interno de la simulación |
 | Tiempo real (Socket.IO) | ❌ Descartado | Las alertas son consultas REST |
 | Supabase | ❌ Descartado | IPv6 no compatible con Render free; se usa Neon |
 | Railway | ❌ Descartado | Límites del free tier |

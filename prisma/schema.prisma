@@ -69,7 +69,7 @@ model Cliente {
 
 // =============================================================================
 // Model: Centro
-// Descripción: Centros de trabajo (colegios, oficinas, fábricas, etc.)
+// Descripción: Centros de coste / secciones de la planta (perfilado, soldadura, expediciones...)
 // =============================================================================
 model Centro {
   id_centro     Int       @id @default(autoincrement())
@@ -202,7 +202,7 @@ model Incidencia {
   id_incidencia  Int      @id @default(autoincrement())
   id_centro      Int
   id_usuario     Int
-  categoria      String   // "limpieza" | "fontaneria" | "electricidad" | "cerrajeria" | "otros"
+  categoria      String   // texto libre; la demo usa "seguridad" | "mantenimiento" | "electricidad" | "calidad" | "otros"
   titulo         String
   descripcion    String
   foto_url       String?

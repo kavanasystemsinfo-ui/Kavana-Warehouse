@@ -9,12 +9,12 @@
 
 ## 1. Visión de negocio (actual)
 
-KAVANA WAREHOUSE es un **SaaS B2B de control de stock** para empresas de limpieza con centros descentralizados (colegios, oficinas, hospitales). Permite a la **oficina** saber qué producto se consume en cada centro, cuándo baja de stock y cuánto se gasta respecto al presupuesto mensual, para **detectar mermas y sobrecostes por centro**.
+KAVANA WAREHOUSE es una herramienta de **control de consumibles indirectos de planta** (EPIs, discos, hilo de soldadura, lubricantes, embalaje) por sección o centro de coste, pensada como apoyo a la mejora continua. No es un MES ni un producto comercial. Permite a la **oficina** saber qué producto se consume en cada centro, cuándo baja de stock y cuánto se gasta respecto al presupuesto mensual, para **detectar mermas y sobrecostes por centro**. El caso de origen fue una empresa de limpieza con centros descentralizados; la demo actual es una planta metalúrgica ficticia.
 
 **Alcance de usuario:**
 - ✅ **Oficina** (`warehouse`): gestión total desde el dashboard web: centros, productos, inventario, costes, presupuestos, incidencias y creación de supervisores.
 - ✅ **Supervisor**: creado por la oficina, hace **recuento físico** del stock de sus centros asignados. En la demo, los supervisores caducan a las 24h (sesión de reclutador aislada).
-- ❌ **Limpiador**: no tiene acceso a ninguna app. Existe en el modelo de datos solo para trazabilidad de la plantilla que genera los movimientos simulados de la demo.
+- ❌ **Operario** (antes `limpiador`): no tiene acceso a ninguna app. Existe en el modelo de datos solo para trazabilidad de la plantilla que genera los movimientos simulados de la demo.
 
 ---
 
@@ -56,11 +56,14 @@ kavana-warehouse/
 │   └── __tests__/          # api.test.js (35 tests)
 ├── prisma/
 │   ├── schema.prisma       # 13 modelos
-│   ├── migrations/         # 11 migraciones
-│   ├── seed.js             # entrypoint → seed-demo-cunada.js
-│   ├── seed-demo-cunada.js # datos demo (empresa de limpieza)
-│   ├── seed-historico.js   # 3 meses de movimientos simulados
-│   └── simulate-daily.js   # simulación diaria (cron 06:00)
+│   ├── migrations/         # 12 migraciones
+│   ├── seed.js                  # entrypoint → seed-demo-industrial.js
+│   ├── demo-industrial-data.js  # datos de la demo (planta metalúrgica ficticia)
+│   ├── seed-demo-industrial.js  # secciones, catálogo e inventario
+│   ├── seed-historico.js        # 3 meses de movimientos simulados
+│   ├── seed-incidencias.js      # incidencias de planta
+│   ├── simulate-daily.js        # simulación diaria (cron 06:00)
+│   └── reset-demo.js            # recarga segura de la demo (--confirm)
 ├── dashboard/              # Panel de la oficina (React 19 + Vite + TS)
 │   └── src/pages/          # 8 rutas funcionales
 ├── docs/                   # adr/, technical/, commercial/, deployment.md
@@ -75,9 +78,9 @@ kavana-warehouse/
 | Modelo | Descripción | Relaciones clave |
 |--------|------------|------------------|
 | `Cliente` | Empresa cliente del SaaS | 1:N → `Usuario`, `Centro` |
-| `Usuario` | `rol`: oficina \| supervisor \| limpiador | N:1 → `Cliente`; `session_id` y `expira_en` para supervisores demo |
-| `Centro` | Centro de trabajo (ej. un colegio) | N:1 → `Cliente` (NOT NULL); 1:N → `InventarioCentro`, `AsignacionPersonal`, `RegistroMovimiento` |
-| `Producto` | Catálogo global (lejía, papel, etc.) | N:1 → `Cliente` (opcional, catálogo público) |
+| `Usuario` | `rol`: oficina \| supervisor \| operario | N:1 → `Cliente`; `session_id` y `expira_en` para supervisores demo |
+| `Centro` | Centro de coste o sección de la planta (ej. Soldadura) | N:1 → `Cliente` (NOT NULL); 1:N → `InventarioCentro`, `AsignacionPersonal`, `RegistroMovimiento` |
+| `Producto` | Catálogo global (guantes, discos, hilo de soldadura, etc.) | N:1 → `Cliente` (opcional, catálogo público) |
 | `InventarioCentro` | Stock de un producto en un centro | FK compuesta `(id_centro, id_producto)`, ON DELETE CASCADE |
 | `AsignacionPersonal` | Usuario asignado a un centro (trazabilidad) | N:1 → `Usuario`, `Centro` |
 | `RegistroMovimiento` | Cada consumo/entrada/recuento | N:1 → `Usuario`, `Centro`, `Producto`; ON DELETE CASCADE |
@@ -127,7 +130,7 @@ kavana-warehouse/
 | GET/POST | `/api/v1/categorias` | Categorías de producto |
 | GET/POST/PUT/DELETE | `/api/v1/productos` | Catálogo de productos |
 | GET/POST/PUT | `/api/v1/centros` | Centros de trabajo |
-| GET/POST | `/api/v1/empleados` | Plantilla (rol limpiador, trazabilidad demo) |
+| GET/POST | `/api/v1/empleados` | Plantilla (rol operario, trazabilidad demo) |
 | GET/POST | `/api/v1/inventario` | Stock por centro |
 | POST | `/api/v1/inventario/reponer` | Reponer producto |
 | GET/POST | `/api/v1/consumos` | Historial de consumos |

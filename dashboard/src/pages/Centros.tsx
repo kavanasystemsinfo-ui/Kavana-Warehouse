@@ -133,7 +133,7 @@ export function Centros() {
             <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ Nuevo Centro</button>
           )}
           <GuiaAyuda titulo="Centros">
-            <p>Esta pantalla muestra <strong>tus centros de trabajo</strong> (los lugares donde limpias) y qué tienen cada uno.</p>
+            <p>Esta pantalla muestra <strong>tus centros de trabajo</strong> (las secciones o centros de coste de tu planta) y qué tiene cada uno.</p>
             <h3>¿Qué ves en la tabla?</h3>
             <ul>
               <li><strong>Nombre y dirección:</strong> el centro y dónde está.</li>

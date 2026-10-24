@@ -12,14 +12,14 @@ Este documento registra el "por qué" de las decisiones arquitectónicas y de di
   - La base de datos sigue registrando el movimiento como negativo (`-cantidad`) en `registroMovimiento` para mantener la integridad histórica del almacén donde los consumos son salidas.
   - La actualización en `inventarioCentro` se hace usando el operador `decrement` de Prisma con el valor positivo recibido.
 
-> **Contexto de rol (2026-07-16):** El consumo lo registra el **supervisor o personal de control** desde el dashboard web. El modelo `Usuario.rol='limpiador'` existe para trazabilidad de asignación a centros, pero el limpiador no usa ninguna app.
+> **Contexto de rol (2026-07-16):** El consumo lo registra el **supervisor o personal de control** desde el dashboard web. El modelo `Usuario.rol='operario'` (antes `limpiador`) existe para trazabilidad de asignación a centros, pero el operario no usa ninguna app.
 
 ## 2. Restricción estricta de Centros al registrar Consumo (Bypass de Centro)
 * **Problema**: Un usuario podía manipular las peticiones HTTP para enviar un `id_centro` diferente al de su centro asignado, logrando alterar el inventario de otras instalaciones de forma remota.
 * **Solución**: En el handler `POST /stock/consume` de `src/app.js`, el backend resuelve obligatoriamente su centro asignado de forma dinámica a partir del `id_usuario` autenticado (vía `AsignacionPersonal`), ignorando cualquier `id_centro` enviado en el body.
 * **Decisión Técnica**: Si el cliente envía un `id_centro` en el cuerpo que no coincide con su asignación actual activa, la petición es rechazada de inmediato con un código `403 (Forbidden)`. Esto proporciona una protección estricta en el servidor que no depende de la UI.
 
-> **Contexto (2026-07-16):** El consumo lo registra el supervisor/personal de control desde el dashboard. El rol `limpiador` existe en el modelo de datos para trazabilidad de plantilla y asignación a centros, pero no tiene interfaz de usuario ni app móvil.
+> **Contexto (2026-07-16):** El consumo lo registra el supervisor/personal de control desde el dashboard. El rol `operario` (antes `limpiador`) existe en el modelo de datos para trazabilidad de plantilla y asignación a centros, pero no tiene interfaz de usuario ni app móvil.
 
 ## 3. Configuración Dinámica de CORS y Forzado de HTTPS en Producción
 * **Problema**: En producción, un middleware de CORS estático con origen `*` es inseguro y permite llamadas desde cualquier sitio web externo. Asimismo, los datos de inventario en tránsito y las credenciales deben viajar cifrados obligatoriamente.
@@ -32,7 +32,7 @@ Este documento registra el "por qué" de las decisiones arquitectónicas y de di
 * **Solución**: Las peticiones del cliente de API se envolvieron en bloques `try/catch` globales.
 * **Decisión Técnica**: Si ocurre un error de red o de resolución DNS, se intercepta y se lanza un error sanitizado en español: *"Error de conexión. Por favor, inténtalo de nuevo cuando tengas cobertura."* de forma que la interfaz lo notifique en un toast amigable.
 
-> **Nota (2026-07-16):** El registro de consumos se hace desde el dashboard web del supervisor (responsive). No hay app móvil del limpiador.
+> **Nota (2026-07-16):** El registro de consumos se hace desde el dashboard web del supervisor (responsive). No hay app móvil del operario.
 
 ## 5. Cierre Automático de Sesión por Expiración (Token 401)
 * **Problema**: Si el supervisor dejaba el panel abierto de un día para otro, el token JWT expiraba. Al intentar registrar un consumo, la petición fallaba con 401 y la interfaz se quedaba en la misma pantalla sin dar una explicación o forzar el login.
@@ -48,7 +48,7 @@ Este documento registra el "por qué" de las decisiones arquitectónicas y de di
 * **Decisión Técnica**: El backend procesa todo en la base de datos y solo envía por red un objeto JSON muy ligero con los productos estrictamente necesarios a comprar. El frontend solo se encarga de convertir ese JSON a un Blob y disparar la descarga de un `.csv` estructurado.
 
 ## 7. Arquitectura del Motor de Notificaciones por Eventos
-* **Problema**: Los supervisores querían ser avisados de robos o consumos excesivos de material. No querían recibir un email por cada cepillo que se cogiera, sino establecer reglas precisas (ej. "Solo avísame si sacan Lejía en el CEIP San Juan").
+* **Problema**: Los supervisores querían ser avisados de robos o consumos excesivos de material. No querían recibir un aviso por cada guante que se cogiera, sino establecer reglas precisas (ej. "Solo avísame si sacan hilo de soldadura en la sección de Expediciones").
 * **Solución**: Creación de un sistema de "Reglas de Notificación" que actúa como un Webhook interno.
 * **Decisión Técnica**: En lugar de saturar el frontend con lógica de reglas, el handler de stock en `src/app.js`, cada vez que registra un consumo, podría consultar la tabla `ReglasNotificacion`. **Actualmente esto no está implementado** — las notificaciones son planificadas (el Módulo E de enterprise).
 

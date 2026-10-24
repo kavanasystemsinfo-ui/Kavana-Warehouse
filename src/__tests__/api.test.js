@@ -577,7 +577,7 @@ describe('GET /api/v1/dashboard/costes', () => {
 // Flujo completo: conteo físico → desviación (mermas) → propuesta de compra
 // Modelo real: la desviación es la diferencia entre el stock REGISTRADO
 // (cantidad_actual) y el último conteo físico (stock_fisico). El seed lo fija
-// así (Plaza de Toros: registrado 50, físico 30 → faltan 20). Aquí se replica
+// así (Soldadura, hilo MIG: registrado 8, físico 5 → faltan 3). Aquí se replica
 // con datos propios: registrado 10, físico 7 → faltan 3 (desviación > 0).
 // ---------------------------------------------------------------------------
 describe('Flujo conteo → desviación → propuesta de compra', () => {

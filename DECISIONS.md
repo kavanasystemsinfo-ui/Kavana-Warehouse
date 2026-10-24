@@ -69,14 +69,39 @@ conteo antiguo y 0€ en centros sin conteo.
 ### 9. Dos roles, no cuatro
 La app evolucionó de control de personal a gestión de stock pura: se simplificó a
 `oficina` (gestión total) y `supervisor` (recuento de inventario). El rol
-`limpiador` existe en la BD solo como autor interno del seed de simulación
-diaria; no tiene acceso a la app.
+`operario` (antes `limpiador`, renombrado en octubre de 2026) existe en la BD solo
+como autor interno del seed de simulación diaria; no tiene acceso a la app.
 
 ### 10. Demo "viva" con simulación diaria
 Seed histórico de 3 meses + cron diario (6:00) que simula consumos (idempotente
-vía usuario de sistema marcador). Los presupuestos se ajustaron al consumo medio
-real (~3.600€/mes) para que la demo muestre centros en verde, ámbar y rojo.
+vía usuario de sistema marcador). Los presupuestos se calibran con el consumo
+simulado de cada sección (entre ~1.100 y ~1.750 €/mes) para que la demo muestre
+centros en verde, ámbar y rojo.
 Supervisores demo con expiración 24h y cron de limpieza a las 3:00.
+
+### 11. Demo industrial: datos por sección y recarga segura
+En octubre de 2026 la demo pasó del caso de origen (empresa de limpieza) a una
+planta metalúrgica ficticia con consumibles indirectos por sección. El modelo de
+datos no cambia: "centro" es el centro de coste o sección de la planta.
+- **Fuente única de datos:** `prisma/demo-industrial-data.js` (secciones, catálogo,
+  inventario y consumo diario por sección). Seed base, histórico, incidencias y
+  simulación leen de ahí.
+- **Cada sección consume solo lo que tiene en su inventario.** Antes, histórico y
+  simulación recorrían el catálogo global en todos los centros.
+- **La simulación diaria aplica las reposiciones** y mueve el stock físico junto
+  con el consumo, para que la merma diseñada no derive con los días.
+- **Recarga de la demo:** `prisma/reset-demo.js` (simulación por defecto, `--confirm`
+  para borrar). El catálogo de productos es global: sin limpiar los productos
+  antiguos se mezclarían con los nuevos. Un producto antiguo solo se borra si no
+  lo usa ningún cliente real.
+- **`esDemoCliente` cachea 60 s** y cubre todos los clientes demo; antes la caché
+  no caducaba y tras recargar la demo el blindaje de solo lectura dejaba de
+  aplicarse al cliente nuevo hasta reiniciar la API.
+- **El rol interno `limpiador` pasa a `operario`** (migración
+  `20261025120000_rol_operario`). El backend no cambia de comportamiento:
+  `officeOnly` ya es una lista permitida (`oficina`/`supervisor`).
+- **El job `demo-scripts` del CI** ejecuta sembrado, histórico, simulación y
+  recarga completa con Postgres real y comprueba el resultado con SQL.
 
 ---
 

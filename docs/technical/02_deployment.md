@@ -35,7 +35,7 @@
 
 > **Nota de alcance (2026-07-20):** El proyecto **tiene app móvil del responsable de centro**
 > (`mobile/`, PWA React, puerto 4000). El responsable hace **recuento físico** del stock de sus
-> centros asignados. Los limpiadores NO usan app (modelo descartado). El supervisor registra
+> centros asignados. Los operarios NO usan app (modelo descartado). El supervisor registra
 > consumos desde el dashboard web. Ver `docs/ESTADO_ACTUAL_CLEANSTOCK.md`.
 
 | Componente | Plataforma | Coste |
@@ -117,9 +117,9 @@ docker builder prune -f
 
 | Email | Rol | Contraseña |
 |---|---|---|
-| `warehouse` | Oficina (Zaira García, gestión total) | `kavana` |
+| `warehouse` | Oficina (Responsable de Planta, gestión total) | `kavana` |
 
-> El rol `limpiador` existe en el modelo de datos (`Usuario.rol`) para trazabilidad de
+> El rol `operario` (antes `limpiador`) existe en el modelo de datos (`Usuario.rol`) para trazabilidad de
 > asignación a centros, **pero no tiene credenciales de acceso a ninguna app**.
 
 ## Despliegue actual (2026-08-01)

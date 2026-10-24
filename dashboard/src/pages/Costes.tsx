@@ -80,7 +80,7 @@ export function Costes() {
           <h3>¿Cómo cambiar tu presupuesto?</h3>
           <p>Cada tarjeta tiene un botón <strong>"Fijar presupuesto"</strong>. Escribe cuánto quieres gastar al mes en ese centro y pulsa guardar. La barra se actualiza al momento.</p>
           <div className="guia-ejemplo">
-            💡 <strong>Ejemplo:</strong> si Plaza de Toros tiene un presupuesto de 15 € y la barra sale 🔴 "Te pasas en 1,57 €", sube el presupuesto a 20 € y ya saldrá verde.
+            💡 <strong>Ejemplo:</strong> si Soldadura tiene un presupuesto de 1.750 € y la barra sale 🔴 "Te pasas en 120 €", mira qué consumibles se disparan (discos, hilo, gas) antes de subir el presupuesto: ahí suele estar la oportunidad de mejora.
           </div>
         </GuiaAyuda>
       </div>

@@ -33,7 +33,7 @@
                                 └────────────┘
 ```
 
-> **Nota de alcance (2026-07-16):** El proyecto **no tiene app móvil del limpiador**.
+> **Nota de alcance (2026-07-16):** El proyecto **no tiene app móvil del operario**.
 > El registro de consumos lo hace el **supervisor o personal de control** desde el dashboard
 > web (responsive, accesible desde el móvil del encargado). La carpeta `mobile/` existe
 > en el repo pero **no se despliega** (es código legacy del enfoque anterior).
@@ -116,9 +116,9 @@ docker builder prune -f
 
 | Usuario | Rol | Contraseña |
 |---|---|---|
-| `warehouse` | Oficina (Zaira García, gestión total) | `kavana` |
+| `warehouse` | Oficina (Responsable de Planta, gestión total) | `kavana` |
 
-> El rol `limpiador` existe en el modelo de datos (`Usuario.rol`) para trazabilidad de
+> El rol `operario` (antes `limpiador`) existe en el modelo de datos (`Usuario.rol`) para trazabilidad de
 > asignación a centros, **pero no tiene credenciales de acceso a ninguna app**.
 
 ## Supervisores demo (reclutadores)
@@ -132,7 +132,7 @@ Para que cualquier visitante pruebe la app sin contaminar los datos compartidos:
 - La empresa ficticia con 3 meses de histórico (`seed-historico.js`) es la base
   que todos ven al entrar con `warehouse` / `kavana`
 - **Simulación diaria** (`prisma/simulate-daily.js` + cron 06:00): cada día
-  genera consumos realistas de los limpiadores, baja el stock (las alertas
+  genera consumos realistas de las secciones, baja el stock (las alertas
   aparecen solas) y repone los lunes. La demo "vive" en el tiempo: los costes
   del mes suben solos. Idempotente (no duplica si ya se simuló hoy).
 
