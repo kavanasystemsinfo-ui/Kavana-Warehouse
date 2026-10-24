@@ -31,7 +31,9 @@ beforeAll(async () => {
   const login = await request(app).post('/api/v1/auth/login').send({ email: emailEmpresa, password: PASSWORD });
   token = login.body.token;
   refreshToken = login.body.refreshToken;
-  idCliente = login.body.usuario.id_cliente;
+  // El login no devuelve id_cliente: se saca de la BD por el email de la empresa.
+  idCliente = (await prisma.cliente.findFirst({ where: { email_contacto: emailEmpresa } })).id_cliente;
+  expect(idCliente).toBeTruthy();
   idCentro = (await prisma.centro.findFirst({ where: { id_cliente: idCliente } })).id_centro;
   idProducto = (await prisma.producto.create({ data: { nombre_producto: `Lejía fugas ${sufijo}`, coste_unitario: 2 } })).id_producto;
   await prisma.inventarioCentro.create({ data: { id_centro: idCentro, id_producto: idProducto, cantidad_actual: 20 } });
