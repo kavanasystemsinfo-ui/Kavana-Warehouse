@@ -101,15 +101,21 @@ const supervisorOnly = (req, res, next) => {
   if (req.user.rol !== 'supervisor' && req.user.rol !== 'oficina') return res.status(403).json({ error: 'Solo personal autorizado' });
   next();
 };
-// ¿El cliente del usuario es la empresa demo? (caché: solo hay una)
-let _demoClienteId = null;
+// ¿El cliente del usuario es una empresa demo? Caché con caducidad corta: si se
+// recarga la demo (nuevo id_cliente) el blindaje de solo lectura se aplica al
+// cliente nuevo en menos de un minuto, sin reiniciar la API. Antes la caché no
+// caducaba nunca y asumía que solo había un cliente demo.
+const DEMO_CACHE_MS = 60 * 1000;
+let _demoClienteIds = null;
+let _demoClienteTs = 0;
 async function esDemoCliente(idCliente) {
   if (!idCliente) return false;
-  if (_demoClienteId === null) {
-    const cli = await prisma.cliente.findFirst({ where: { es_demo: true }, select: { id_cliente: true } });
-    _demoClienteId = cli ? cli.id_cliente : false;
+  if (_demoClienteIds === null || Date.now() - _demoClienteTs > DEMO_CACHE_MS) {
+    const clientes = await prisma.cliente.findMany({ where: { es_demo: true }, select: { id_cliente: true } });
+    _demoClienteIds = new Set(clientes.map((c) => c.id_cliente));
+    _demoClienteTs = Date.now();
   }
-  return _demoClienteId === idCliente;
+  return _demoClienteIds.has(idCliente);
 }
 
 // ¿El usuario es un visitante de la demo? (supervisor con session_id o la cuenta demo)
