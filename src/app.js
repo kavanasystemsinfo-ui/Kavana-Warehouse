@@ -11,7 +11,9 @@ const nodemailer = require('nodemailer');
 const { PrismaClient, Prisma } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const logger = require('./lib/logger');
-const { validate, loginSchema, centroSchema, categoríaSchema } = require('./middleware/validate');
+const crypto = require('crypto');
+const { validate, loginSchema, centroSchema, categoríaSchema, registroEmpresaSchema, consumoSchema, stockConsumeSchema, refreshSchema } = require('./middleware/validate');
+const { crearLimitadorLogin } = require('./lib/rateLimit');
 
 const app = express();
 app.set('trust proxy', true);
@@ -23,7 +25,9 @@ app.use(cors({
     // Permitir requests sin Origin (curl, Postman, server-to-server)
     if (!origin) return cb(null, true);
     if (allowedOrigins.includes(origin)) return cb(null, true);
-    return cb(new Error('Origen no permitido por CORS'));
+    // Sin cabeceras CORS: el navegador bloquea la respuesta. Antes se pasaba un
+    // Error al handler genérico y el servidor respondía 500 en vez de rechazar.
+    return cb(null, false);
   },
   credentials: true,
 }));
@@ -36,6 +40,31 @@ if (process.env.NODE_ENV === 'production' && !jwtSecretRaw) {
 }
 const JWT_SECRET = jwtSecretRaw || 'kavanawarehouse-jwt-secret-dev';
 
+// ----- Sesión: access token corto + refresh token rotativo -----
+// El refresh token es un valor aleatorio que solo conoce el cliente; en la BD se
+// guarda su hash SHA-256 (si se filtra la tabla, los tokens no sirven).
+const REFRESH_DIAS = parseInt(process.env.REFRESH_TOKEN_DAYS || '7', 10);
+const hashToken = (t) => crypto.createHash('sha256').update(t).digest('hex');
+const usuarioCaducado = (u) => Boolean(u.expira_en && new Date(u.expira_en) < new Date());
+
+function firmarAccessToken(u) {
+  return jwt.sign({ id_usuario: u.id_usuario, email: u.email, rol: u.rol, is_super_admin: u.is_super_admin, id_cliente: u.id_cliente }, JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '2h' });
+}
+
+async function emitirRefreshToken(u, db = prisma) {
+  const token = crypto.randomBytes(48).toString('base64url');
+  // Un supervisor demo nunca obtiene una sesión más larga que su propia caducidad.
+  let expires = new Date(Date.now() + REFRESH_DIAS * 24 * 3600 * 1000);
+  if (u.expira_en && new Date(u.expira_en) < expires) expires = new Date(u.expira_en);
+  await db.refreshToken.create({ data: { id_usuario: u.id_usuario, token: hashToken(token), expires_at: expires } });
+  return token;
+}
+
+const limitadorLogin = crearLimitadorLogin({
+  max: parseInt(process.env.LOGIN_MAX_FALLOS || '10', 10),
+  ventanaMs: 15 * 60 * 1000,
+});
+
 // ----- Auth middleware -----
 // Resuelve id_cliente desde BD y lo popula en req.user para que los handlers
 // apliquen scoping multi-tenant sin re-consultar (evita fugas cross-tenant).
@@ -47,6 +76,9 @@ const auth = async (req, res, next) => {
     let idCliente = decoded.id_cliente;
     const u = await prisma.usuario.findUnique({ where: { id_usuario: decoded.id_usuario } });
     if (!u) return res.status(401).json({ error: 'Token invalido' });
+    // Los supervisores de la demo caducan a las 24 h. Antes solo los borraba un
+    // cron: si el cron no corría, seguían entrando indefinidamente.
+    if (usuarioCaducado(u)) return res.status(401).json({ error: 'Usuario caducado' });
     if (!idCliente && u.id_cliente) idCliente = u.id_cliente;
     req.user = {
       id_usuario: u.id_usuario,
@@ -107,6 +139,14 @@ const superAdminOnly = (req, res, next) => {
 app.post('/api/v1/auth/login', validate(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
+    // Límite de intentos FALLIDOS por IP + usuario: frena la fuerza bruta sin
+    // bloquear la cuenta demo pública para el resto de visitantes.
+    const claveLimite = `${req.ip}|${email.trim().toLowerCase()}`;
+    const bloqueo = limitadorLogin.bloqueado(claveLimite);
+    if (bloqueo) {
+      res.set('Retry-After', String(bloqueo));
+      return res.status(429).json({ error: 'Demasiados intentos fallidos. Inténtalo de nuevo en unos minutos.' });
+    }
     // Buscar por email o username. El username se normaliza a minúsculas:
     // los teclados móviles autocapitalizan la primera letra y el login debe
     // funcionar igual (warehouse == Warehouse).
@@ -123,13 +163,65 @@ app.post('/api/v1/auth/login', validate(loginSchema), async (req, res) => {
       // SOLO para la empresa demo. Las empresas reales usan bcrypt estricto.
       const esDemo = u ? await esDemoCliente(u.id_cliente) : false;
       if (!esDemo || !(await bcrypt.compare(password.trim().toLowerCase(), u.password_hash))) {
+        limitadorLogin.fallo(claveLimite);
         return res.status(401).json({ error: 'Credenciales invalidas' });
       }
     }
-    const token = jwt.sign({ id_usuario: u.id_usuario, email: u.email, rol: u.rol, is_super_admin: u.is_super_admin, id_cliente: u.id_cliente }, JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '2h' });
-    res.json({ token, usuario: { id_usuario: u.id_usuario, nombre: u.nombre, email: u.email, username: u.username, rol: u.rol, is_super_admin: u.is_super_admin, session_id: u.session_id, demo: await esDemoCliente(u.id_cliente) } });
+    if (usuarioCaducado(u)) return res.status(401).json({ error: 'Usuario caducado' });
+    limitadorLogin.limpiar(claveLimite);
+    const token = firmarAccessToken(u);
+    const refreshToken = await emitirRefreshToken(u);
+    res.json({ token, refreshToken, usuario: { id_usuario: u.id_usuario, nombre: u.nombre, email: u.email, username: u.username, rol: u.rol, is_super_admin: u.is_super_admin, session_id: u.session_id, demo: await esDemoCliente(u.id_cliente) } });
   } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
+
+// Renueva la sesión. Rotación: cada refresh token sirve UNA vez; se revoca y se
+// emite uno nuevo. Reutilizar uno ya revocado se rechaza.
+app.post('/api/v1/auth/refresh', validate(refreshSchema), async (req, res) => {
+  try {
+    const hash = hashToken(req.body.refreshToken);
+    const rt = await prisma.refreshToken.findUnique({ where: { token: hash }, include: { usuario: true } });
+    if (!rt || rt.revoked || rt.expires_at < new Date() || usuarioCaducado(rt.usuario)) {
+      return res.status(401).json({ error: 'Sesión caducada. Inicie sesión nuevamente.' });
+    }
+    // Revocar de forma condicional evita que dos peticiones simultáneas con el
+    // mismo token obtengan dos sesiones nuevas.
+    const nuevo = await prisma.$transaction(async (tx) => {
+      const r = await tx.refreshToken.updateMany({ where: { id_refresh_token: rt.id_refresh_token, revoked: false }, data: { revoked: true } });
+      if (r.count === 0) return null;
+      return emitirRefreshToken(rt.usuario, tx);
+    });
+    if (!nuevo) return res.status(401).json({ error: 'Sesión caducada. Inicie sesión nuevamente.' });
+    res.json({ token: firmarAccessToken(rt.usuario), refreshToken: nuevo });
+  } catch (e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
+});
+
+// Cierra la sesión revocando el refresh token. Responde 204 aunque el token no
+// exista: no revela qué tokens son válidos.
+app.post('/api/v1/auth/logout', async (req, res) => {
+  try {
+    const t = req.body && req.body.refreshToken;
+    if (typeof t === 'string' && t.length >= 20) {
+      await prisma.refreshToken.updateMany({ where: { token: hashToken(t) }, data: { revoked: true } });
+    }
+    res.status(204).end();
+  } catch (e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
+});
+
+// Descuenta stock de forma atómica: la condición "hay suficiente" y la resta van
+// en la misma sentencia, y el movimiento se registra en la misma transacción.
+// Dos consumos simultáneos ya no pueden dejar el stock en negativo.
+class StockInsuficiente extends Error {}
+async function descontarStock({ id_centro, id_producto, cantidad, id_usuario }) {
+  return prisma.$transaction(async (tx) => {
+    const r = await tx.inventarioCentro.updateMany({
+      where: { id_centro, id_producto, cantidad_actual: { gte: cantidad } },
+      data: { cantidad_actual: { decrement: cantidad } },
+    });
+    if (r.count === 0) throw new StockInsuficiente();
+    return tx.registroMovimiento.create({ data: { id_centro, id_producto, id_usuario, cantidad: -cantidad } });
+  });
+}
 
 // ----- DASHBOARD -----
 app.get('/api/v1/dashboard', auth, async (req, res) => {
@@ -829,29 +921,26 @@ app.get('/api/v1/stock/inventory', auth, async (req, res) => {
 });
 
 // Consumir stock (app empleado)
-app.post('/api/v1/stock/consume', auth, officeOnly, async (req, res) => {
+app.post('/api/v1/stock/consume', auth, officeOnly, validate(stockConsumeSchema), async (req, res) => {
   try {
     const { id_producto, cantidad } = req.body;
-    if (!id_producto || !cantidad || cantidad <= 0) {
-      return res.status(400).json({ error: 'Producto y cantidad requeridos' });
-    }
     const now = new Date();
     const asignacion = await prisma.asignacionPersonal.findFirst({
       where: { id_usuario: req.user.id_usuario, fecha_inicio: { lte: now }, OR: [{ fecha_fin: null }, { fecha_fin: { gte: now } }] }
     });
     if (!asignacion) return res.status(400).json({ error: 'No tienes un centro asignado' });
     const id_centro = asignacion.id_centro;
-    const inv = await prisma.inventarioCentro.findUnique({ where: { id_centro_id_producto: { id_centro, id_producto } } });
-    if (!inv || inv.cantidad_actual < cantidad) return res.status(400).json({ error: 'Stock insuficiente' });
-    await prisma.inventarioCentro.update({ where: { id_centro_id_producto: { id_centro, id_producto } }, data: { cantidad_actual: inv.cantidad_actual - cantidad } });
-    const mov = await prisma.registroMovimiento.create({ data: { id_centro, id_producto, id_usuario: req.user.id_usuario, cantidad: -Math.abs(cantidad) } });
+    const mov = await descontarStock({ id_centro, id_producto, cantidad, id_usuario: req.user.id_usuario });
     const updated = await prisma.inventarioCentro.findUnique({ where: { id_centro_id_producto: { id_centro, id_producto } }, include: { producto: true } });
     res.json({
       message: 'Consumo registrado',
       inventario: { id_centro, id_producto, cantidad_actual: updated.cantidad_actual, producto: { id_producto: updated.producto.id_producto, nombre_producto: updated.producto.nombre_producto, unidad_medida: updated.producto.unidad_medida, stock_minimo_alerta: updated.producto.stock_minimo_alerta } },
       movimiento: { id_movimiento: mov.id_movimiento, cantidad: mov.cantidad, fecha_hora: mov.fecha_hora }
     });
-  } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
+  } catch(e) {
+    if (e instanceof StockInsuficiente) return res.status(400).json({ error: 'Stock insuficiente' });
+    logger.error('api', e); res.status(500).json({ error: 'Error interno' });
+  }
 });
 
 // ----- CONSUMOS (scoping multi-tenant) -----
@@ -875,18 +964,18 @@ app.get('/api/v1/consumos', auth, async (req, res) => {
     res.json({ consumos: movs });
   } catch(e) { res.status(500).json({ error: 'Error interno' }); }
 });
-app.post('/api/v1/consumos', auth, officeOnly, async (req, res) => {
+app.post('/api/v1/consumos', auth, officeOnly, validate(consumoSchema), async (req, res) => {
   try {
     const { id_centro, id_producto, cantidad } = req.body;
     if (!(await requireCentroDelCliente(id_centro, req.user.id_cliente))) {
       return res.status(403).json({ error: 'Sin acceso a este centro' });
     }
-    const inv = await prisma.inventarioCentro.findUnique({ where: { id_centro_id_producto: { id_centro, id_producto } } });
-    if (!inv || inv.cantidad_actual < cantidad) return res.status(400).json({ error: 'Stock insuficiente' });
-    await prisma.inventarioCentro.update({ where: { id_centro_id_producto: { id_centro, id_producto } }, data: { cantidad_actual: inv.cantidad_actual - cantidad } });
-    const mov = await prisma.registroMovimiento.create({ data: { id_centro, id_producto, id_usuario: req.user.id_usuario, cantidad: -Math.abs(cantidad) } });
+    const mov = await descontarStock({ id_centro, id_producto, cantidad, id_usuario: req.user.id_usuario });
     res.json({ consumo: mov });
-  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
+  } catch(e) {
+    if (e instanceof StockInsuficiente) return res.status(400).json({ error: 'Stock insuficiente' });
+    logger.error('api', e); res.status(500).json({ error: 'Error interno' });
+  }
 });
 
 // ----- INCIDENCIAS (scoping multi-tenant) -----
@@ -933,12 +1022,19 @@ app.put('/api/v1/incidencias/:id', auth, officeOnly, async (req, res) => {
 // ============================
 
 // Registro público de nueva empresa (prueba gratis)
-app.post('/api/v1/auth/register-empresa', async (req, res) => {
+// Alta pública de empresas. En producción está CERRADA salvo que se active con
+// REGISTRO_PUBLICO=true: el dashboard no la usa y, abierta, cualquiera podía
+// crear empresas en la base de datos de la demo.
+const registroPublicoActivo = () =>
+  process.env.REGISTRO_PUBLICO === 'true' ||
+  (process.env.NODE_ENV !== 'production' && process.env.REGISTRO_PUBLICO !== 'false');
+
+app.post('/api/v1/auth/register-empresa', (req, res, next) => {
+  if (!registroPublicoActivo()) return res.status(403).json({ error: 'El registro de empresas no está abierto' });
+  next();
+}, validate(registroEmpresaSchema), async (req, res) => {
   try {
     const { nombre_empresa, email, password, nombre_responsable, telefono } = req.body;
-    if (!nombre_empresa || !email || !password || !nombre_responsable) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios' });
-    }
 
     // Crear cliente + centro + usuario + asignación en una sola transacción
     const { cliente, centro, usuario } = await prisma.$transaction(async (tx) => {
@@ -984,8 +1080,11 @@ app.post('/api/v1/auth/register-empresa', async (req, res) => {
       return { cliente, centro, usuario };
     });
 
-    // Enviar email de bienvenida
-    try {
+    // Email de bienvenida. Nunca incluye la contraseña (antes viajaba en claro).
+    // Si no hay SMTP configurado o el envío falla, la respuesta lo dice en vez de
+    // anunciar "revisa tu email".
+    let emailEnviado = false;
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) try {
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
         port: parseInt(process.env.SMTP_PORT || '587'),
@@ -999,24 +1098,27 @@ app.post('/api/v1/auth/register-empresa', async (req, res) => {
       await transporter.sendMail({
         from: `KAVANA WAREHOUSE <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
         to: email,
-        subject: '✅ Bienvenido a KAVANA WAREHOUSE - Credenciales de acceso',
+        subject: '✅ Bienvenido a KAVANA WAREHOUSE',
         html: `
           <h2>¡Bienvenido a KAVANA WAREHOUSE!</h2>
           <p>Tu cuenta está activa con <strong>30 días de prueba gratuita</strong>.</p>
-          <h3>Credenciales de acceso</h3>
+          <h3>Acceso</h3>
           <p><strong>URL:</strong> https://warehouse.kavanasystems.com/login</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Contraseña:</strong> ${password}</p>
+          <p><strong>Usuario:</strong> ${email} (con la contraseña que elegiste al registrarte)</p>
           <p>Accede ahora y empieza a gestionar tu inventario.</p>
         `
       });
+      emailEnviado = true;
     } catch(err) {
-      console.error('Email error:', err.message);
+      logger.error('email', err);
     }
 
     res.json({
       success: true,
-      mensaje: 'Empresa registrada. Revisa tu email para acceder.',
+      email_enviado: emailEnviado,
+      mensaje: emailEnviado
+        ? 'Empresa registrada. Te hemos enviado un email de bienvenida.'
+        : 'Empresa registrada. Ya puedes iniciar sesión con tu email y contraseña.',
       cliente: {
         id: cliente.id_cliente,
         empresa: cliente.nombre_empresa,

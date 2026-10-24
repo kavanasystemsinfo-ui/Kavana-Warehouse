@@ -96,11 +96,47 @@ const categoríaSchema = z.object({
   descripcion: z.string().optional(),
 });
 
+// Registro público de empresa (alta de un tenant nuevo con prueba gratuita).
+const registroEmpresaSchema = z.object({
+  nombre_empresa: z.string().trim().min(2, 'Nombre de empresa demasiado corto').max(120),
+  email: z.string().trim().toLowerCase().email('Email inválido'),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').max(128),
+  nombre_responsable: z.string().trim().min(1, 'Nombre del responsable requerido').max(120),
+  telefono: z.string().trim().max(30).optional(),
+});
+
+// Consumo de stock: la cantidad es SIEMPRE positiva (el signo lo pone el
+// servidor). Una cantidad negativa o decimal se rechaza: antes un consumo de
+// -50 sumaba 50 unidades al inventario.
+const enteroPositivo = (campo) => z.coerce
+  .number({ invalid_type_error: `${campo} debe ser un número` })
+  .int(`${campo} debe ser un número entero`)
+  .positive(`${campo} debe ser mayor que 0`);
+
+const consumoSchema = z.object({
+  id_centro: enteroPositivo('id_centro'),
+  id_producto: enteroPositivo('id_producto'),
+  cantidad: enteroPositivo('La cantidad'),
+});
+
+const stockConsumeSchema = z.object({
+  id_producto: enteroPositivo('id_producto'),
+  cantidad: enteroPositivo('La cantidad'),
+}).passthrough();
+
+const refreshSchema = z.object({
+  refreshToken: z.string().min(20, 'Refresh token requerido'),
+});
+
 module.exports = {
   validate,
   validateParams,
   loginSchema,
   registerSchema,
+  registroEmpresaSchema,
+  consumoSchema,
+  stockConsumeSchema,
+  refreshSchema,
   centroSchema,
   presupuestoSchema,
   categoríaSchema,

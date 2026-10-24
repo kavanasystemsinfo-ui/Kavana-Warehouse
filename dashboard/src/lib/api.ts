@@ -209,9 +209,12 @@ export async function apiFetch<T>(
     throw new Error('Error de conexión. Por favor, inténtalo de nuevo cuando tengas cobertura.')
   }
 
-  if (res.status === 401 || res.status === 403) {
+  // Solo un 401 (sesión caducada o inválida) cierra la sesión. Un 403 significa
+  // "no tienes permiso para esto" (por ejemplo, modo demo de solo lectura): se
+  // muestra el error y el usuario sigue dentro. Antes un 403 le echaba.
+  if (res.status === 401) {
     let refreshed = false
-    if (res.status === 401 && getRefreshToken()) {
+    if (getRefreshToken()) {
       refreshed = await tryRefresh()
     }
     if (refreshed) {
@@ -221,7 +224,7 @@ export async function apiFetch<T>(
       } catch (error) {
         throw new Error('Error de conexión. Por favor, inténtalo de nuevo cuando tengas cobertura.')
       }
-      if (res.status === 401 || res.status === 403) {
+      if (res.status === 401) {
         clearTokens()
         localStorage.setItem('auth_error', 'Su sesión ha expirado o no tiene acceso. Por favor, inicie sesión de nuevo.')
         window.dispatchEvent(new Event('auth:unauthorized'))

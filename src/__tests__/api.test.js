@@ -239,7 +239,7 @@ describe('POST /api/v1/auth/register-empresa', () => {
       .send({
         nombre_empresa: 'Test YAGNI SL',
         email: testEmail,
-        password: 'test123',
+        password: 'test12345',
         nombre_responsable: 'Tester'
       });
     expect(res.status).toBe(200);
@@ -254,7 +254,7 @@ describe('POST /api/v1/auth/register-empresa', () => {
       .send({
         nombre_empresa: 'Dupe',
         email: testEmail,
-        password: 'test123',
+        password: 'test12345',
         nombre_responsable: 'Tester'
       });
     expect(res.status).toBe(409);
@@ -289,18 +289,18 @@ describe('SECURITY: multi-tenant isolation', () => {
     jest.setTimeout(45000);
     // Empresa A (nueva, con id_cliente real)
     await request(app).post('/api/v1/auth/register-empresa')
-      .send({ nombre_empresa: 'Empresa A Seg', email: emailA, password: 'test123', nombre_responsable: 'A' });
+      .send({ nombre_empresa: 'Empresa A Seg', email: emailA, password: 'test12345', nombre_responsable: 'A' });
     const loginA = await request(app).post('/api/v1/auth/login')
-      .send({ email: emailA, password: 'test123' });
+      .send({ email: emailA, password: 'test12345' });
     tokenA = loginA.body.token;
     const centrosA = await request(app).get('/api/v1/centros').set('Authorization', `Bearer ${tokenA}`);
     centroAId = centrosA.body.centros[0].id_centro;
 
     // Empresa B (nueva, con id_cliente real)
     await request(app).post('/api/v1/auth/register-empresa')
-      .send({ nombre_empresa: 'Empresa B Seg', email: emailB, password: 'test123', nombre_responsable: 'B' });
+      .send({ nombre_empresa: 'Empresa B Seg', email: emailB, password: 'test12345', nombre_responsable: 'B' });
     const loginB = await request(app).post('/api/v1/auth/login')
-      .send({ email: emailB, password: 'test123' });
+      .send({ email: emailB, password: 'test12345' });
     tokenB = loginB.body.token;
     const centrosB = await request(app).get('/api/v1/centros').set('Authorization', `Bearer ${tokenB}`);
     centroBId = centrosB.body.centros[0].id_centro;
@@ -385,8 +385,8 @@ describe('Escritura: centros / productos / stock', () => {
     // La cuenta demo (warehouse/kavana) ya NO puede (solo lectura + crear 24h).
     const email = `escritura-${Date.now()}@yagni.com`;
     await request(app).post('/api/v1/auth/register-empresa')
-      .send({ nombre_empresa: 'Escritura Test SL', email, password: 'test123', nombre_responsable: 'E' });
-    const login = await request(app).post('/api/v1/auth/login').send({ email, password: 'test123' });
+      .send({ nombre_empresa: 'Escritura Test SL', email, password: 'test12345', nombre_responsable: 'E' });
+    const login = await request(app).post('/api/v1/auth/login').send({ email, password: 'test12345' });
     editToken = login.body.token;
     editClienteId = login.body.usuario.id_cliente;
     const centros = await request(app).get('/api/v1/centros').set('Authorization', `Bearer ${editToken}`);
@@ -590,9 +590,9 @@ describe('Flujo conteo → desviación → propuesta de compra', () => {
     jest.setTimeout(45000);
     // Empresa de prueba con su centro
     await request(app).post('/api/v1/auth/register-empresa')
-      .send({ nombre_empresa: 'Flujo Test SL', email: fEmail, password: 'test123', nombre_responsable: 'F' });
+      .send({ nombre_empresa: 'Flujo Test SL', email: fEmail, password: 'test12345', nombre_responsable: 'F' });
     const login = await request(app).post('/api/v1/auth/login')
-      .send({ email: fEmail, password: 'test123' });
+      .send({ email: fEmail, password: 'test12345' });
     fToken = login.body.token;
     const centros = await request(app).get('/api/v1/centros').set('Authorization', `Bearer ${fToken}`);
     fCentroId = centros.body.centros[0].id_centro;
