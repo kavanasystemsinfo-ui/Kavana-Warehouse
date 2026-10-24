@@ -55,23 +55,11 @@ jobs:
           NODE_ENV: test
 
       - name: Run tests
-        run: npm test -- --json --outputFile=jest-result.json
+        run: npm test
         env:
           DATABASE_URL: postgresql://kavana:kavana_test@localhost:5432/kavana_warehouse_test
           JWT_SECRET: ci-test-secret
           NODE_ENV: test
-
-      - name: DIAGNOSTICO TEMPORAL - fallos como anotaciones
-        if: failure()
-        run: |
-          node -e '
-            const r = require("./jest-result.json");
-            console.log(`::error::RESUMEN ${r.numPassedTests} ok / ${r.numFailedTests} fallan / suites con error: ${r.numRuntimeErrorTestSuites}`);
-            for (const s of r.testResults) {
-              if (s.message && !s.assertionResults.some(a => a.status === "failed")) console.log("::error::SUITE " + s.name.split("/").pop() + " " + s.message.replace(/\x1b\[[0-9;]*m/g,"").replace(/\n/g," | ").slice(0, 1500));
-              for (const a of s.assertionResults) if (a.status === "failed")
-                console.log("::error::" + s.name.split("/").pop() + " > " + a.fullName + " :: " + a.failureMessages.join(" ").replace(/\x1b\[[0-9;]*m/g,"").replace(/\n/g," | ").slice(0, 900));
-            }'
 
   frontend-test:
     runs-on: ubuntu-latest

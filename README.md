@@ -8,7 +8,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)
 ![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript)
-![Tests](https://img.shields.io/badge/Tests-61-success)
+![Tests](https://img.shields.io/badge/Tests-80-success)
 ![License](https://img.shields.io/badge/License-MIT-success)
 
 ---
@@ -50,7 +50,7 @@ La demo pública simula una empresa viva con 3 meses de histórico (10 centros, 
 | Decisión | Alternativas | Elegida | Por qué |
 |----------|-------------|---------|---------|
 | Multi-tenancy | Schema-per-tenant, RLS | Shared schema + `client_id` | Simple y suficiente para el dominio (ADR-001) |
-| Auth | Sesiones en servidor, JWT largo | JWT corto + refresh tokens | Stateless, sesiones revocables sin Redis (ADR-002) |
+| Auth | Sesiones en servidor, JWT largo | JWT corto + refresh token rotativo (hasheado) | Stateless, sesiones revocables sin Redis (ADR-002) |
 | ORM | SQL raw, Knex | Prisma | Type-safety de extremo a extremo, migraciones declarativas (ADR-003) |
 | Roles | 4 roles, app móvil | 2 roles: `oficina` + `supervisor` | La app evolucionó a gestión de stock pura; menos roles, menos fricción |
 | BD | Supabase, VPS | Neon serverless | IPv4 nativo, compatible con Render free |
@@ -96,7 +96,7 @@ Lo que **no** cambia entre los dos escenarios es lo que se evalúa aquí: multi-
 | Blindaje demo (visitante no gestiona ni resetea datos compartidos) | ✅ |
 | Multi-tenant verificado con tests | ✅ |
 | CI/CD (GitHub Actions) | ✅ |
-| 61 tests de API + 3 tests de frontend | ✅ |
+| 80 tests de API + 3 tests de frontend | ✅ |
 | App móvil | ❌ Descartada (gestión de stock web) |
 
 ---
@@ -120,7 +120,7 @@ cp .env.example .env       # configura DATABASE_URL, JWT_SECRET
 docker compose up -d       # levanta db + api + dashboard
 npm install
 npx prisma migrate deploy  # aplica migraciones (nunca en el start)
-npm test                   # 61 tests
+npm test                   # 80 tests
 ```
 
 ---
