@@ -16,9 +16,16 @@ interface PeriodoContextValue {
 
 const PeriodoContext = createContext<PeriodoContextValue | null>(null)
 
-export function calcRange(mode: string) {
-  const hoy = new Date()
-  const iso = (d: Date) => d.toISOString().slice(0, 10)
+// Fecha local en formato YYYY-MM-DD. No usar toISOString(): pasa a UTC y en
+// España (UTC+1/+2) la medianoche del día 1 se convierte en el día anterior,
+// así que "Mes actual" empezaba el último día del mes anterior.
+export function isoLocal(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+export function calcRange(mode: string, hoy: Date = new Date()) {
+  const iso = isoLocal
   if (mode === 'mes_actual') {
     const primero = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
     return { from: iso(primero), to: iso(hoy) }
