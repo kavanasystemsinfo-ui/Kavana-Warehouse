@@ -1,6 +1,6 @@
 # KAVANA WAREHOUSE
 
-> **Control de stock multi-tenant para empresas de limpieza con múltiples centros. Consumo por centro, alertas de stock bajo y control de presupuesto en una sola plataforma.**
+> **Control de consumibles indirectos de planta por sección (EPIs, discos, hilo de soldadura...): consumo por centro de coste, mermas, alertas de stock bajo y control de presupuesto. Una herramienta de mejora continua, no un MES.**
 
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)
 ![Node.js](https://img.shields.io/badge/Node.js-20-339933?logo=node.js)
@@ -15,9 +15,9 @@
 
 ## ⚡ 30 Segundos
 
-Kavana Warehouse es una plataforma web para empresas de limpieza que operan en varios centros (colegios, oficinas, hospitales). La oficina sabe qué producto se consume en cada centro, cuándo baja de stock y cuánto se gasta respecto al presupuesto mensual. Nació del problema real de una empresa de limpieza de Valencia que no sabía cuánto material gastaba cada centro.
+Kavana Warehouse es una plataforma web para plantas industriales que quieren saber dónde se van los consumibles indirectos (EPIs, discos de corte, hilo de soldadura, lubricantes, embalaje). La oficina ve qué se consume en cada sección o centro de coste, cuándo baja el stock, cuánto se gasta respecto al presupuesto mensual y qué mermas aparecen al comparar el stock registrado con el contado. Nació del problema real de una empresa de limpieza de Valencia que no sabía cuánto material gastaba cada centro; es el mismo problema que se ve en planta, con consumibles repartidos por secciones y nadie que sepa cuánto gasta cada una.
 
-La demo pública simula una empresa viva con 3 meses de histórico (10 centros, 31 productos, ~31.000 movimientos) y evoluciona sola cada día.
+La demo pública simula una planta metalúrgica ficticia con 3 meses de histórico (6 secciones, 38 consumibles, ~4.000 movimientos) y evoluciona sola cada día.
 
 ---
 
@@ -41,7 +41,7 @@ La demo pública simula una empresa viva con 3 meses de histórico (10 centros, 
 
 - **Multi-tenant shared schema**: aislamiento lógico por `client_id` en todas las queries.
 - **Despliegue**: frontend en Vercel, API en Render, BD en Neon (serverless).
-- **Demo viva**: un cron diario simula el consumo de los limpiadores (baja el stock, suben los costes, aparecen alertas solas).
+- **Demo viva**: un cron diario simula el consumo de las secciones (baja el stock, suben los costes, aparecen alertas solas).
 
 ---
 

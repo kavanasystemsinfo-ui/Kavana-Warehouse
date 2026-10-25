@@ -118,7 +118,7 @@ function detectarSaludo(pregunta) {
   const esSaludo = saludos.some(s => texto === s || texto.startsWith(s + ' ') || texto.endsWith(' ' + s));
   
   if (esSaludo) {
-    return '¡Hola! Soy el asistente técnico de Kavana Warehouse, una plataforma de control de stock para empresas de limpieza con múltiples centros. Puedes preguntarme sobre:\n\n' +
+    return '¡Hola! Soy el asistente técnico de Kavana Warehouse, una herramienta de control de consumibles indirectos de planta (EPIs, discos, hilo de soldadura...) por sección. Puedes preguntarme sobre:\n\n' +
       '• **Qué es y para qué sirve** el proyecto (arquitectura, stack, problemas que resuelve)\n' +
       '• **Cómo funciona** el control de inventario, consumos, alertas de stock, presupuestos, mermas\n' +
       '• **Decisiones técnicas** documentadas en ADRs (por qué Prisma, arquitectura monolítica, etc.)\n' +
@@ -217,7 +217,7 @@ async function responderPregunta(apiKey, pregunta) {
     .join('\n\n---\n\n');
 
   const systemPrompt = [
-    'Eres el asistente técnico de KAVANA Warehouse, una plataforma de control de stock para empresas de limpieza con múltiples centros.',
+    'Eres el asistente técnico de KAVANA Warehouse, una herramienta de control de consumibles indirectos de planta (EPIs, discos, hilo de soldadura...) por sección o centro de coste, pensada como apoyo a la mejora continua. No es un MES ni un producto comercial: es un proyecto de portfolio.',
     'Tu objetivo es ayudar a usuarios (reclutadores, clientes, operarios) a entender el proyecto de forma clara y útil.',
     'Reglas:',
     '- Responde en español, claro y directo, como explicaría el desarrollador el proyecto.',

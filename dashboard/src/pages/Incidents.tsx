@@ -5,10 +5,10 @@ import { GuiaAyuda } from '../components/GuiaAyuda'
 
 const CATEGORIAS = [
   { value: '', label: 'Todas' },
-  { value: 'limpieza', label: '🧼 Limpieza' },
-  { value: 'fontaneria', label: '🚰 Fontanería' },
+  { value: 'seguridad', label: '🦺 Seguridad' },
+  { value: 'mantenimiento', label: '🛠️ Mantenimiento' },
   { value: 'electricidad', label: '⚡ Electricidad' },
-  { value: 'cerrajeria', label: '🔑 Cerrajería' },
+  { value: 'calidad', label: '✅ Calidad' },
   { value: 'otros', label: '❓ Otros' },
 ]
 
@@ -20,11 +20,15 @@ const ESTADOS = [
 ]
 
 const CATEGORIA_ICONS: Record<string, string> = {
+  seguridad: '🦺',
+  mantenimiento: '🛠️',
+  electricidad: '⚡',
+  calidad: '✅',
+  otros: '❓',
+  // Categorías de la versión anterior: las incidencias antiguas siguen mostrando icono
   limpieza: '🧼',
   fontaneria: '🚰',
-  electricidad: '⚡',
   cerrajeria: '🔑',
-  otros: '❓',
 }
 
 export function Incidents() {
@@ -95,9 +99,9 @@ export function Incidents() {
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">Incidencias en Instalaciones</h1>
+        <h1 className="page-title">Incidencias de Planta</h1>
         <GuiaAyuda titulo="Incidencias">
-          <p>Aquí puedes <strong>reportar problemas</strong> en cualquier centro (una avería, un material roto, un brillo que falta...).</p>
+          <p>Aquí puedes <strong>reportar problemas</strong> en cualquier centro (una avería, un EPI que falta, un lote de discos defectuoso...).</p>
           <h3>¿Qué ves?</h3>
           <ul>
             <li><strong>Tarjetas de resumen:</strong> cuántas incidencias hay pendientes, en proceso o resueltas.</li>

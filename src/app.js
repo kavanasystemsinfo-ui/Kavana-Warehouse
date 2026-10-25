@@ -101,15 +101,21 @@ const supervisorOnly = (req, res, next) => {
   if (req.user.rol !== 'supervisor' && req.user.rol !== 'oficina') return res.status(403).json({ error: 'Solo personal autorizado' });
   next();
 };
-// ¿El cliente del usuario es la empresa demo? (caché: solo hay una)
-let _demoClienteId = null;
+// ¿El cliente del usuario es una empresa demo? Caché con caducidad corta: si se
+// recarga la demo (nuevo id_cliente) el blindaje de solo lectura se aplica al
+// cliente nuevo en menos de un minuto, sin reiniciar la API. Antes la caché no
+// caducaba nunca y asumía que solo había un cliente demo.
+const DEMO_CACHE_MS = 60 * 1000;
+let _demoClienteIds = null;
+let _demoClienteTs = 0;
 async function esDemoCliente(idCliente) {
   if (!idCliente) return false;
-  if (_demoClienteId === null) {
-    const cli = await prisma.cliente.findFirst({ where: { es_demo: true }, select: { id_cliente: true } });
-    _demoClienteId = cli ? cli.id_cliente : false;
+  if (_demoClienteIds === null || Date.now() - _demoClienteTs > DEMO_CACHE_MS) {
+    const clientes = await prisma.cliente.findMany({ where: { es_demo: true }, select: { id_cliente: true } });
+    _demoClienteIds = new Set(clientes.map((c) => c.id_cliente));
+    _demoClienteTs = Date.now();
   }
-  return _demoClienteId === idCliente;
+  return _demoClienteIds.has(idCliente);
 }
 
 // ¿El usuario es un visitante de la demo? (supervisor con session_id o la cuenta demo)
@@ -230,7 +236,7 @@ app.get('/api/v1/dashboard', auth, async (req, res) => {
     const filtro = idCliente ? { id_cliente: idCliente } : {};
     const tp = await prisma.producto.count();
     const tc = await prisma.centro.count({ where: filtro });
-    const te = await prisma.usuario.count({ where: { rol: 'limpiador', ...(idCliente ? { id_cliente: idCliente } : {}) } });
+    const te = await prisma.usuario.count({ where: { rol: 'operario', ...(idCliente ? { id_cliente: idCliente } : {}) } });
     const bs = await prisma.$queryRaw`
       SELECT COUNT(*) as c FROM inventario_centros ic
       JOIN centros c ON ic.id_centro = c.id_centro
@@ -750,7 +756,7 @@ app.get('/api/v1/empleados', auth, supervisorOnly, async (req, res) => {
       idCliente = u?.id_cliente;
     }
     const emps = await prisma.usuario.findMany({
-      where: { rol: 'limpiador', id_cliente: idCliente ?? undefined },
+      where: { rol: 'operario', id_cliente: idCliente ?? undefined },
       include: { asignaciones: { include: { centro: true }, where: { fecha_fin: null } } },
       orderBy: { nombre: 'asc' },
     });
@@ -770,7 +776,7 @@ app.post('/api/v1/empleados', auth, officeOnly, async (req, res) => {
     const hash = await bcrypt.hash(password, 12);
     const result = await prisma.$transaction(async (tx) => {
       const u = await tx.usuario.create({
-        data: { nombre, email, password_hash: hash, numero_empleado, id_cliente: idCliente, rol: 'limpiador' },
+        data: { nombre, email, password_hash: hash, numero_empleado, id_cliente: idCliente, rol: 'operario' },
       });
       if (id_centro) {
         await tx.asignacionPersonal.create({ data: { id_usuario: u.id_usuario, id_centro, fecha_inicio: new Date() } });

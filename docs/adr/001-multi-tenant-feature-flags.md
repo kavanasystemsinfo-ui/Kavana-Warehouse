@@ -8,6 +8,8 @@
 
 ## Contexto
 
+> **Actualización (2026-10-25):** este ADR se escribió para el caso de origen, una empresa de limpieza. Desde octubre de 2026 el proyecto se presenta con una planta metalúrgica ficticia (consumibles indirectos por sección). Las decisiones de multi-tenancy y feature flags no cambian: "centro" es ahora el centro de coste o sección de la planta.
+
 KAVANA WAREHOUSE es un SaaS B2B de trazabilidad de stock para empresas de limpieza con centros descentralizados. Cada cliente (empresa de limpieza) tiene múltiples centros (colegios, oficinas, hospitales) y necesita:
 
 1. Que sus datos estén **aislados** de otros clientes

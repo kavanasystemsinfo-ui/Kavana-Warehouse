@@ -179,7 +179,7 @@ export function Inventario() {
             ➕ Nuevo Producto
           </button>
           <GuiaAyuda titulo="Catálogo de Productos">
-            <p>Esta pantalla es el <strong>catálogo general</strong> de tu empresa: la lista de <strong>tipos de productos</strong> que existen (guantes, lejía, papel...).</p>
+            <p>Esta pantalla es el <strong>catálogo general</strong> de tu empresa: la lista de <strong>tipos de productos</strong> que existen (guantes, discos de corte, hilo de soldadura...).</p>
             <p><strong>No</strong> es el stock por centro. Aquí solo defines qué productos hay, su unidad, su coste y el stock mínimo de referencia.</p>
             <h3>➕ Nuevo Producto</h3>
             <p>Crea un tipo de producto nuevo que no exista todavía.</p>
@@ -190,7 +190,7 @@ export function Inventario() {
             <h3>📥 Propuesta de Compra</h3>
             <p>Mira qué productos de todos los centros están por debajo de su mínimo y cuánto comprar, con el coste estimado. Se descarga en CSV.</p>
             <div className="guia-ejemplo">
-              💡 Para añadir un producto al almacén de un edificio concreto, ve a la pestaña <strong>Centros</strong>, despliega el centro y pulsa <strong>"➕ Añadir producto"</strong>.
+              💡 Para añadir un producto al almacén de una sección concreta, ve a la pestaña <strong>Centros</strong>, despliega el centro y pulsa <strong>"➕ Añadir producto"</strong>.
             </div>
           </GuiaAyuda>
         </div>

@@ -9,7 +9,7 @@
 
 ## 1. Resumen ejecutivo
 
-KAVANA WAREHOUSE es un **SaaS B2B de control de stock** para empresas de limpieza con centros descentralizados. La **oficina** sabe qué producto hay en cada centro, cuánto se consume, cuándo baja de stock y cuánto se gasta respecto al presupuesto mensual, para detectar mermas y sobrecostes.
+KAVANA WAREHOUSE es una herramienta de **control de consumibles indirectos de planta** (EPIs, discos, hilo de soldadura...) por sección o centro de coste, de apoyo a la mejora continua; no es un MES ni un producto comercial. El caso de origen fue una empresa de limpieza con centros descentralizados. La **oficina** sabe qué producto hay en cada centro, cuánto se consume, cuándo baja de stock y cuánto se gasta respecto al presupuesto mensual, para detectar mermas y sobrecostes.
 
 **Evolución del modelo (2026-08-01):**
 - Se simplificó de 4 roles (admin, supervisor, operario, viewer) a **2 roles**: `oficina` (gestión total) y `supervisor` (recuento de inventario, creado por la oficina).
@@ -26,13 +26,13 @@ KAVANA WAREHOUSE es un **SaaS B2B de control de stock** para empresas de limpiez
 |-----|--------|---------|
 | **Oficina** | Dashboard web (`warehouse.kavanasystems.com`) | Gestiona centros, productos, inventario, costes, presupuestos, incidencias. Crea supervisores. |
 | **Supervisor** | Dashboard (creado por la oficina) | Hace **recuento físico** del stock. En la demo, caduca a las 24h (sesión de visitante aislada). |
-| **Limpiador** | — | No usa ninguna app. Existe en el modelo de datos solo para la plantilla que genera los movimientos simulados de la demo. |
+| **Operario** (antes `limpiador`) | — | No usa ninguna app. Existe en el modelo de datos solo para la plantilla que genera los movimientos simulados de la demo. |
 
 **Flujo clave (demo):**
 1. El reclutador entra con `warehouse` / `kavana` (rol oficina).
 2. Puede crear supervisores de prueba desde `/supervisores` (se guardan con `session_id` del navegador y expiran a las 24h).
 3. Cada navegador genera una etiqueta de visitante única: los datos de un reclutador nunca se mezclan con los de otro.
-4. Un cron diario (06:00) simula el consumo de los limpiadores: baja el stock, suben los costes del mes y aparecen alertas solas. La demo siempre parece una empresa en medio de su mes de trabajo.
+4. Un cron diario (06:00) simula el consumo de las secciones: baja el stock, suben los costes del mes y aparecen alertas solas. La demo siempre parece una planta en medio de su mes de trabajo.
 
 ---
 

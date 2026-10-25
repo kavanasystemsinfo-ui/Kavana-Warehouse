@@ -112,7 +112,7 @@ export function Deviations() {
         <GuiaAyuda titulo="Control de Mermas">
           <p>Esta pantalla controla las <strong>mermas</strong>: la diferencia entre lo que dice el almacén que hay y lo que hay realmente.</p>
           <h3>¿Qué es una merma?</h3>
-          <p>Es el material que <strong>falta</strong> sin explicación. Si el sistema dice que hay 50 rollos y al contar físicamente solo hay 30, hay una merma de 20 rollos.</p>
+          <p>Es el material que <strong>falta</strong> sin explicación. Si el sistema dice que hay 8 bobinas de hilo de soldadura y al contar físicamente solo hay 5, hay una merma de 3 bobinas.</p>
           <h3>¿Qué ves?</h3>
           <ul>
             <li><strong>Stock registrado:</strong> lo que el programa cree que hay.</li>
@@ -124,7 +124,7 @@ export function Deviations() {
           <h3>¿Botón 🧹 Limpiar datos demo?</h3>
           <p>Solo sirve para la demostración: borra los datos de ejemplo y deja la pantalla en blanco para empezar de cero.</p>
           <div className="guia-ejemplo">
-            💡 <strong>Ejemplo:</strong> Plaza de Toros tiene registrado 50 rollos y físico 30 → diferencia 20 rollos de merma.
+            💡 <strong>Ejemplo:</strong> Soldadura tiene registradas 8 bobinas de hilo y físicas 5 → diferencia de 3 bobinas de merma (156 €).
           </div>
         </GuiaAyuda>
       </div>

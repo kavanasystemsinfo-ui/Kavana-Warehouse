@@ -8,7 +8,7 @@ No hay contraseñas, tokens ni claves en el repositorio. Todas las credenciales 
 
 - **JWT** con firma HMAC + bcrypt para hash de contraseñas (expira en 2h, configurable con `JWT_EXPIRES_IN`)
 - **Roles:** `oficina` (gestión total) · `supervisor` (recuento de inventario, lo crea la oficina)
-  - El rol `limpiador` existe en el modelo de datos solo para trazabilidad de la plantilla en la demo simulada; no tiene acceso a ninguna app
+  - El rol `operario` existe en el modelo de datos solo para trazabilidad de la plantilla en la demo simulada; no tiene acceso a ninguna app
 - Login por **usuario o email**, tolerante a mayúsculas y espacios (teclados móviles)
 - Validación de entrada centralizada con **Zod**
 - Middleware de autenticación en todas las rutas protegidas

@@ -1,13 +1,16 @@
 {
   "name": "kavana-warehouse",
   "version": "1.0.0",
-  "description": "SaaS de Control de Stock para el sector limpieza",
+  "description": "Control de consumibles indirectos de planta por sección: mermas, alertas y presupuesto (demo de portfolio)",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "test": "jest --no-cache",
     "prisma:generate": "npx prisma generate",
-    "prisma:seed": "node prisma/seed.js"
+    "prisma:seed": "node prisma/seed.js",
+    "demo:reset": "node prisma/reset-demo.js",
+    "demo:recargar": "node prisma/reset-demo.js --confirm && node prisma/seed.js && node prisma/seed-historico.js && node prisma/seed-incidencias.js",
+    "demo:simular": "node prisma/simulate-daily.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

@@ -66,8 +66,8 @@ export function Dashboard() {
           <p>Esta es la <strong>pantalla principal</strong> con el resumen de todo: cuánto se gasta, alertas y consumo por centro.</p>
           <h3>¿Qué ves arriba?</h3>
           <ul>
-            <li><strong>Gasto OPEX Total:</strong> dinero total en material de limpieza este mes.</li>
-            <li><strong>Coste por Centro:</strong> cuánto se gasta en cada lugar.</li>
+            <li><strong>Gasto OPEX Total:</strong> dinero total en consumibles de planta este mes.</li>
+            <li><strong>Coste por Centro:</strong> cuánto se gasta en cada sección de la planta.</li>
             <li><strong>Mermas Totales:</strong> material que falta sin explicación (ver pantalla de Mermas para el detalle).</li>
           </ul>
           <h3>¿Las tablas de abajo?</h3>

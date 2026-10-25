@@ -44,13 +44,13 @@ describe('Login', () => {
     })
   })
 
-  it('rechaza el rol limpiador aunque el login sea correcto', async () => {
+  it('rechaza el rol operario aunque el login sea correcto', async () => {
     vi.mocked(api.login).mockResolvedValue({
       token: 'x',
-      usuario: { rol: 'limpiador', nombre: 'Limp' },
+      usuario: { rol: 'operario', nombre: 'Oper' },
     } as never)
     renderLogin()
-    fireEvent.change(screen.getByLabelText(/usuario/i), { target: { value: 'limpiador1' } })
+    fireEvent.change(screen.getByLabelText(/usuario/i), { target: { value: 'operario1' } })
     fireEvent.change(screen.getByLabelText(/contrase/i), { target: { value: 'kavana' } })
     fireEvent.click(screen.getByRole('button', { name: /iniciar sesión/i }))
     await waitFor(() => {

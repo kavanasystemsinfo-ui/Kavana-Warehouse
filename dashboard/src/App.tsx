@@ -16,7 +16,7 @@ import { getStoredUser } from './lib/api'
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const user = getStoredUser()
   if (!user) return <Navigate to="/login" replace />
-  if (user.rol === 'limpiador') return <Navigate to="/login" replace />
+  if (user.rol === 'operario') return <Navigate to="/login" replace />
   return <>{children}</>
 }
 
@@ -45,7 +45,7 @@ export default function App() {
   // Re-check stored user when currentUser changes (handles login in same tab)
   useEffect(() => {
     const user = getStoredUser()
-    if (user?.rol !== 'limpiador' && user?.id_usuario !== currentUser?.id_usuario) {
+    if (user?.rol !== 'operario' && user?.id_usuario !== currentUser?.id_usuario) {
       setCurrentUser(user)
     }
   }, [currentUser])

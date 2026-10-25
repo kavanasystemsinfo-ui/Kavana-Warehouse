@@ -1,17 +1,17 @@
 // =============================================================================
-// Seed de incidencias de instalaciones — KAVANA WAREHOUSE demo
-// Genera incidencias históricas realistas repartidas en los últimos 90 días
-// para que la empresa ficticia parezca viva (la tabla estaba vacía).
+// Seed de incidencias de planta — KAVANA WAREHOUSE demo
+// Genera incidencias históricas realistas (seguridad, mantenimiento, electricidad,
+// calidad de consumibles) repartidas en los últimos 90 días para que la planta
+// ficticia parezca viva.
 // Uso: node prisma/seed-incidencias.js
 // Idempotente: si ya hay incidencias, no duplica.
 // =============================================================================
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { EMPRESA_DEMO, EMAIL_SISTEMA, CATALOGO_INCIDENCIAS as CATALOGO } from './demo-industrial-data.js';
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
-
-const EMPRESA_DEMO = 'Limpiezas Valencia Centro, S.L.';
 
 // Semilla determinista (misma fecha = mismos datos, reproducible)
 function rnd(seed) {
@@ -19,39 +19,6 @@ function rnd(seed) {
   return x - Math.floor(x);
 }
 function entre(min, max, seed) { return Math.floor(min + rnd(seed) * (max - min + 1)); }
-
-const CATALOGO = [
-  { categoria: 'limpieza', titulos: [
-    ['Suelo resbaladizo en el hall de entrada', 'El suelo de la entrada queda resbaladizo tras la fregada de media mañana.'],
-    ['Olor fuerte en los baños', 'Persiste un olor fuerte en el baño de la planta 1 a pesar del repaso.'],
-    ['Manchas persistentes en los cristales', 'Los cristales del acceso principal acumulan manchas que no salen con el producto habitual.'],
-    ['Papelera central desbordada', 'La papelera del hall central se llena a media tarde y desborda.'],
-  ]},
-  { categoria: 'fontaneria', titulos: [
-    ['Fuga de agua en el lavabo del baño', 'El lavabo del baño principal pierde agua por la base de la llave.'],
-    ['Inodoro atascado', 'El inodoro de la planta 2 no descarga bien.'],
-    ['Grifo goteando en la cocina', 'El grifo de la cocina del personal gotea de forma continua.'],
-    ['Tubería con pérdida bajo el fregadero', 'Se acumula agua bajo el fregadero del office.'],
-  ]},
-  { categoria: 'electricidad', titulos: [
-    ['Luz fundida en el pasillo', 'El tubo del pasillo principal está fundido.'],
-    ['Enchufe que chispea', 'Un enchufe de la sala de reuniones hace chispas al conectar.'],
-    ['Interruptor de la escalera no funciona', 'El interruptor del rellano no enciende el tramo de escalera.'],
-    ['Fluorescente parpadeando en el almacén', 'El fluorescente del almacén parpadea de forma intermitente.'],
-  ]},
-  { categoria: 'cerrajeria', titulos: [
-    ['Puerta de acceso no cierra bien', 'La puerta de acceso al patio no cierra del todo y queda abierta.'],
-    ['Cerrojo atascado en el vestuario', 'El cerrojo del vestuario se atasca al girar la llave.'],
-    ['Llave rota en la cerradura', 'Quedó media llave dentro de la cerradura del almacén.'],
-    ['Puerta de emergencia bloqueada', 'La puerta de emergencia lateral no abre con facilidad.'],
-  ]},
-  { categoria: 'otros', titulos: [
-    ['Cristal roto en ventana', 'La ventana del despacho tiene un cristal agrietado.'],
-    ['Radiador frío en la sala de juntas', 'El radiador de la sala de juntas no calienta.'],
-    ['Ruido en el ascensor', 'El ascensor hace un ruido metálico al pasar la planta 3.'],
-    ['Persiana atascada', 'La persiana de la oficina 2 no sube más de medio metro.'],
-  ]},
-];
 
 async function main() {
   const cliente = await prisma.cliente.findFirst({ where: { nombre_empresa: EMPRESA_DEMO } });
@@ -64,7 +31,7 @@ async function main() {
   if (centros.length === 0) { console.log('Sin centros, nada que hacer.'); return; }
 
   // Usuario autor: el de sistema si existe, si no cualquiera del cliente
-  let autor = await prisma.usuario.findFirst({ where: { email: 'sistema.demo@kavanawarehouse.com' } });
+  let autor = await prisma.usuario.findFirst({ where: { email: EMAIL_SISTEMA } });
   if (!autor) autor = await prisma.usuario.findFirst({ where: { id_cliente: cliente.id_cliente }, select: { id_usuario: true } });
   if (!autor) { console.log('Sin usuario autor, nada que hacer.'); return; }
 

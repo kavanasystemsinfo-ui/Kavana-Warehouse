@@ -81,3 +81,100 @@ jobs:
       - name: Run frontend tests (Vitest)
         run: npm test
         working-directory: dashboard
+
+  demo-scripts:
+    # Verifica con Postgres real los scripts de la demo industrial: sembrado,
+    # histórico, incidencias, simulación diaria y recarga completa (borrado con
+    # claves foráneas y cascadas incluido). Los tests de la API no los cubren.
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kavana
+          POSTGRES_PASSWORD: kavana_test
+          POSTGRES_DB: kavana_warehouse_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://kavana:kavana_test@localhost:5432/kavana_warehouse_test
+      PGPASSWORD: kavana_test
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client and apply migrations
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+
+      - name: Seed base + histórico + incidencias + simulación diaria
+        run: |
+          npx prisma db seed
+          node prisma/seed-historico.js
+          node prisma/seed-incidencias.js
+          node prisma/simulate-daily.js
+          node prisma/simulate-daily.js   # segunda pasada: debe ser idempotente
+
+      - name: Comprobar datos de la demo
+        run: |
+          q() { psql -h localhost -U kavana -d kavana_warehouse_test -tA -c "$1"; }
+          check() { # descripción, valor obtenido, valor esperado (o "gt:N")
+            local ok=0
+            if [[ "$3" == gt:* ]]; then [ "$2" -gt "${3#gt:}" ] 2>/dev/null && ok=1; else [ "$2" = "$3" ] && ok=1; fi
+            if [ "$ok" = 1 ]; then echo "OK   $1 = $2"; else echo "::error::$1 = $2 (esperado $3)"; FAIL=1; fi
+          }
+          FAIL=0
+          check "clientes demo"                 "$(q "select count(*) from clientes where es_demo")" 1
+          check "secciones"                     "$(q "select count(*) from centros")" 6
+          check "filas de inventario"           "$(q "select count(*) from inventario_centros")" 67
+          check "movimientos"                   "$(q "select count(*) from registro_movimientos")" gt:1000
+          check "incidencias"                   "$(q "select count(*) from incidencias")" 60
+          check "usuarios con rol limpiador"    "$(q "select count(*) from usuarios where rol='limpiador'")" 0
+          check "operarios"                     "$(q "select count(*) from usuarios where rol='operario'")" gt:20
+          check "productos de limpieza"         "$(q "select count(*) from productos where nombre_producto ~* 'lejía|fregona|fregasuelos|papel higiénico'")" 0
+          check "stock negativo"                "$(q "select count(*) from inventario_centros where cantidad_actual < 0 or stock_fisico < 0")" 0
+          check "merma estrella (hilo MIG)"     "$(q "select i.stock_fisico - i.cantidad_actual from inventario_centros i join productos p using(id_producto) join centros c using(id_centro) where c.nombre_centro='Soldadura' and p.nombre_producto like 'Hilo de soldadura%'")" -3
+          check "Pintura sin contar (filas con físico)" "$(q "select count(*) from inventario_centros i join centros c using(id_centro) where c.nombre_centro='Pintura y acabado' and i.stock_fisico is not null")" 0
+          exit $FAIL
+
+      - name: Autorreparación - el cron falla 10 días y vuelve
+        run: |
+          q() { psql -h localhost -U kavana -d kavana_warehouse_test -tA -c "$1"; }
+          q "update registro_movimientos set fecha_hora = fecha_hora - interval '10 days'" > /dev/null
+          test "$(q 'select max(fecha_hora)::date < current_date from registro_movimientos')" = t
+          node prisma/simulate-daily.js
+          test "$(q 'select max(fecha_hora)::date = current_date from registro_movimientos')" = t
+          dias=$(q "select count(distinct fecha_hora::date) from registro_movimientos where fecha_hora::date > current_date - 10")
+          echo "días con datos en los últimos 10: $dias"
+          test "$dias" -ge 9
+          test "$(q 'select count(*) from inventario_centros where cantidad_actual < 0 or stock_fisico < 0')" = 0
+
+      - name: Recarga completa de la demo (borrado + resiembra)
+        run: |
+          node prisma/reset-demo.js                 # simulación: no debe borrar nada
+          test "$(psql -h localhost -U kavana -d kavana_warehouse_test -tA -c 'select count(*) from centros')" = 6
+          npm run demo:recargar
+          q() { psql -h localhost -U kavana -d kavana_warehouse_test -tA -c "$1"; }
+          test "$(q 'select count(*) from clientes where es_demo')" = 1
+          test "$(q 'select count(*) from centros')" = 6
+          test "$(q 'select count(*) from productos')" = 38
+          test "$(q 'select count(*) from registro_movimientos')" -gt 1000
+          echo "Recarga completa OK"

@@ -46,7 +46,7 @@ Permite alertar cuando se detecta material faltante (merma).
 Los **supervisores o personal de control** reportan averías (fontanería, electricidad, etc.) y les dan seguimiento desde el dashboard.
 
 1. **Base de Datos (Prisma)** ✅:
-   - Modelo `Incidencia` con categorías: `limpieza`, `fontaneria`, `electricidad`, `cerrajeria`, `otros`
+   - Modelo `Incidencia` con categorías: `seguridad`, `mantenimiento`, `electricidad`, `calidad`, `otros` (hasta octubre de 2026: `limpieza`, `fontaneria`, `electricidad`, `cerrajeria`, `otros`; la columna es texto libre y las incidencias antiguas siguen mostrándose)
 2. **Endpoints Backend** (implementados en `src/app.js`, no en controlador separado) ✅:
    - `POST /api/v1/incidencias` — creación con validación de centro activo
    - `GET /api/v1/incidencias` — listado con filtros por centro/estado/categoría
@@ -55,7 +55,7 @@ Los **supervisores o personal de control** reportan averías (fontanería, elect
    - Página `/incidents` con bandeja de seguimiento y cambio de estado
 4. **Frontend (registro de consumo)** ✅ En el dashboard del supervisor:
    - El supervisor registra el consumo y reporta incidencias desde el panel web (responsive).
-   - No hay app móvil del limpiador (rediseño 2026-07-16: el limpiador no usa ninguna app).
+   - No hay app móvil del operario (rediseño 2026-07-16: el operario no usa ninguna app).
 
 ---
 
