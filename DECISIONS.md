@@ -90,10 +90,15 @@ datos no cambia: "centro" es el centro de coste o sección de la planta.
   simulación recorrían el catálogo global en todos los centros.
 - **La simulación diaria aplica las reposiciones** y mueve el stock físico junto
   con el consumo, para que la merma diseñada no derive con los días.
+- **La simulación se autorrepara:** si el cron falla unos días, la siguiente
+  ejecución rellena los días que faltan (hasta 120). Antes solo simulaba "hoy":
+  un fallo del cron dejaba la demo congelada para siempre y los filtros "mes
+  actual" / "mes anterior" del panel salían vacíos.
 - **Recarga de la demo:** `prisma/reset-demo.js` (simulación por defecto, `--confirm`
-  para borrar). El catálogo de productos es global: sin limpiar los productos
-  antiguos se mezclarían con los nuevos. Un producto antiguo solo se borra si no
-  lo usa ningún cliente real.
+  para borrar). El catálogo de productos es global: sin limpiarlo, los productos
+  antiguos se mezclarían con los nuevos. No usa una lista de nombres (la demo de
+  producción se sembró con versiones antiguas del catálogo): borra los productos
+  que no usa ningún cliente real y muestra la lista completa antes de borrar.
 - **`esDemoCliente` cachea 60 s** y cubre todos los clientes demo; antes la caché
   no caducaba y tras recargar la demo el blindaje de solo lectura dejaba de
   aplicarse al cliente nuevo hasta reiniciar la API.

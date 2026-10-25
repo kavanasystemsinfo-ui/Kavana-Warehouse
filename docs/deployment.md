@@ -134,7 +134,8 @@ Para que cualquier visitante pruebe la app sin contaminar los datos compartidos:
 - **Simulación diaria** (`prisma/simulate-daily.js` + cron 06:00): cada día
   genera consumos realistas de las secciones, baja el stock (las alertas
   aparecen solas) y repone los lunes. La demo "vive" en el tiempo: los costes
-  del mes suben solos. Idempotente (no duplica si ya se simuló hoy).
+  del mes suben solos. Idempotente (no duplica si ya se simuló hoy) y autorreparable: si el cron
+  falló unos días, la siguiente ejecución rellena los días que faltan (hasta 120).
 
 ## Notas de arquitectura descartada
 

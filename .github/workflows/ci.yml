@@ -155,6 +155,18 @@ jobs:
           check "Pintura sin contar (filas con físico)" "$(q "select count(*) from inventario_centros i join centros c using(id_centro) where c.nombre_centro='Pintura y acabado' and i.stock_fisico is not null")" 0
           exit $FAIL
 
+      - name: Autorreparación - el cron falla 10 días y vuelve
+        run: |
+          q() { psql -h localhost -U kavana -d kavana_warehouse_test -tA -c "$1"; }
+          q "update registro_movimientos set fecha_hora = fecha_hora - interval '10 days'" > /dev/null
+          test "$(q 'select max(fecha_hora)::date < current_date from registro_movimientos')" = t
+          node prisma/simulate-daily.js
+          test "$(q 'select max(fecha_hora)::date = current_date from registro_movimientos')" = t
+          dias=$(q "select count(distinct fecha_hora::date) from registro_movimientos where fecha_hora::date > current_date - 10")
+          echo "días con datos en los últimos 10: $dias"
+          test "$dias" -ge 9
+          test "$(q 'select count(*) from inventario_centros where cantidad_actual < 0 or stock_fisico < 0')" = 0
+
       - name: Recarga completa de la demo (borrado + resiembra)
         run: |
           node prisma/reset-demo.js                 # simulación: no debe borrar nada

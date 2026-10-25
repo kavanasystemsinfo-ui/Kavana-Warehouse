@@ -1,9 +1,12 @@
 // Recarga segura de la DEMO — KAVANA WAREHOUSE
 //
 // Borra el cliente demo (es_demo = true) con todo lo suyo y los productos del
-// catálogo antiguo de limpieza, para poder volver a sembrar la demo industrial.
+// catálogo que se quedan sin uso, para poder volver a sembrar la demo industrial.
 // El catálogo de productos es GLOBAL (sin id_cliente): si no se limpia, los
-// productos viejos (lejía, fregonas...) se mezclan con los consumibles nuevos.
+// productos viejos (papel higiénico, jabón, fregonas...) se mezclan con los nuevos.
+// No depende de nombres: la demo de producción se sembró con versiones antiguas
+// del catálogo ("Papel Higiénico (pack 12)", "Jabón de Manos 5L"...) que no
+// coinciden con ninguna lista fija.
 //
 // Uso:
 //   node prisma/reset-demo.js              → SIMULACIÓN: cuenta qué se borraría, no borra nada
@@ -15,7 +18,9 @@
 // Seguridad:
 //   · Muestra el host y la base de datos de destino antes de hacer nada.
 //   · Solo toca clientes con es_demo = true; nunca empresas reales.
-//   · Un producto antiguo solo se borra si NINGÚN cliente no demo lo usa.
+//   · Un producto solo se borra si NINGÚN cliente no demo lo usa (inventario o
+//     movimientos). Los creados por visitantes (session_id) caducan solos: no se tocan.
+//   · La simulación imprime la lista completa de productos a borrar: revísala.
 //   · Todo el borrado va en una transacción: o se borra todo o nada.
 
 import 'dotenv/config';
@@ -23,17 +28,6 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const CONFIRMAR = process.argv.includes('--confirm');
-
-// Catálogo de la demo anterior (empresa de limpieza). Coincidencia exacta de nombre.
-const PRODUCTOS_ANTIGUOS = [
-  'Papel higiénico (rollo)', 'Papel industrial (rollo)', 'Papel de cocina (rollo)',
-  'Lejía', 'Amoníaco', 'Desengrasante', 'Limpia cristales', 'Fregasuelos', 'Detergente lavadora',
-  'Guantes de latex (par)', 'Guantes de nitrilo (par)', 'Guantes de vinilo (par)', 'Guantes gruesos (par)',
-  'Bolsas basura 50L (paq)', 'Bolsas basura 100L (paq)', 'Bolsas basura 240L (paq)',
-  'Mopa / fregona', 'Cubo de fregar', 'Estropajo / esponja (ud)',
-  'Gel hidroalcohólico (500ml)', 'Papel secamanos (paq)', 'Bolsas basura 30L (paq)',
-  'Quitagrasas cocina', 'Ambientador industrial', 'Cepillo de fregar (ud)',
-];
 
 const url = process.env.DATABASE_URL;
 if (!url) {
@@ -73,9 +67,9 @@ async function main() {
   }
   if (demos.length === 0) console.log('  · No hay ningún cliente demo (es_demo = true).');
 
-  // Productos del catálogo antiguo: solo los que no usa ningún cliente real
+  // Productos del catálogo: solo se borran los que no usa ningún cliente real
   const candidatos = await prisma.producto.findMany({
-    where: { nombre_producto: { in: PRODUCTOS_ANTIGUOS }, session_id: null },
+    where: { session_id: null },
     select: { id_producto: true, nombre_producto: true },
   });
   const borrables = [];
@@ -85,7 +79,8 @@ async function main() {
     const usos = (await prisma.inventarioCentro.count({ where: fuera })) + (await prisma.registroMovimiento.count({ where: fuera }));
     (usos === 0 ? borrables : protegidos).push(p);
   }
-  console.log(`  · Productos del catálogo antiguo: ${borrables.length} a borrar, ${protegidos.length} protegidos (los usa un cliente no demo)`);
+  console.log(`  · Productos del catálogo: ${borrables.length} a borrar, ${protegidos.length} protegidos (los usa un cliente no demo)`);
+  for (const p of borrables) console.log(`      borrar:    ${p.nombre_producto}`);
   for (const p of protegidos) console.log(`      protegido: ${p.nombre_producto}`);
 
   if (demos.length === 0 && borrables.length === 0) {
@@ -114,7 +109,7 @@ async function main() {
     }
   }, { timeout: 120_000, maxWait: 20_000 });
 
-  console.log(`\n✅ Borrado: ${demos.length} cliente(s) demo y ${borrables.length} productos antiguos.`);
+  console.log(`\n✅ Borrado: ${demos.length} cliente(s) demo y ${borrables.length} productos del catálogo.`);
   console.log('   Siguiente: node prisma/seed.js && node prisma/seed-historico.js && node prisma/seed-incidencias.js');
 }
 
