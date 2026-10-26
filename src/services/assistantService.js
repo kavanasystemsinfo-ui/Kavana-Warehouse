@@ -178,6 +178,9 @@ async function llamarOpenRouter(apiKey, model, systemPrompt, userPrompt) {
       ],
       temperature: 0.3,
       max_tokens: 900,
+      // Sin razonamiento: los modelos que "piensan" gastaban los 900 tokens en
+      // el razonamiento y devolvían la respuesta vacía.
+      reasoning: { enabled: false },
     }),
   });
   if (!res.ok) {
@@ -185,7 +188,10 @@ async function llamarOpenRouter(apiKey, model, systemPrompt, userPrompt) {
     throw new Error(`OpenRouter ${res.status}: ${err.slice(0, 300)}`);
   }
   const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim() || '';
+  const contenido = data.choices?.[0]?.message?.content?.trim() || '';
+  // Respuesta vacía = fallo: así entra el modelo de respaldo en vez de devolver nada
+  if (!contenido) throw new Error(`OpenRouter ${model}: respuesta vacía`);
+  return contenido;
 }
 
 // ------------------------------------------------------------ respuesta
