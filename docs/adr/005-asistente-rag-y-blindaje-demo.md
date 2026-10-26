@@ -7,7 +7,7 @@
 
 La demo pública de Kavana Warehouse (`warehouse.kavanasystems.com`) la prueba un
 reclutador que no conoce el código: entra con `warehouse`/`kavana`, ve una
-empresa ficticia con 3 meses de histórico (cuando se escribió este ADR, una empresa de limpieza con 30.723 movimientos; desde octubre de 2026, una planta metalúrgica con unos 4.000) y puede
+empresa ficticia con 3 meses de histórico (cuando se escribió este ADR, una empresa de limpieza con 30.723 movimientos; desde octubre de 2026, una planta metalúrgica con histórico desde el 1 de septiembre, unos 2.500 al recargarla) y puede
 preguntarse qué hay detrás. En RouteAI (mismo patrón de portfolio) se resolvió
 con un asistente técnico que responde SOLO con la documentación real del repo,
 y un blindaje que impide a los visitantes tocar los datos compartidos.

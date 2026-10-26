@@ -98,7 +98,7 @@ Se intentó implementar pero la página de Notificaciones no está enrutada en e
 
 | Tipo | Estado | Notas |
 |------|--------|-------|
-| **Tests automatizados** (Jest) | ✅ 35 tests | Cubren auth, CRUD, scoping multi-tenant (SECURITY), escritura, supervisores demo |
+| **Tests automatizados** (Jest) | ✅ 86 tests | Cubren auth, CRUD, scoping multi-tenant (SECURITY), escritura, supervisores demo |
 | Tests para desviaciones | ❌ No cubiertos | El controlador existe, sin test |
 | Tests para propuestas de compra | ❌ No cubiertos | El controlador existe, sin test |
 | Tests para notificaciones | ❌ No aplica | Módulo no implementado |

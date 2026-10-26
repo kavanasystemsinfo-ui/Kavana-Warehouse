@@ -20,9 +20,9 @@
 | Consumos + mermas | ✅ En producción | `RegistroMovimiento` con signo, stock_fisico nullable |
 | Multi-tenant | ✅ En producción + auditado | Scoping verificado con tests (403) |
 | Seguridad (auditoría ECC) | ✅ Completada 2026-07-16 | 4 críticos + 8 altos + 14 medios cerrados |
-| Tests automatizados | ✅ 35 tests (Jest) | Incluye test de aislamiento multi-tenant |
+| Tests automatizados | ✅ 86 de API (Jest) + 11 del panel (Vitest) | Incluye tests de aislamiento multi-tenant y de fugas |
 | Dashboard consumo + evolución mensual | ✅ En producción | Gráfica de evolución mayo→agosto |
-| Empresa demo viva (3 meses) | ✅ En producción | 10 centros, 31 productos, ~31.000 movimientos |
+| Empresa demo viva | ✅ En producción | Planta metalúrgica ficticia: 6 secciones, 38 productos, histórico desde el 1-sep-2026 |
 | Simulación diaria | ✅ En producción | Cron 06:00 genera consumos (baja stock, sube costes) |
 | Docker Compose | ✅ Local | 3 servicios: db, api, dashboard |
 | Despliegue nube | ✅ En producción | Vercel + Render + Neon (serverless) |
@@ -31,7 +31,6 @@
 
 | Módulo | Estado | Qué falta |
 |--------|--------|-----------|
-| Propuesta de compra (UI) | ⏳ Backend listo, botón en frontend pendiente | Botón "Generar" en Inventario |
 | Notificaciones | ⏳ Tablas en BD, sin endpoints ni UI | CRUD + enrutado |
 
 ### Planificado (NO implementado)
@@ -39,9 +38,7 @@
 | Módulo | Prioridad | Dependencias |
 |--------|-----------|--------------|
 | CRUD de notificaciones + reglas | Media | Tablas existen en BD, endpoints por crear |
-| Refresh token wireado | Media | Tabla `RefreshToken` existe, login sin refresh |
 | Documentación OpenAPI/Swagger | Baja | Sin iniciar |
-| Propuesta de compra (UI) | Baja | Botón en Inventario |
 
 ### Descartado
 

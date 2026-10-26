@@ -14,7 +14,7 @@ KAVANA WAREHOUSE es una herramienta de **control de consumibles indirectos de pl
 **Evolución del modelo (2026-08-01):**
 - Se simplificó de 4 roles (admin, supervisor, operario, viewer) a **2 roles**: `oficina` (gestión total) y `supervisor` (recuento de inventario, creado por la oficina).
 - Se **eliminó la app móvil** y el control de personal: el producto es gestión de stock pura.
-- La demo es una **empresa viva** con 3 meses de histórico (10 centros, 31 productos, ~31.000 movimientos) que evoluciona sola cada día con una simulación automática.
+- La demo es una **empresa viva** con histórico desde el 1 de septiembre de 2026 (planta metalúrgica ficticia: 6 secciones, 38 productos) que evoluciona sola cada día con una simulación automática.
 
 **Estado operativo:** ✅ En producción, accesible en `https://warehouse.kavanasystems.com`. Frontend en Vercel, API en Render (free), BD en Neon (serverless).
 
@@ -60,7 +60,7 @@ KAVANA WAREHOUSE es una herramienta de **control de consumibles indirectos de pl
 | ORM | Prisma 6.x |
 | BD | PostgreSQL 16 (Neon) |
 | Auth | JWT + bcrypt, login por usuario o email |
-| CI/CD | GitHub Actions (35 tests) |
+| CI/CD | GitHub Actions (86 tests de API + 11 del panel) |
 
 ---
 

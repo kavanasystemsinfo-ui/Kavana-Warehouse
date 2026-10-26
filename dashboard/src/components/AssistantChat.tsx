@@ -5,12 +5,35 @@ import { useState, useRef, FormEvent } from 'react'
 // Reutilizado en el widget flotante del login y en la página /asistente.
 const API_ASSISTANT = '/api/v1/assistant'
 
-const sugerencias = [
-  '¿Qué problema resuelve Kavana Warehouse?',
-  '¿Cómo funciona el control de stock por centros?',
-  '¿Cómo se calculan los costes reales?',
-  '¿Qué decisiones técnicas tiene documentadas?',
+// Preguntas rápidas: lo que suele preguntar un CTO o un reclutador. Cada una
+// tiene respuesta directa en docs/PREGUNTAS_FRECUENTES.md.
+export const PREGUNTAS_RAPIDAS: { tema: string; preguntas: string[] }[] = [
+  { tema: 'Producto', preguntas: [
+    '¿Qué es Kavana Warehouse y qué problema resuelve?',
+    '¿Qué escenarios enseña la demo?',
+    '¿Quién lo ha hecho y qué papel tuvo la IA?',
+  ] },
+  { tema: 'Arquitectura', preguntas: [
+    '¿Qué stack usa?',
+    '¿Por qué un monolito y no microservicios?',
+    '¿Cómo se calculan los costes y las mermas?',
+  ] },
+  { tema: 'Seguridad', preguntas: [
+    '¿Cómo se aísla a cada empresa (multi-tenant)?',
+    '¿Cómo funciona la autenticación?',
+  ] },
+  { tema: 'Calidad y despliegue', preguntas: [
+    '¿Cuántos tests tiene y qué cubren?',
+    '¿Cuánto cuesta mantenerlo?',
+    '¿Escala?',
+    '¿Qué falta o qué haría después?',
+  ] },
 ]
+
+const estiloChip: React.CSSProperties = {
+  padding: '6px 10px', background: 'var(--gray-100)', border: '1px solid var(--gray-200)',
+  borderRadius: 999, color: 'var(--gray-800)', cursor: 'pointer', fontSize: 12, textAlign: 'left',
+}
 
 interface Mensaje {
   role: 'user' | 'bot'
@@ -22,12 +45,14 @@ export function AssistantChat() {
   const [q, setQ] = useState('')
   const [msgs, setMsgs] = useState<Mensaje[]>([])
   const [loading, setLoading] = useState(false)
+  const [verRapidas, setVerRapidas] = useState(false)
   const boxRef = useRef<HTMLDivElement>(null)
 
   const enviar = async (e?: React.FormEvent, prompt?: string) => {
     if (e) e.preventDefault()
     const pregunta = (prompt || q).trim()
     if (!pregunta || loading) return
+    setVerRapidas(false)
     setMsgs((m) => [...m, { role: 'user', text: pregunta }])
     setQ(prompt ? '' : '')
     setLoading(true)
@@ -61,19 +86,15 @@ export function AssistantChat() {
             <div style={{ marginBottom: 10 }}>
               Pregunta lo que quieras sobre el proyecto (arquitectura, decisiones, seguridad, costes...).
             </div>
-            {sugerencias.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => enviar(undefined, s)}
-                style={{
-                  display: 'block', width: '100%', textAlign: 'left', marginBottom: 6, padding: '8px 10px',
-                  background: 'var(--gray-100)', border: '1px solid var(--gray-200)', borderRadius: 8,
-                  color: 'var(--gray-800)', cursor: 'pointer', fontSize: 12,
-                }}
-              >
-                {s}
-              </button>
+            {PREGUNTAS_RAPIDAS.map(({ tema, preguntas }) => (
+              <div key={tema} style={{ marginBottom: 10 }}>
+                <div style={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>{tema}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {preguntas.map((s) => (
+                    <button key={s} type="button" onClick={() => enviar(undefined, s)} style={estiloChip}>{s}</button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -94,6 +115,25 @@ export function AssistantChat() {
         ))}
         {loading && <div style={{ color: 'var(--gray-500)', fontSize: 12 }}>Pensando…</div>}
       </div>
+      {msgs.length > 0 && (
+        <div style={{ borderTop: '1px solid var(--gray-200)', padding: '6px 10px' }}>
+          <button
+            type="button"
+            onClick={() => setVerRapidas((v) => !v)}
+            aria-expanded={verRapidas}
+            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--primary)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}
+          >
+            {verRapidas ? '▾' : '▸'} Preguntas rápidas
+          </button>
+          {verRapidas && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6, maxHeight: 140, overflowY: 'auto' }}>
+              {PREGUNTAS_RAPIDAS.flatMap(({ preguntas }) => preguntas).map((s) => (
+                <button key={s} type="button" disabled={loading} onClick={() => enviar(undefined, s)} style={estiloChip}>{s}</button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <form
         onSubmit={enviar}
         style={{ padding: 10, borderTop: '1px solid var(--gray-200)', display: 'flex', gap: 8 }}

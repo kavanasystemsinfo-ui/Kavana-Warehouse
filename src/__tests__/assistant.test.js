@@ -48,3 +48,23 @@ describe('assistantService corpus', () => {
     expect([...fuentes].some((f) => f.toLowerCase().includes('template'))).toBe(false);
   });
 });
+
+describe('Preguntas rápidas del chat', () => {
+  // Las preguntas de los botones del panel (AssistantChat.tsx) deben encontrar su
+  // respuesta revisada en docs/PREGUNTAS_FRECUENTES.md entre los fragmentos recuperados.
+  const fs = require('fs');
+  const path = require('path');
+  const chat = fs.readFileSync(path.join(__dirname, '../../dashboard/src/components/AssistantChat.tsx'), 'utf8');
+  const preguntas = [...chat.matchAll(/^\s+'(¿[^']+)',?$/gm)].map((m) => m[1]);
+
+  it('hay preguntas rápidas en el chat', () => {
+    expect(preguntas.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it.each(preguntas)('"%s" recupera su respuesta de PREGUNTAS_FRECUENTES', (pregunta) => {
+    const { buscar, getIndice } = require('../services/assistantService');
+    const titulo = pregunta.replace(/\s+/g, ' ').trim();
+    const docs = buscar(getIndice(), pregunta);
+    expect(docs.some((d) => d.fuente === 'docs/PREGUNTAS_FRECUENTES.md' && d.titulo.startsWith(titulo.slice(0, 25)))).toBe(true);
+  });
+});

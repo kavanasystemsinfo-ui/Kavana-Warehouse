@@ -21,6 +21,7 @@ const MODELO_PRO = process.env.ASSISTANT_MODEL_PRO || 'google/gemma-4-31b-it:fre
 
 function cargarCorpus() {
   const fuentes = [
+    'docs/PREGUNTAS_FRECUENTES.md', // respuestas directas para CTOs y reclutadores
     'README.md',
     'DECISIONS.md',
     'docs/DECISIONES_ESTRATEGICAS.md',
@@ -125,7 +126,8 @@ function detectarSaludo(pregunta) {
       '• **Cómo funciona** el control de inventario, consumos, alertas de stock, presupuestos, mermas\n' +
       '• **Decisiones técnicas** documentadas en ADRs (por qué Prisma, arquitectura monolítica, etc.)\n' +
       '• **Cómo desplegarlo** o ejecutarlo en local (Docker, variables de entorno, CI/CD)\n' +
-      '• **Detalles de dominio** (centros, productos, consumos, reportes)\n\n' +
+      '• **Detalles de dominio** (centros, productos, consumos, reportes)\n' +
+      '• **Seguridad, tests y costes** (multi-tenant, autenticación, CI, despliegue a coste cero)\n\n' +
       '¿Sobre qué te gustaría saber más?';
   }
   return null;
@@ -147,12 +149,12 @@ function generarRespuestaSinResultados(pregunta) {
   
   // Respuesta genérica con sugerencias basadas en lo que SÍ hay en docs
   return 'Perdón, no tengo esa información específica en la documentación del proyecto. Pero como conozco bien Kavana Warehouse, te sugiero estas preguntas que sí puedo responder con detalle:\n\n' +
-    '• "¿Cómo funciona el control de inventario y los consumos por centro?"\n' +
-    '• "¿Por qué usar una arquitectura monolítica con Prisma en lugar de microservicios?"\n' +
-    '• "¿Cómo se manejan las alertas de stock y los presupuestos?"\n' +
-    '• "¿Qué stack usa el dashboard para visualización de datos?"\n' +
-    '• "¿Cómo se modelan centros, productos y movimientos de stock?"\n' +
-    '• "¿Cómo desplegar en local con Docker Compose?"\n\n' +
+    '• "¿Qué es Kavana Warehouse y qué problema resuelve?"\n' +
+    '• "¿Por qué un monolito y no microservicios?"\n' +
+    '• "¿Cómo se aísla a cada empresa (multi-tenant)?"\n' +
+    '• "¿Cuántos tests tiene y qué cubren?"\n' +
+    '• "¿Cuánto cuesta mantenerlo?"\n' +
+    '• "¿Cómo se ejecuta en local?"\n\n' +
     '¿Te gustaría que profundice en alguno de estos temas o tienes otra pregunta?';
 }
 
@@ -230,8 +232,12 @@ async function responderPregunta(apiKey, pregunta) {
     'Reglas:',
     '- Responde en español, claro y directo, como explicaría el desarrollador el proyecto.',
     '- Si el contexto contiene información relevante, úsala para responder con tus palabras y apóyate en los datos.',
+    '- Si hay un fragmento de docs/PREGUNTAS_FRECUENTES.md que responde a la pregunta, básate en él: es la respuesta revisada y con los datos al día. Si otro documento da una cifra distinta, manda la de PREGUNTAS_FRECUENTES. Si su título coincide con la pregunta, NUNCA digas que no tienes la información.',
+    '- Las preguntas en primera persona ("¿qué harías?", "¿cómo evitas...?") se refieren al proyecto y a su autor, Jorge: responde con lo documentado.',
+    '- No des cifras que no aparezcan tal cual en el contexto: ni sumes, ni repartas, ni estimes números.',
+    '- Responde primero a lo que se pregunta en 2-3 frases y después da el detalle; quien pregunta suele ser un CTO o un reclutador con poco tiempo.',
     '- Si el contexto NO contiene información específica sobre la pregunta, pero puedes inferir algo razonable del contexto general del proyecto, hazlo y sé transparente sobre los límites.',
-    '- Si realmente no tienes nada que decir basado en lo que conoces del proyecto, di: "Perdón, no tengo esa información en la documentación del proyecto. Pero puedo ayudarte con otras preguntas sobre cómo funciona Kavana Warehouse, su arquitectura, o cómo desplegarlo. ¿Te gustaría que intente con otra pregunta?"',
+    '- Solo si ningún fragmento del contexto trata el tema de la pregunta, dilo en una frase ("Eso no está en la documentación del proyecto") y sugiere una pregunta parecida que sí puedas responder.',
     '- NUNCA inventes datos, métricas, nombres de archivos o decisiones que no estén en el contexto o que no puedan inferirse razonablemente.',
     '- Siempre termina tus respuestas útiles con una invitación a hacer más preguntas: "¿Te gustaría saber más sobre algún aspecto específico?"',
     '- Solo añade la línea "Ver: [fuente1, fuente2]" al final cuando hayas respondido usando el contexto directamente. Si inferiste o no usaste contexto, no añadas fuentes.',
@@ -243,6 +249,9 @@ async function responderPregunta(apiKey, pregunta) {
   ].join('\n\n');
 
   // Principal (MODELO_PRO) y, si falla, respaldo de otro proveedor (MODELO_FREE).
+  // Red de seguridad: si el modelo dice que no lo sabe pero la guía de preguntas
+  // frecuentes tiene una sección clara para la pregunta, se devuelve esa sección
+  // (es la respuesta revisada) en vez de la negativa.
   let model = MODELO_PRO;
   let respuesta;
   try {
@@ -256,11 +265,22 @@ async function responderPregunta(apiKey, pregunta) {
     }
   }
 
+  const mejor = docs[0];
+  if (pareceNegativa(respuesta) && mejor && mejor.fuente === FUENTE_FAQ && mejor.score >= UMBRAL_FAQ) {
+    return { respuesta: mejor.texto.replace(/^#{1,3} .+\n+/, '').trim(), fuentes: [FUENTE_FAQ], modelo: 'preguntas-frecuentes' };
+  }
+
   return {
     respuesta,
     fuentes: [...new Set(docs.map((d) => d.fuente))],
     modelo: model,
   };
+}
+
+const FUENTE_FAQ = 'docs/PREGUNTAS_FRECUENTES.md';
+const UMBRAL_FAQ = 0.2; // similitud TF-IDF a partir de la cual la sección responde a la pregunta
+function pareceNegativa(texto) {
+  return /^(perdón|lo siento)?[,.]?\s*(no tengo|eso no está|no dispongo|no aparece)/i.test(texto.trim());
 }
 
 // ------------------------------------------------------------ singleton
@@ -276,4 +296,4 @@ function estadisticasCorpus() {
   return { chunks: idx.chunks.length, fuentes: new Set(idx.chunks.map((c) => c.fuente)).size };
 }
 
-module.exports = { responderPregunta, estadisticasCorpus, cargarCorpus, buscar, esCompleja };
+module.exports = { responderPregunta, estadisticasCorpus, cargarCorpus, buscar, esCompleja, getIndice };

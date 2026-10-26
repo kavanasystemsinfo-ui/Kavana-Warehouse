@@ -50,17 +50,17 @@ kavana-warehouse/
 ├── src/
 │   ├── app.js              # API Express (monolítico, 44 endpoints)
 │   ├── server.js           # Entry point
-│   ├── lib/                # logger.js, prisma.js
+│   ├── lib/                # logger.js, prisma.js, rateLimit.js
 │   ├── controllers/        # costeController, deviationController, purchaseController
 │   ├── middleware/         # validate.js (Zod)
-│   └── __tests__/          # api.test.js (35 tests)
+│   └── __tests__/          # api, fugas y asistente (86 tests)
 ├── prisma/
 │   ├── schema.prisma       # 13 modelos
 │   ├── migrations/         # 12 migraciones
 │   ├── seed.js                  # entrypoint → seed-demo-industrial.js
 │   ├── demo-industrial-data.js  # datos de la demo (planta metalúrgica ficticia)
 │   ├── seed-demo-industrial.js  # secciones, catálogo e inventario
-│   ├── seed-historico.js        # 3 meses de movimientos simulados
+│   ├── seed-historico.js        # histórico simulado (HISTORICO_DIAS, 90 por defecto)
 │   ├── simulate-daily.js        # simulación diaria (cron 06:00)
 │   └── reset-demo.js            # recarga segura de la demo (--confirm)
 ├── dashboard/              # Panel de la oficina (React 19 + Vite + TS)
@@ -100,7 +100,7 @@ kavana-warehouse/
 | **SQL Injection** | Eliminado `$queryRawUnsafe`; todo vía Prisma tipado. |
 | **Mass-assignment** | Whitelist de campos en POST; `id_cliente` se fuerza del token. |
 | **Errores 500** | Mensajes genéricos + logger estructurado. |
-| **Tests** | 35 tests, bloque SECURITY multi-tenant (403 confirmado). |
+| **Tests** | 86 tests de API, con bloque SECURITY multi-tenant y tests de fugas (403 confirmado). |
 
 **Detalle completo:** `docs/technical/00_audit-status.md`
 

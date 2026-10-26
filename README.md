@@ -8,7 +8,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)
 ![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript)
-![Tests](https://img.shields.io/badge/Tests-80-success)
+![Tests](https://img.shields.io/badge/Tests-97-success)
 ![License](https://img.shields.io/badge/License-MIT-success)
 
 ---
@@ -17,7 +17,7 @@
 
 Kavana Warehouse es una plataforma web para plantas industriales que quieren saber dónde se van los consumibles indirectos (EPIs, discos de corte, hilo de soldadura, lubricantes, embalaje). La oficina ve qué se consume en cada sección o centro de coste, cuándo baja el stock, cuánto se gasta respecto al presupuesto mensual y qué mermas aparecen al comparar el stock registrado con el contado. Nació del problema real de una empresa de limpieza de Valencia que no sabía cuánto material gastaba cada centro; es el mismo problema que se ve en planta, con consumibles repartidos por secciones y nadie que sepa cuánto gasta cada una.
 
-La demo pública simula una planta metalúrgica ficticia con 3 meses de histórico (6 secciones, 38 consumibles, ~4.000 movimientos) y evoluciona sola cada día.
+La demo pública simula una planta metalúrgica ficticia con histórico desde el 1 de septiembre de 2026 (6 secciones, 38 consumibles, unos 2.500 movimientos al recargarla el 26 de octubre) y evoluciona sola cada día.
 
 ---
 
@@ -95,7 +95,7 @@ Lo que **no** cambia entre los dos escenarios es lo que se evalúa aquí: multi-
 | Blindaje demo (visitante no gestiona ni resetea datos compartidos) | ✅ |
 | Multi-tenant verificado con tests | ✅ |
 | CI/CD (GitHub Actions) | ✅ |
-| 73 tests de API + 11 tests de frontend | ✅ |
+| 86 tests de API + 11 tests de frontend | ✅ |
 | App móvil | ❌ Descartada (gestión de stock web) |
 
 ---
@@ -104,6 +104,7 @@ Lo que **no** cambia entre los dos escenarios es lo que se evalúa aquí: multi-
 
 | Documento | Descripción |
 |-----------|-------------|
+| `docs/PREGUNTAS_FRECUENTES.md` | Respuestas cortas a lo que suelen preguntar CTOs y reclutadores |
 | `DECISIONS.md` | Consolidación de todas las decisiones (ADRs + implementación) |
 | `docs/adr/` | Architecture Decision Records (6) |
 | `docs/technical/` | Arquitectura, despliegue, auditoría, roadmap |
@@ -119,7 +120,7 @@ cp .env.example .env       # configura DATABASE_URL, JWT_SECRET
 docker compose up -d       # levanta db + api + dashboard
 npm install
 npx prisma migrate deploy  # aplica migraciones (nunca en el start)
-npm test                   # 80 tests
+npm test                   # 86 tests de API
 ```
 
 ---
