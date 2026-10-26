@@ -2,8 +2,8 @@
 // Asistente técnico de KAVANA WAREHOUSE (RAG sobre la documentación real del repo)
 // - Indexa en memoria README, DECISIONS, ADRs, docs técnicos y de despliegue.
 // - Búsqueda TF-IDF simple (sin embeddings ni coste).
-// - Llama a OpenRouter: modelo gratuito por defecto, sube a DeepSeek para
-//   preguntas complejas (razonamiento multi-paso).
+// - Llama a OpenRouter con modelos gratuitos: uno principal y un respaldo de
+//   otro proveedor por si el principal falla o está limitado (429).
 // - Regla de honestidad: solo responde con lo documentado; si no lo sabe, lo dice.
 // =============================================================================
 const fs = require('fs');
@@ -11,8 +11,10 @@ const path = require('path');
 
 const REPO_ROOT = path.resolve(__dirname, '../..');
 
-// Modelos OpenRouter: gratuito como principal, mismo para preguntas complejas.
-const MODELO_FREE = process.env.ASSISTANT_MODEL_FREE || 'google/gemma-4-31b-it:free';
+// Modelos OpenRouter gratuitos: MODELO_PRO es el principal y MODELO_FREE el
+// respaldo. Van en proveedores distintos (Google / Nvidia): un 429 del pool
+// gratuito de uno no deja el asistente sin respuesta.
+const MODELO_FREE = process.env.ASSISTANT_MODEL_FREE || 'nvidia/nemotron-3.5-lightning:free';
 const MODELO_PRO = process.env.ASSISTANT_MODEL_PRO || 'google/gemma-4-31b-it:free';
 
 // ---------------------------------------------------------------- indexado
@@ -234,9 +236,7 @@ async function responderPregunta(apiKey, pregunta) {
     `CONTEXTO (documentación del proyecto):\n${contexto}`,
   ].join('\n\n');
 
-  // Principal: DeepSeek (rápido, ~5s). El móvil corta la conexión si el modelo
-  // gratuito tarda 50s+ (OpenRouter satura gpt-oss-20b:free). El gratuito queda
-  // solo como respaldo. El rate-limit 25/día/IP controla el gasto.
+  // Principal (MODELO_PRO) y, si falla, respaldo de otro proveedor (MODELO_FREE).
   let model = MODELO_PRO;
   let respuesta;
   try {

@@ -10,7 +10,7 @@ Ese modelo es la única partida de coste variable del proyecto, y hasta hoy prod
 
 ## Decisión
 
-1. El asistente usa una **variante gratuita** de OpenRouter: `google/gemma-4-31b-it:free` (desde octubre de 2026; antes `nvidia/nemotron-3-super-120b-a12b:free`, que se quedó sin proveedor y devolvía 404), configurada por variables de entorno (`ASSISTANT_MODEL_PRO`, `ASSISTANT_MODEL_FREE`) y `LLM_BASE_URL=https://openrouter.ai/api/v1`.
+1. El asistente usa **variantes gratuitas** de OpenRouter: `google/gemma-4-31b-it:free` como principal (`ASSISTANT_MODEL_PRO`) y `nvidia/nemotron-3.5-lightning:free` como respaldo (`ASSISTANT_MODEL_FREE`), en proveedores distintos para que un `429` del pool gratuito de uno no tumbe el asistente (desde octubre de 2026; antes `nvidia/nemotron-3-super-120b-a12b:free` en ambas, que se quedó sin proveedor y devolvía 404), configuradas por variables de entorno (`ASSISTANT_MODEL_PRO`, `ASSISTANT_MODEL_FREE`) y `LLM_BASE_URL=https://openrouter.ai/api/v1`.
 2. **La elección de proveedor y de modelo vive en configuración, no en código.** Cambiar de modelo es una variable de entorno y un redespliegue.
 3. La clave de DeepSeek se **retira del servicio y se guarda** en el almacén de secretos del titular, no se borra: volver atrás es volver a poner la variable.
 4. Queda escrito, en el README y aquí, qué cambiaría con usuarios reales y presupuesto.
@@ -27,7 +27,7 @@ Ese modelo es la única partida de coste variable del proyecto, y hasta hoy prod
 
 **Medido, no estimado:** con la variante gratuita la misma pregunta pasa de **26,3 s a 11,2 s** de latencia y el coste de IA del proyecto es **0 €**. El coste de recuperación de contexto ya era 0 por diseño (TF-IDF en memoria, sin embeddings ni base de datos vectorial).
 
-**Límites asumidos:** cuota de 1.000 peticiones al día en la cuenta actual (50 en cuentas sin compras); los `429` del proveedor de origen son posibles y hoy no hay modelo de respaldo automático; los modelos gratuitos pueden registrar los prompts, así que **esta demo no debe usarse con datos personales o de cliente**. La demo además solo responde con la documentación del repositorio y dice que no lo sabe cuando la respuesta no está documentada (regla de honestidad, ver ADR-005).
+**Límites asumidos:** cuota de 1.000 peticiones al día en la cuenta actual (50 en cuentas sin compras); los `429` del proveedor de origen son habituales en horas punta y los cubre el modelo de respaldo de otro proveedor; los modelos gratuitos pueden registrar los prompts, así que **esta demo no debe usarse con datos personales o de cliente**. La demo además solo responde con la documentación del repositorio y dice que no lo sabe cuando la respuesta no está documentada (regla de honestidad, ver ADR-005).
 
 ## Señal de revisión
 
