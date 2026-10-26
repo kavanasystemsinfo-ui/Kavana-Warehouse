@@ -216,7 +216,7 @@ export function Inventario() {
                 <tr key={p.id_producto}>
                   <td><strong>{p.nombre_producto}</strong></td>
                   <td>{p.unidad_medida}</td>
-                  <td>{p.coste_unitario}</td>
+                  <td>{fmtEuro(p.coste_unitario)} €</td>
                   <td>{p.stock_minimo_alerta ?? '—'}</td>
                   <td style={{ display: 'flex', gap: '0.5rem' }}>
                     {!visita && (

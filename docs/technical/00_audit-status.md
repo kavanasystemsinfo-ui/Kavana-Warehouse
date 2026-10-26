@@ -46,7 +46,7 @@
 - **Fix:** Scoping por `id_cliente` en `findMany` de `RegistroMovimiento`.
 - **Verificación:** test SECURITY.
 
-### C4 — Fuga cross-tenant en `/incidencias`
+### C4 — Fuga cross-tenant en `/incidencias` (endpoint retirado en octubre de 2026)
 - **Fix:** Scoping por `id_cliente` en `findMany` de `Incidencia`.
 - **Verificación:** test SECURITY.
 

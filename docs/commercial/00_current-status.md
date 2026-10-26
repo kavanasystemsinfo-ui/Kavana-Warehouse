@@ -24,7 +24,7 @@ KAVANA WAREHOUSE es una herramienta de **control de consumibles indirectos de pl
 
 | Rol | Acceso | Función |
 |-----|--------|---------|
-| **Oficina** | Dashboard web (`warehouse.kavanasystems.com`) | Gestiona centros, productos, inventario, costes, presupuestos, incidencias. Crea supervisores. |
+| **Oficina** | Dashboard web (`warehouse.kavanasystems.com`) | Gestiona centros, productos, inventario, costes y presupuestos. Crea supervisores. |
 | **Supervisor** | Dashboard (creado por la oficina) | Hace **recuento físico** del stock. En la demo, caduca a las 24h (sesión de visitante aislada). |
 | **Operario** (antes `limpiador`) | — | No usa ninguna app. Existe en el modelo de datos solo para la plantilla que genera los movimientos simulados de la demo. |
 

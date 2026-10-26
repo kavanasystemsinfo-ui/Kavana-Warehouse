@@ -12,8 +12,8 @@ const path = require('path');
 const REPO_ROOT = path.resolve(__dirname, '../..');
 
 // Modelos OpenRouter: gratuito como principal, mismo para preguntas complejas.
-const MODELO_FREE = process.env.ASSISTANT_MODEL_FREE || 'nvidia/nemotron-3-super-120b-a12b:free';
-const MODELO_PRO = process.env.ASSISTANT_MODEL_PRO || 'nvidia/nemotron-3-super-120b-a12b:free';
+const MODELO_FREE = process.env.ASSISTANT_MODEL_FREE || 'google/gemma-4-31b-it:free';
+const MODELO_PRO = process.env.ASSISTANT_MODEL_PRO || 'google/gemma-4-31b-it:free';
 
 // ---------------------------------------------------------------- indexado
 
@@ -123,7 +123,7 @@ function detectarSaludo(pregunta) {
       '• **Cómo funciona** el control de inventario, consumos, alertas de stock, presupuestos, mermas\n' +
       '• **Decisiones técnicas** documentadas en ADRs (por qué Prisma, arquitectura monolítica, etc.)\n' +
       '• **Cómo desplegarlo** o ejecutarlo en local (Docker, variables de entorno, CI/CD)\n' +
-      '• **Detalles de dominio** (centros, productos, consumos, incidencias, reportes)\n\n' +
+      '• **Detalles de dominio** (centros, productos, consumos, reportes)\n\n' +
       '¿Sobre qué te gustaría saber más?';
   }
   return null;

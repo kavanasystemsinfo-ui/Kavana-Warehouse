@@ -13,7 +13,7 @@
 //   node prisma/reset-demo.js --confirm    → borra de verdad (una sola transacción)
 //
 // Recarga completa (npm run demo:recargar):
-//   reset-demo --confirm → seed → seed-historico → seed-incidencias
+//   reset-demo --confirm → seed → seed-historico
 //
 // Seguridad:
 //   · Muestra el host y la base de datos de destino antes de hacer nada.
@@ -56,20 +56,20 @@ async function main() {
 
   for (const c of demos) {
     const filtro = { centro: { id_cliente: c.id_cliente } };
-    const [movs, inv, incs, centros, usuarios] = await Promise.all([
+    const [movs, inv, centros, usuarios] = await Promise.all([
       prisma.registroMovimiento.count({ where: filtro }),
       prisma.inventarioCentro.count({ where: filtro }),
-      prisma.incidencia.count({ where: filtro }),
       prisma.centro.count({ where: { id_cliente: c.id_cliente } }),
       prisma.usuario.count({ where: { id_cliente: c.id_cliente } }),
     ]);
-    console.log(`  · Cliente demo #${c.id_cliente} "${c.nombre_empresa}": ${centros} centros, ${usuarios} usuarios, ${inv} filas de inventario, ${movs} movimientos, ${incs} incidencias`);
+    console.log(`  · Cliente demo #${c.id_cliente} "${c.nombre_empresa}": ${centros} centros, ${usuarios} usuarios, ${inv} filas de inventario, ${movs} movimientos`);
   }
   if (demos.length === 0) console.log('  · No hay ningún cliente demo (es_demo = true).');
 
-  // Productos del catálogo: solo se borran los que no usa ningún cliente real
+  // Productos del catálogo: solo se borran los que no usa ningún cliente real.
+  // Incluye los creados por visitantes de la demo (session_id) y los de prueba
+  // ("Material Prueba Visita"...): la resiembra vuelve a crear el catálogo bueno.
   const candidatos = await prisma.producto.findMany({
-    where: { session_id: null },
     select: { id_producto: true, nombre_producto: true },
   });
   const borrables = [];
@@ -97,6 +97,8 @@ async function main() {
       const uids = (await tx.usuario.findMany({ where: { id_cliente: id }, select: { id_usuario: true } })).map((u) => u.id_usuario);
       await tx.registroMovimiento.deleteMany({ where: { centro: { id_cliente: id } } });
       await tx.inventarioCentro.deleteMany({ where: { centro: { id_cliente: id } } });
+      // La función Incidencias ya no existe, pero la tabla se conserva: se
+      // borran las filas antiguas de la demo para que no bloqueen el borrado.
       await tx.incidencia.deleteMany({ where: { centro: { id_cliente: id } } });
       await tx.asignacionPersonal.deleteMany({ where: { centro: { id_cliente: id } } });
       await tx.reglaNotificacion.deleteMany({ where: { id_supervisor: { in: uids } } });
@@ -110,7 +112,7 @@ async function main() {
   }, { timeout: 120_000, maxWait: 20_000 });
 
   console.log(`\n✅ Borrado: ${demos.length} cliente(s) demo y ${borrables.length} productos del catálogo.`);
-  console.log('   Siguiente: node prisma/seed.js && node prisma/seed-historico.js && node prisma/seed-incidencias.js');
+  console.log('   Siguiente: node prisma/seed.js && node prisma/seed-historico.js');
 }
 
 main()

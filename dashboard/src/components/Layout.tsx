@@ -91,10 +91,6 @@ export function Layout() {
             <span className="sidebar-link-icon">📦</span>
             Inventario
           </NavLink>
-          <NavLink to="/incidents" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`} onClick={closeOnNav}>
-            <span className="sidebar-link-icon">🛠️</span>
-            Incidencias
-          </NavLink>
           <NavLink to="/asistente" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`} onClick={closeOnNav}>
             <span className="sidebar-link-icon">💬</span>
             Asistente técnico
@@ -114,7 +110,7 @@ export function Layout() {
             {contactoOpen && (
               <div className="sidebar-contacto-opciones">
                 <a className="sidebar-link" href="mailto:kavanasystems.info@gmail.com">📧 Email</a>
-                <a className="sidebar-link" href="https://www.linkedin.com/in/kavanasystems/" target="_blank" rel="noopener noreferrer">💼 LinkedIn</a>
+                <a className="sidebar-link" href="https://www.linkedin.com/in/jorgeadan/" target="_blank" rel="noopener noreferrer">💼 LinkedIn</a>
                 <a className="sidebar-link" href="https://wa.me/34633422461" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
               </div>
             )}

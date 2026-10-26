@@ -344,10 +344,6 @@ export async function getConsumos(centroId?: number): Promise<any[]> {
   return res.consumos
 }
 
-export async function resolverIncidencia(id: number): Promise<any> {
-  return apiFetch(`/incidencias/${id}`, { method: 'PUT', body: JSON.stringify({ estado: 'resuelta' }) })
-}
-
 export async function getProductos(): Promise<Producto[]> {
   // Catálogo plano: todos los tipos de producto, sin importar centros
   const res = await apiFetch<{ productos: Producto[] }>('/productos')
@@ -440,36 +436,6 @@ export async function resetDemo(): Promise<{ ok: boolean; mensaje: string }> {
   return apiFetch<{ ok: boolean; mensaje: string }>('/demo/reset', { method: 'POST' })
 }
 
-// --- Incidencias ---
-export interface Incidencia {
-  id_incidencia: number
-  id_centro: number
-  id_usuario: number
-  categoria: string
-  titulo: string
-  descripcion: string
-  foto_url: string | null
-  estado: string
-  fecha_creacion: string
-  centro: { id_centro: number; nombre_centro: string }
-  usuario: { id_usuario: number; nombre: string }
-}
-
-export async function getIncidencias(filters?: { centro?: number; estado?: string; categoria?: string; desde?: string; hasta?: string }): Promise<{ total: number; incidencias: Incidencia[] }> {
-  const params = new URLSearchParams()
-  if (filters?.centro) params.set('centro', String(filters.centro))
-  if (filters?.estado) params.set('estado', filters.estado)
-  if (filters?.categoria) params.set('categoria', filters.categoria)
-  if (filters?.desde) params.set('desde', filters.desde)
-  if (filters?.hasta) params.set('hasta', filters.hasta)
-  const qs = params.toString()
-  return apiFetch(`/incidencias${qs ? `?${qs}` : ''}`)
-}
-
-export async function updateIncidencia(id: number, data: { estado: string }): Promise<{ message: string; incidencia: Incidencia }> {
-  return apiFetch(`/incidencias/${id}`, { method: 'PUT', body: JSON.stringify(data) })
-}
-
 // --- Purchases ---
 export interface PurchaseProposal {
   fecha_generacion: string
@@ -506,6 +472,7 @@ export interface CostesData {
   mes: string
   total_coste: number
   total_presupuesto: number
+  estado_total?: CosteCentro['estado']
   centros: CosteCentro[]
 }
 

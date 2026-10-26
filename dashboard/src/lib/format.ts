@@ -12,6 +12,14 @@ export function fmtNum(v: number | string | null | undefined): string {
   return decPart ? `${withDots},${decPart}` : withDots
 }
 
+// Nombre del producto con su unidad, salvo que el nombre ya la indique entre
+// paréntesis ("Aceite de corte (litros)", "Brocas HSS (ud)"): así no sale
+// "Aceite de corte (litros) (litros)".
+export function nombreConUnidad(nombre: string, unidad?: string | null): string {
+  if (!unidad || /\)\s*$/.test(nombre)) return nombre
+  return `${nombre} (${unidad})`
+}
+
 export function fmtEuro(v: number | string | null | undefined): string {
   const n = typeof v === 'string' ? parseFloat(v) : Number(v)
   if (!Number.isFinite(n)) return '—'

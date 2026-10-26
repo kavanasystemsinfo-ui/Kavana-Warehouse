@@ -54,6 +54,7 @@ export function Costes() {
   }
 
   const barColor = (e: string) => e === 'rojo' ? 'var(--danger)' : e === 'ambar' ? 'var(--warning)' : e === 'verde' ? 'var(--success)' : 'var(--gray-300)'
+  const tarjetaTotal = (e?: string) => e === 'rojo' ? 'danger' : e === 'ambar' ? 'warning' : e === 'verde' ? 'success' : 'primary'
   const badgeText = (e: string) => e === 'rojo' ? '🔴 Te pasas' : e === 'ambar' ? '🟡 Vas justo' : e === 'verde' ? '🟢 Controlado' : '⚪ Sin presupuesto'
 
   return (
@@ -72,7 +73,7 @@ export function Costes() {
             <li><strong>Barra de color:</strong>
               <ul>
                 <li>🟢 <strong>Verde</strong> — vas controlado, gastas menos de lo presupuestado.</li>
-                <li>🟡 <strong>Ámbar</strong> — vas justo, te acercas al límite.</li>
+                <li>🟡 <strong>Ámbar</strong> — vas justo: al ritmo que llevas este mes acabarás pasándote (o ya vas por el 90 %).</li>
                 <li>🔴 <strong>Rojo</strong> — <strong>te pasas</strong> del presupuesto. Aquí pone cuántos euros te has pasado.</li>
               </ul>
             </li>
@@ -88,14 +89,14 @@ export function Costes() {
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="stats-grid">
-        <div className="stat-card danger">
+        <div className={`stat-card ${tarjetaTotal(data?.estado_total)}`}>
           <span className="stat-label">Coste total material (mes)</span>
-          <span className="stat-value">{data?.total_coste ?? 0} €</span>
+          <span className="stat-value">{fmtEuro(data?.total_coste ?? 0)} €</span>
           <span className="stat-sub">suma de todos los centros</span>
         </div>
         <div className="stat-card primary">
           <span className="stat-label">Presupuesto total fijado</span>
-          <span className="stat-value">{data?.total_presupuesto ?? 0} €</span>
+          <span className="stat-value">{fmtEuro(data?.total_presupuesto ?? 0)} €</span>
           <span className="stat-sub">lo que tú quieres gastar</span>
         </div>
       </div>

@@ -10,7 +10,7 @@ Ese modelo es la única partida de coste variable del proyecto, y hasta hoy prod
 
 ## Decisión
 
-1. El asistente usa una **variante gratuita** de OpenRouter: `nvidia/nemotron-3-super-120b-a12b:free`, configurada por variables de entorno (`ASSISTANT_MODEL_PRO`, `ASSISTANT_MODEL_FREE`) y `LLM_BASE_URL=https://openrouter.ai/api/v1`.
+1. El asistente usa una **variante gratuita** de OpenRouter: `google/gemma-4-31b-it:free` (desde octubre de 2026; antes `nvidia/nemotron-3-super-120b-a12b:free`, que se quedó sin proveedor y devolvía 404), configurada por variables de entorno (`ASSISTANT_MODEL_PRO`, `ASSISTANT_MODEL_FREE`) y `LLM_BASE_URL=https://openrouter.ai/api/v1`.
 2. **La elección de proveedor y de modelo vive en configuración, no en código.** Cambiar de modelo es una variable de entorno y un redespliegue.
 3. La clave de DeepSeek se **retira del servicio y se guarda** en el almacén de secretos del titular, no se borra: volver atrás es volver a poner la variable.
 4. Queda escrito, en el README y aquí, qué cambiaría con usuarios reales y presupuesto.

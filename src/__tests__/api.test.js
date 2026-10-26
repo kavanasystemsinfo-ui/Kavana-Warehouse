@@ -217,19 +217,6 @@ describe('GET /api/v1/consumos', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Incidencias
-// ---------------------------------------------------------------------------
-describe('GET /api/v1/incidencias', () => {
-  it('returns incidencias list', async () => {
-    const res = await request(app)
-      .get('/api/v1/incidencias')
-      .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.incidencias)).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Registro de empresa (SaaS)
 // ---------------------------------------------------------------------------
 describe('POST /api/v1/auth/register-empresa', () => {
@@ -318,24 +305,6 @@ describe('SECURITY: multi-tenant isolation', () => {
       .post('/api/v1/inventario')
       .set('Authorization', `Bearer ${tokenA}`)
       .send({ id_centro: centroBId, id_producto: 1, cantidad_actual: 5, stock_minimo: 1 });
-    expect(res.status).toBe(403);
-  });
-
-  it('Empresa A cannot read Empresa B incidencias (global leak blocked)', async () => {
-    const res = await request(app)
-      .get('/api/v1/incidencias')
-      .set('Authorization', `Bearer ${tokenA}`);
-    // No debe devolver incidencias de empresa B; comprobamos que no hay fugas por id de centro ajeno
-    const incs = res.body.incidencias || [];
-    const fugadas = incs.filter(i => i.id_centro === centroBId);
-    expect(fugadas.length).toBe(0);
-  });
-
-  it('Empresa A cannot POST incidencia in Empresa B centro', async () => {
-    const res = await request(app)
-      .post('/api/v1/incidencias')
-      .set('Authorization', `Bearer ${tokenA}`)
-      .send({ id_centro: centroBId, categoria: 'limpieza', titulo: 'x', descripcion: 'x' });
     expect(res.status).toBe(403);
   });
 
@@ -753,27 +722,6 @@ describe('GET /api/v1/dashboard/consumption?desde=&hasta=', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Filtro de periodo en /api/v1/incidencias (desde/hasta)
-// ---------------------------------------------------------------------------
-describe('GET /api/v1/incidencias?desde=&hasta=', () => {
-  it('con rango futuro devuelve 0 incidencias', async () => {
-    const res = await request(app)
-      .get('/api/v1/incidencias?desde=2099-01-01&hasta=2099-12-31')
-      .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(200);
-    expect(res.body.incidencias.length).toBe(0);
-  });
-
-  it('sin filtro devuelve la lista completa (compatibilidad)', async () => {
-    const res = await request(app)
-      .get('/api/v1/incidencias')
-      .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.incidencias)).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // KPI Movimientos: conteo REAL del periodo (no los últimos 50)
 // ---------------------------------------------------------------------------
 
@@ -816,9 +764,9 @@ const { PrismaPg } = require('@prisma/adapter-pg');
 
 // ---------------------------------------------------------------------------
 // Blindaje completo: supervisor de visita no modifica datos compartidos
-// (consumos, conteos, incidencias) — mismo patrón RouteAI
+// (consumos, conteos) — mismo patrón RouteAI
 // ---------------------------------------------------------------------------
-describe('Blindaje: supervisor demo no modifica stock ni incidencias', () => {
+describe('Blindaje: supervisor demo no modifica stock', () => {
   let supToken = '';
 
   beforeAll(async () => {
@@ -847,26 +795,6 @@ describe('Blindaje: supervisor demo no modifica stock ni incidencias', () => {
       .post('/api/v1/inventario/1/1/conteo')
       .set('Authorization', `Bearer ${supToken}`)
       .send({ stock_fisico: 5 });
-    expect(res.status).toBe(403);
-  });
-
-  it('201 al crear una incidencia (queda marcada y caduca en 24h)', async () => {
-    const res = await request(app)
-      .post('/api/v1/incidencias')
-      .set('Authorization', `Bearer ${supToken}`)
-      .send({ id_centro: 1, categoria: 'limpieza', titulo: 'X', descripcion: 'Y' });
-    expect(res.status).toBe(200);
-    expect(res.body.incidencia.expira_en).toBeTruthy();
-    if (res.body.incidencia?.id_incidencia) {
-      await prisma.incidencia.deleteMany({ where: { id_incidencia: res.body.incidencia.id_incidencia } });
-    }
-  });
-
-  it('403 al cambiar el estado de una incidencia', async () => {
-    const res = await request(app)
-      .put('/api/v1/incidencias/1')
-      .set('Authorization', `Bearer ${supToken}`)
-      .send({ estado: 'resuelta' });
     expect(res.status).toBe(403);
   });
 

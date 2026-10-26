@@ -3,7 +3,7 @@ import {
   getResponsables, createResponsable, getCentros, assignCentrosToResponsable, getRecuentos,
   type Responsable, type Recuento,
 } from '../lib/api'
-import { fmtNum } from '../lib/format'
+import { fmtNum, nombreConUnidad } from '../lib/format'
 import { GuiaAyuda } from '../components/GuiaAyuda'
 
 export function Responsables() {
@@ -187,7 +187,7 @@ export function Responsables() {
                     <td>{new Date(r.fecha_hora).toLocaleString('es-ES')}</td>
                     <td>{r.responsable.nombre}</td>
                     <td>{r.centro.nombre_centro}</td>
-                    <td>{r.producto.nombre_producto} ({r.producto.unidad_medida})</td>
+                    <td>{nombreConUnidad(r.producto.nombre_producto, r.producto.unidad_medida)}</td>
                     <td><strong>{fmtNum(r.cantidad_nueva)}</strong></td>
                   </tr>
                 ))

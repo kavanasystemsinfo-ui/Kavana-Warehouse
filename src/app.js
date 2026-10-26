@@ -984,45 +984,6 @@ app.post('/api/v1/consumos', auth, officeOnly, validate(consumoSchema), async (r
   }
 });
 
-// ----- INCIDENCIAS (scoping multi-tenant) -----
-app.get('/api/v1/incidencias', auth, async (req, res) => {
-  try {
-    const where = req.user.id_cliente
-      ? { centro: { id_cliente: req.user.id_cliente } }
-      : {};
-    // Filtro de periodo global (desde/hasta) sobre fecha_creacion
-    if (req.query.desde) where.fecha_creacion = { ...(where.fecha_creacion || {}), gte: new Date(String(req.query.desde)) };
-    if (req.query.hasta) where.fecha_creacion = { ...(where.fecha_creacion || {}), lt: new Date(String(req.query.hasta) + 'T23:59:59') };
-    const incs = await prisma.incidencia.findMany({ where, include: { centro: true, usuario: { select: { nombre: true } } }, orderBy: { fecha_creacion: 'desc' } });
-    res.json({ incidencias: incs });
-  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
-});
-app.post('/api/v1/incidencias', auth, async (req, res) => {
-  try {
-    const { id_centro } = req.body;
-    if (!(await requireCentroDelCliente(id_centro, req.user.id_cliente))) {
-      return res.status(403).json({ error: 'Sin acceso a este centro' });
-    }
-    // Cualquiera autenticado puede CREAR una incidencia; si es visitante,
-    // queda marcada y caduca en 24h (la limpia el cron).
-    const esVisita = await esVisitaUsuario(req.user);
-    const inc = await prisma.incidencia.create({ data: { id_centro, id_usuario: req.user.id_usuario, categoria: req.body.categoria, titulo: req.body.titulo, descripcion: req.body.descripcion, foto_url: req.body.foto_url, ...(esVisita ? { session_id: req.user.session_id || 'demo', expira_en: new Date(Date.now() + 24 * 3600 * 1000) } : {}) } });
-    res.json({ incidencia: inc });
-  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
-});
-app.put('/api/v1/incidencias/:id', auth, officeOnly, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const inc = await prisma.incidencia.findUnique({ where: { id_incidencia: id } });
-    if (!inc) return res.status(404).json({ error: 'Incidencia no encontrada' });
-    if (req.user.id_cliente && inc.id_centro && !(await requireCentroDelCliente(inc.id_centro, req.user.id_cliente))) {
-      return res.status(403).json({ error: 'Sin acceso a esta incidencia' });
-    }
-    const updated = await prisma.incidencia.update({ where: { id_incidencia: id }, data: { estado: req.body.estado } });
-    res.json({ incidencia: updated });
-  } catch(e) { res.status(500).json({ error: 'Error interno' }); }
-});
-
 // ============================
 // SAAS — Registro de empresas & Admin
 // ============================

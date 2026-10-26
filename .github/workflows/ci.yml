@@ -84,7 +84,7 @@ jobs:
 
   demo-scripts:
     # Verifica con Postgres real los scripts de la demo industrial: sembrado,
-    # histórico, incidencias, simulación diaria y recarga completa (borrado con
+    # histórico, simulación diaria y recarga completa (borrado con
     # claves foráneas y cascadas incluido). Los tests de la API no los cubren.
     runs-on: ubuntu-latest
 
@@ -125,11 +125,10 @@ jobs:
           npx prisma generate
           npx prisma migrate deploy
 
-      - name: Seed base + histórico + incidencias + simulación diaria
+      - name: Seed base + histórico + simulación diaria
         run: |
           npx prisma db seed
           node prisma/seed-historico.js
-          node prisma/seed-incidencias.js
           node prisma/simulate-daily.js
           node prisma/simulate-daily.js   # segunda pasada: debe ser idempotente
 
@@ -146,13 +145,18 @@ jobs:
           check "secciones"                     "$(q "select count(*) from centros")" 6
           check "filas de inventario"           "$(q "select count(*) from inventario_centros")" 67
           check "movimientos"                   "$(q "select count(*) from registro_movimientos")" gt:1000
-          check "incidencias"                   "$(q "select count(*) from incidencias")" 60
           check "usuarios con rol limpiador"    "$(q "select count(*) from usuarios where rol='limpiador'")" 0
           check "operarios"                     "$(q "select count(*) from usuarios where rol='operario'")" gt:20
           check "productos de limpieza"         "$(q "select count(*) from productos where nombre_producto ~* 'lejía|fregona|fregasuelos|papel higiénico'")" 0
           check "stock negativo"                "$(q "select count(*) from inventario_centros where cantidad_actual < 0 or stock_fisico < 0")" 0
           check "merma estrella (hilo MIG)"     "$(q "select i.stock_fisico - i.cantidad_actual from inventario_centros i join productos p using(id_producto) join centros c using(id_centro) where c.nombre_centro='Soldadura' and p.nombre_producto like 'Hilo de soldadura%'")" -3
           check "Pintura sin contar (filas con físico)" "$(q "select count(*) from inventario_centros i join centros c using(id_centro) where c.nombre_centro='Pintura y acabado' and i.stock_fisico is not null")" 0
+          check "Pintura sin recuentos"         "$(q "select count(*) from registro_movimientos m join centros c using(id_centro) where c.nombre_centro='Pintura y acabado' and m.tipo='recuento'")" 0
+          check "responsables (uno por sección)" "$(q "select count(*) from usuarios where rol='responsable'")" 6
+          check "movimientos de Sistema Demo"   "$(q "select count(*) from registro_movimientos m join usuarios u using(id_usuario) where u.nombre='Sistema Demo'")" 0
+          check "recuentos fuera del responsable" "$(q "select count(*) from registro_movimientos m join usuarios u using(id_usuario) where m.tipo='recuento' and u.rol<>'responsable'")" 0
+          check "fleje de Expediciones bajo mínimo" "$(q "select count(*) from inventario_centros i join productos p using(id_producto) join centros c using(id_centro) where c.nombre_centro='Expediciones' and p.nombre_producto like 'Fleje%' and i.cantidad_actual < i.stock_minimo")" 1
+          check "diferencias distintas de las diseñadas" "$(q "select count(*) from inventario_centros i join productos p using(id_producto) join centros c using(id_centro) where i.stock_fisico is not null and i.stock_fisico - i.cantidad_actual <> case when c.nombre_centro='Soldadura' and p.nombre_producto like 'Hilo de soldadura%' then -3 when c.nombre_centro='Perfilado' and p.nombre_producto like 'Guantes anticorte%' then -8 when c.nombre_centro='Mantenimiento' and p.nombre_producto like 'Aceite hidráulico%' then 4 when c.nombre_centro='Mantenimiento' and p.nombre_producto like 'Grasa multiusos%' then 1 else 0 end")" 0
           exit $FAIL
 
       - name: Autorreparación - el cron falla 10 días y vuelve

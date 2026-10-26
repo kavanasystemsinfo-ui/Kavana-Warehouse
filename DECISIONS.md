@@ -84,7 +84,7 @@ En octubre de 2026 la demo pasó del caso de origen (empresa de limpieza) a una
 planta metalúrgica ficticia con consumibles indirectos por sección. El modelo de
 datos no cambia: "centro" es el centro de coste o sección de la planta.
 - **Fuente única de datos:** `prisma/demo-industrial-data.js` (secciones, catálogo,
-  inventario y consumo diario por sección). Seed base, histórico, incidencias y
+  inventario y consumo diario por sección). Seed base, histórico y
   simulación leen de ahí.
 - **Cada sección consume solo lo que tiene en su inventario.** Antes, histórico y
   simulación recorrían el catálogo global en todos los centros.
@@ -107,6 +107,16 @@ datos no cambia: "centro" es el centro de coste o sección de la planta.
   `officeOnly` ya es una lista permitida (`oficina`/`supervisor`).
 - **El job `demo-scripts` del CI** ejecuta sembrado, histórico, simulación y
   recarga completa con Postgres real y comprueba el resultado con SQL.
+
+### 12. Fuera la función Incidencias
+En octubre de 2026 se quitó la función Incidencias (averías de la instalación):
+no encaja en una herramienta de control de stock de consumibles y distraía de
+lo que la demo tiene que enseñar.
+- Se eliminan la página `/incidents`, los endpoints `/api/v1/incidencias`, sus
+  tests y `prisma/seed-incidencias.js`.
+- **La tabla `incidencias` y el modelo Prisma se conservan:** nada destructivo
+  en la base de datos. `reset-demo.js` sigue borrando las filas antiguas de la
+  demo para que no bloqueen el borrado de centros y usuarios.
 
 ---
 

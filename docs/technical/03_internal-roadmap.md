@@ -13,7 +13,7 @@
 | Auth JWT + bcrypt | ✅ En producción | Token 2h, login tolerante a mayúsculas/espacios |
 | Roles oficina + supervisor | ✅ En producción | Oficina gestiona todo; supervisor demo caduca 24h |
 | Supervisores demo (session_id) | ✅ En producción | Aislados por navegador, expiran 24h (cron limpieza 03:00) |
-| Incidencias (backend + dashboard) | ✅ En producción | 3 endpoints, página `/incidents` enrutada |
+| Incidencias (backend + dashboard) | ❌ Retirado (2026-10) | No encaja en control de stock; la tabla se conserva |
 | Desviaciones (stock físico vs registrado) | ✅ En producción | `deviationController`, página `/desviaciones` |
 | Costes por centro (€) | ✅ En producción | `costeController`, página `/costes`, presupuestos realistas |
 | Propuesta de compra | ✅ En producción | `purchaseController`, endpoint `GET /purchases/proposal` |

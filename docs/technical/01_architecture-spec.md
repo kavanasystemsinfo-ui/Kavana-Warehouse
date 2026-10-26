@@ -12,7 +12,7 @@
 KAVANA WAREHOUSE es una herramienta de **control de consumibles indirectos de planta** (EPIs, discos, hilo de soldadura, lubricantes, embalaje) por sección o centro de coste, pensada como apoyo a la mejora continua. No es un MES ni un producto comercial. Permite a la **oficina** saber qué producto se consume en cada centro, cuándo baja de stock y cuánto se gasta respecto al presupuesto mensual, para **detectar mermas y sobrecostes por centro**. El caso de origen fue una empresa de limpieza con centros descentralizados; la demo actual es una planta metalúrgica ficticia.
 
 **Alcance de usuario:**
-- ✅ **Oficina** (`warehouse`): gestión total desde el dashboard web: centros, productos, inventario, costes, presupuestos, incidencias y creación de supervisores.
+- ✅ **Oficina** (`warehouse`): gestión total desde el dashboard web: centros, productos, inventario, costes, presupuestos y creación de supervisores.
 - ✅ **Supervisor**: creado por la oficina, hace **recuento físico** del stock de sus centros asignados. En la demo, los supervisores caducan a las 24h (sesión de reclutador aislada).
 - ❌ **Operario** (antes `limpiador`): no tiene acceso a ninguna app. Existe en el modelo de datos solo para trazabilidad de la plantilla que genera los movimientos simulados de la demo.
 
@@ -61,7 +61,6 @@ kavana-warehouse/
 │   ├── demo-industrial-data.js  # datos de la demo (planta metalúrgica ficticia)
 │   ├── seed-demo-industrial.js  # secciones, catálogo e inventario
 │   ├── seed-historico.js        # 3 meses de movimientos simulados
-│   ├── seed-incidencias.js      # incidencias de planta
 │   ├── simulate-daily.js        # simulación diaria (cron 06:00)
 │   └── reset-demo.js            # recarga segura de la demo (--confirm)
 ├── dashboard/              # Panel de la oficina (React 19 + Vite + TS)
@@ -84,7 +83,7 @@ kavana-warehouse/
 | `InventarioCentro` | Stock de un producto en un centro | FK compuesta `(id_centro, id_producto)`, ON DELETE CASCADE |
 | `AsignacionPersonal` | Usuario asignado a un centro (trazabilidad) | N:1 → `Usuario`, `Centro` |
 | `RegistroMovimiento` | Cada consumo/entrada/recuento | N:1 → `Usuario`, `Centro`, `Producto`; ON DELETE CASCADE |
-| `Incidencia` | Reporte de avería | N:1 → `Usuario`, `Centro` |
+| `Incidencia` | Reporte de avería (sin función desde octubre de 2026; la tabla se conserva) | N:1 → `Usuario`, `Centro` |
 | `ReglaNotificacion` | Regla de alerta (tabla, sin CRUD) | N:1 → `Usuario` |
 | `Notificacion` | Historial de alertas (tabla, sin CRUD) | N:1 → `Usuario` |
 | `RefreshToken` | Token de refresco (tabla, sin wirear) | N:1 → `Usuario` |
@@ -134,7 +133,6 @@ kavana-warehouse/
 | GET/POST | `/api/v1/inventario` | Stock por centro |
 | POST | `/api/v1/inventario/reponer` | Reponer producto |
 | GET/POST | `/api/v1/consumos` | Historial de consumos |
-| GET/POST/PUT | `/api/v1/incidencias` | Incidencias |
 | GET | `/api/v1/asignaciones/active` | Centros activos de un usuario |
 | GET | `/api/v1/asignaciones/users` | Responsables del cliente con sus centros |
 | POST | `/api/v1/stock/consume` | Registrar consumo |

@@ -1,7 +1,7 @@
 // =============================================================================
 // Datos de la DEMO industrial — KAVANA WAREHOUSE
-// Fuente única para seed-demo-industrial.js, seed-historico.js, simulate-daily.js
-// y seed-incidencias.js. Planta metalúrgica INVENTADA: ningún dato real.
+// Fuente única para seed-demo-industrial.js, seed-historico.js y simulate-daily.js.
+// Planta metalúrgica INVENTADA: ningún dato real.
 //
 // Caso de uso: control de consumibles indirectos de planta (EPIs, abrasivos,
 // hilo de soldadura, lubricantes, embalaje) por sección, como herramienta de
@@ -14,12 +14,25 @@
 
 export const EMPRESA_DEMO = 'Industrias Metálicas Demo, S.L.';
 export const EMAIL_CONTACTO = 'contacto@industrias-metalicas.test';
-export const EMAIL_SISTEMA = 'sistema.demo@kavanawarehouse.com'; // marcador de idempotencia de la simulación
+export const EMAIL_SISTEMA = 'sistema.demo@kavanawarehouse.com'; // autor de reserva si una sección no tiene personal
 export const SUPERVISOR_DEMO = {
   nombre: 'Responsable de Planta',
   email: 'supervisor.demo@kavanawarehouse.com',
   username: 'warehouse', // credenciales públicas de la demo: warehouse / kavana
 };
+
+// Responsable de cada sección: hace los recuentos físicos y las reposiciones.
+// Sale en la página Responsables y firma el histórico de recuentos.
+export const RESPONSABLES_SECCION = {
+  'Perfilado': 'Rosa Gallego Peña',
+  'Corte y punzonado': 'Tomás Herrero Vila',
+  'Soldadura': 'Iván Lozano Campos',
+  'Pintura y acabado': 'Silvia Rubio Mora',
+  'Mantenimiento': 'Ernesto Pascual Soler',
+  'Expediciones': 'Lorena Vega Bravo',
+};
+export const emailResponsable = (seccion) =>
+  `responsable.${seccion.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]+/g, '-')}@industrias-metalicas.test`;
 
 // Presupuesto mensual por sección (€), calibrado con el consumo simulado
 // (ver consumoMensualEsperado). Soldadura queda algo por debajo de su consumo
@@ -168,42 +181,6 @@ export const INVENTARIO = [
   ['Expediciones', 'Bridas de nylon (bolsa 100)', 20, 20, 6, 0.3],
 ];
 
-// Incidencias de planta: categorías y catálogo para el histórico de la demo.
-export const CATEGORIAS_INCIDENCIA = ['seguridad', 'mantenimiento', 'electricidad', 'calidad', 'otros'];
-
-export const CATALOGO_INCIDENCIAS = [
-  { categoria: 'seguridad', titulos: [
-    ['Extractor de humos de soldadura parado', 'El extractor del puesto 2 de soldadura no arranca y se acumula humo en la nave.'],
-    ['Rotura de stock de guantes anticorte', 'En el turno de tarde no quedaban guantes anticorte de la talla L.'],
-    ['Pantalla de soldar con filtro rayado', 'Varias pantallas tienen el filtro rayado y dificultan ver el cordón.'],
-    ['Señalización de salida de emergencia borrada', 'La señal de salida del pasillo central apenas se distingue.'],
-  ]},
-  { categoria: 'mantenimiento', titulos: [
-    ['Fuga de aceite hidráulico en la prensa', 'Gotea aceite por el racor del cilindro principal.'],
-    ['Cinta transportadora con ruido', 'La cinta de salida de la línea hace un ruido metálico al arrancar.'],
-    ['Compresor que no alcanza presión', 'El compresor de la nave 2 tarda el doble en llegar a presión de trabajo.'],
-    ['Puente grúa con fin de carrera defectuoso', 'El fin de carrera no corta a tiempo; se avisa a mantenimiento.'],
-  ]},
-  { categoria: 'electricidad', titulos: [
-    ['Luminaria fundida sobre la línea', 'Tres focos de la línea 1 no encienden.'],
-    ['Cuadro eléctrico que salta', 'El diferencial del cuadro de soldadura salta al arrancar dos equipos a la vez.'],
-    ['Enchufe industrial con holgura', 'La base trifásica del taller no sujeta bien la clavija.'],
-    ['Cable de alimentación pelado', 'El cable de una amoladora tiene la cubierta dañada.'],
-  ]},
-  { categoria: 'calidad', titulos: [
-    ['Lote de discos de corte con grietas', 'Varios discos del último pedido aparecen agrietados al sacarlos de la caja.'],
-    ['Hilo de soldadura con óxido', 'Una bobina llegó con óxido superficial y da cordones porosos.'],
-    ['Fleje que se rompe al tensar', 'Un rollo de fleje se rompe al tensar los paquetes.'],
-    ['Filtros de cabina que no encajan', 'Los filtros del último pedido son medio centímetro más cortos.'],
-  ]},
-  { categoria: 'otros', titulos: [
-    ['Derrame de aceite en el pasillo', 'Mancha de aceite junto a la entrada de la nave 1; se usó absorbente.'],
-    ['Taquillas del vestuario sin cerradura', 'Faltan cerraduras en varias taquillas.'],
-    ['Zona de residuos desbordada', 'El contenedor de trapos usados no se vacía desde hace días.'],
-    ['Iluminación escasa en el almacén de consumibles', 'Cuesta leer las etiquetas de las estanterías del fondo.'],
-  ]},
-];
-
 // ----------------------------------------------------------------- utilidades
 
 // Generador pseudoaleatorio determinista (LCG): misma semilla = mismos datos.
@@ -234,6 +211,42 @@ export function consumoDelDia(consumoDia, rnd, esFinSemana) {
 export function nivelObjetivo(minimo, consumoDia) {
   return Math.max(minimo * 2, Math.ceil(minimo + consumoDia * 15));
 }
+
+// Escenario "bajo mínimo" (registrado < mínimo en INVENTARIO, p. ej. el fleje de
+// Expediciones): se repone poco y tarde para que siga por debajo del mínimo y
+// la propuesta de compra lo enseñe siempre.
+export const esBajoMinimo = (perfil) => perfil.registrado < perfil.minimo;
+
+// Reposición del lunes para un par: cuánto entra (0 si no toca reponer).
+export function reposicionLunes(perfil, cantidad) {
+  if (esBajoMinimo(perfil)) {
+    const techo = perfil.minimo - 1;
+    return cantidad < techo - 1 ? techo - cantidad : 0;
+  }
+  const puntoPedido = perfil.minimo + Math.ceil(perfil.consumoDia * 5);
+  return cantidad <= puntoPedido ? Math.max(0, nivelObjetivo(perfil.minimo, perfil.consumoDia) - cantidad) : 0;
+}
+
+// Personal activo de cada sección del cliente demo: id_centro -> { operarios, responsable }.
+// Los consumos los firma un operario de la sección; recuentos y reposiciones, su responsable.
+export async function personalPorSeccion(prisma, idCliente) {
+  const asignaciones = await prisma.asignacionPersonal.findMany({
+    where: { fecha_fin: null, centro: { id_cliente: idCliente }, usuario: { estado: 'activo' } },
+    select: { id_centro: true, id_usuario: true, usuario: { select: { rol: true } } },
+    orderBy: { id_usuario: 'asc' },
+  });
+  const m = new Map();
+  for (const a of asignaciones) {
+    if (!m.has(a.id_centro)) m.set(a.id_centro, { operarios: [], responsable: null });
+    const p = m.get(a.id_centro);
+    if (a.usuario.rol === 'responsable') p.responsable ??= a.id_usuario;
+    else if (a.usuario.rol === 'operario') p.operarios.push(a.id_usuario);
+  }
+  return m;
+}
+
+// Fecha del día + minutos desde las 00:00 (las horas salen con minutos, no en punto).
+export const aLas = (dia, minutos) => new Date(dia.getTime() + minutos * 60 * 1000);
 
 export const clavePar = (seccion, producto) => `${seccion}|${producto}`;
 

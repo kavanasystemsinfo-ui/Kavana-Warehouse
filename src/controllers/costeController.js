@@ -7,20 +7,28 @@
 //   (material que "desapareció" del registro al contar).
 //   coste_centro = Σ(consumido × coste_unitario)
 //   % usado = coste_centro / presupuesto_mensual
-//   estado: verde (<70%), ámbar (<100%), rojo (>=100%)
+//   estado: rojo si ya se ha pasado (>=100 %); ámbar si al ritmo actual acabará
+//   el mes por encima del presupuesto o ya va por el 90 %; verde en otro caso.
+//   El ritmo tiene en cuenta el día del mes: un 60 % el día 10 es ámbar, el día 28 no.
 //
 // Contrato de salida:
-//   { mes, total_coste, total_presupuesto, centros: [{ centro, coste_material,
-//     presupuesto_mensual, porcentaje_usado, diferencia, estado }] }
+//   { mes, total_coste, total_presupuesto, estado_total, centros: [{ centro,
+//     coste_material, presupuesto_mensual, porcentaje_usado, diferencia, estado }] }
 
 const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
-function estadoSegunPorcentaje(pct) {
-  if (pct >= 100) return 'rojo';     // se pasa del presupuesto
-  if (pct >= 70) return 'ambar';    // se acerca
-  return 'verde';                    // controlado
+// Parte del mes transcurrida (0-1], contando el día de hoy entero.
+function fraccionDelMes(hoy = new Date()) {
+  const diasMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+  return hoy.getDate() / diasMes;
+}
+
+function estadoSegunPorcentaje(pct, fraccionMes = fraccionDelMes()) {
+  if (pct >= 100) return 'rojo';                         // ya se ha pasado
+  if (pct >= 90 || pct / fraccionMes >= 100) return 'ambar'; // a este ritmo se pasará
+  return 'verde';                                        // controlado
 }
 
 async function getCostes(req, res) {
@@ -85,6 +93,8 @@ async function getCostes(req, res) {
       });
     }
 
+    const pctTotal = totalPresupuesto > 0 ? Math.round((totalCoste / totalPresupuesto) * 100) : null;
+
     // Ordenar por coste descendente
     lista.sort((a, b) => b.coste_material - a.coste_material);
 
@@ -92,6 +102,7 @@ async function getCostes(req, res) {
       mes: new Date().toLocaleString('es-ES', { month: 'long', year: 'numeric' }),
       total_coste: Math.round(totalCoste * 100) / 100,
       total_presupuesto: Math.round(totalPresupuesto * 100) / 100,
+      estado_total: pctTotal === null ? 'sin_presupuesto' : estadoSegunPorcentaje(pctTotal),
       centros: lista,
     });
   } catch (err) {

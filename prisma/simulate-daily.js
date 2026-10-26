@@ -9,8 +9,10 @@
 //
 // Cada sección solo consume lo que tiene en su inventario, con el consumo
 // diario definido en prisma/demo-industrial-data.js. Tanto el stock registrado
-// como el físico (si ya está contado) se mueven igual, de modo que las
-// diferencias de la demo (merma estrella, sobrantes) se mantienen estables.
+// como el físico (si ya está contado) se mueven igual, y nunca se consume más
+// de lo que hay en ninguno de los dos: la diferencia físico − registrado (merma
+// estrella, sobrantes) se mantiene exactamente igual día tras día.
+// Los consumos los firma un operario de la sección; las reposiciones, su responsable.
 
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
@@ -23,7 +25,9 @@ import {
   crearRnd,
   entre,
   consumoDelDia,
-  nivelObjetivo,
+  reposicionLunes,
+  personalPorSeccion,
+  aLas,
 } from './demo-industrial-data.js';
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
@@ -44,8 +48,6 @@ async function conectarConReintentos() {
   throw new Error('No se pudo conectar a la BD tras 3 intentos.');
 }
 
-const DIA_MS = 24 * 60 * 60 * 1000;
-
 async function main() {
   await conectarConReintentos();
   const cliente = await prisma.cliente.findFirst({ where: { nombre_empresa: EMPRESA_DEMO } });
@@ -55,7 +57,7 @@ async function main() {
   }
   const idCliente = cliente.id_cliente;
 
-  // Marcador: usuario de sistema (rol oficina, sin acceso real)
+  // Autor de reserva si una sección no tiene personal (rol oficina, sin acceso real)
   let sistema = await prisma.usuario.findFirst({ where: { email: EMAIL_SISTEMA } });
   if (!sistema) {
     sistema = await prisma.usuario.create({
@@ -68,7 +70,7 @@ async function main() {
         estado: 'inactivo', // no puede loguearse
       },
     });
-    console.log('  ✓ Usuario de sistema creado (marcador)');
+    console.log('  ✓ Usuario de sistema creado (autor de reserva)');
   }
 
   // Último día con actividad en la demo (de cualquier autor: el histórico también cuenta).
@@ -89,17 +91,18 @@ async function main() {
 
   // Días a simular: desde el siguiente al último con datos hasta hoy (tope: MAX_DIAS_RELLENO).
   const MAX_DIAS_RELLENO = 120;
-  let desde = ultimoDia ? new Date(ultimoDia.getTime() + DIA_MS) : new Date(inicioHoy);
-  const tope = new Date(inicioHoy.getTime() - (MAX_DIAS_RELLENO - 1) * DIA_MS);
+  // Se avanza por días de calendario (setDate), no sumando 24 h: el día del cambio
+  // de hora dura 23 o 25 h y sumar 24 h repetía un día y se saltaba el siguiente.
+  const masDias = (f, n) => { const r = new Date(f); r.setDate(r.getDate() + n); r.setHours(0, 0, 0, 0); return r; };
+  let desde = ultimoDia ? masDias(ultimoDia, 1) : new Date(inicioHoy);
+  const tope = masDias(inicioHoy, -(MAX_DIAS_RELLENO - 1));
   if (desde < tope) desde = tope;
   const dias = [];
-  for (let d = new Date(desde); d <= inicioHoy; d = new Date(d.getTime() + DIA_MS)) {
-    // Evita desfases de hora por cambio horario: se normaliza a las 00:00 locales
-    const n = new Date(d); n.setHours(0, 0, 0, 0); dias.push(n);
-  }
+  for (let d = desde; d <= inicioHoy; d = masDias(d, 1)) dias.push(d);
   if (ultimoDia && dias.length > 1) console.log(`  ⚠ Faltaban ${dias.length - 1} día(s) sin simular: se rellenan.`);
 
   const perfiles = perfilesPorPar();
+  const personal = await personalPorSeccion(prisma, idCliente);
   const filasInv = await prisma.inventarioCentro.findMany({
     where: { centro: { id_cliente: idCliente } },
     include: { centro: { select: { nombre_centro: true } }, producto: { select: { nombre_producto: true } } },
@@ -112,8 +115,7 @@ async function main() {
     estado.push({
       id_centro: inv.id_centro,
       id_producto: inv.id_producto,
-      minimo: inv.stock_minimo,
-      consumoDia: perfil.consumoDia,
+      perfil,
       cantidad: inv.cantidad_actual,
       fisico: inv.stock_fisico,
       inicial: { cantidad: inv.cantidad_actual, fisico: inv.stock_fisico },
@@ -132,43 +134,46 @@ async function main() {
     // Semilla por fecha: misma fecha = mismos datos (reproducible), y cada producto
     // recibe un número distinto dentro del día.
     const rnd = crearRnd(dia.getFullYear() * 10000 + (dia.getMonth() + 1) * 100 + dia.getDate());
-    const ts = (h) => new Date(Math.min(dia.getTime() + h * 60 * 60 * 1000, ahora)); // nunca en el futuro
+    const ts = (min) => new Date(Math.min(aLas(dia, min).getTime(), ahora)); // nunca en el futuro
 
     for (const par of estado) {
-      // 1. Consumo del día (casi nulo en fin de semana). No se consume lo que no hay.
-      const consumo = Math.min(consumoDelDia(par.consumoDia, rnd, esFinSemana), Math.max(0, par.cantidad));
+      const equipo = personal.get(par.id_centro);
+      const operario = equipo?.operarios.length ? equipo.operarios[Math.floor(rnd() * equipo.operarios.length)] : sistema.id_usuario;
+      const responsable = equipo?.responsable ?? sistema.id_usuario;
+
+      // 1. Consumo del día (casi nulo en fin de semana). No se consume más de lo
+      //    que hay ni en el registrado ni en el físico: la diferencia no cambia.
+      const disponible = Math.max(0, Math.min(par.cantidad, par.fisico ?? par.cantidad));
+      const consumo = Math.min(consumoDelDia(par.perfil.consumoDia, rnd, esFinSemana), disponible);
       if (consumo > 0) {
         par.cantidad -= consumo;
-        if (par.fisico !== null) par.fisico = Math.max(0, par.fisico - consumo);
+        if (par.fisico !== null) par.fisico -= consumo;
         movimientos.push({
-          id_usuario: sistema.id_usuario,
+          id_usuario: operario,
           id_centro: par.id_centro,
           id_producto: par.id_producto,
           cantidad: -consumo,
           tipo: 'movimiento',
-          fecha_hora: ts(entre(rnd, 7, 19)), // 7:00-19:00
+          fecha_hora: ts(entre(rnd, 7 * 60, 19 * 60)), // 7:00-19:00
         });
         nConsumos++;
       }
 
-      // 2. Reposición semanal (lunes): si está en el punto de pedido, repone al nivel objetivo
+      // 2. Reposición semanal (lunes por la mañana). Lo que entra, entra también en el físico.
       if (esLunes) {
-        const puntoPedido = par.minimo + Math.ceil(par.consumoDia * 5);
-        if (par.cantidad <= puntoPedido) {
-          const repo = nivelObjetivo(par.minimo, par.consumoDia) - par.cantidad;
-          if (repo > 0) {
-            par.cantidad += repo;
-            if (par.fisico !== null) par.fisico += repo; // lo que entra, entra también en el físico
-            movimientos.push({
-              id_usuario: sistema.id_usuario,
-              id_centro: par.id_centro,
-              id_producto: par.id_producto,
-              cantidad: repo,
-              tipo: 'movimiento',
-              fecha_hora: ts(8),
-            });
-            nRepos++;
-          }
+        const repo = reposicionLunes(par.perfil, par.cantidad);
+        if (repo > 0) {
+          par.cantidad += repo;
+          if (par.fisico !== null) par.fisico += repo;
+          movimientos.push({
+            id_usuario: responsable,
+            id_centro: par.id_centro,
+            id_producto: par.id_producto,
+            cantidad: repo,
+            tipo: 'movimiento',
+            fecha_hora: ts(entre(rnd, 7 * 60 + 30, 9 * 60)), // 7:30-9:00
+          });
+          nRepos++;
         }
       }
     }

@@ -90,13 +90,12 @@ Lo que **no** cambia entre los dos escenarios es lo que se evalúa aquí: multi-
 | Desviaciones (stock registrado vs físico) | ✅ |
 | Recuentos físicos del supervisor | ✅ |
 | Propuesta de compra | ✅ |
-| Incidencias | ✅ |
 | Supervisores demo (caducan a las 24h) | ✅ |
 | Asistente técnico RAG (responde con la documentación real) | ✅ |
 | Blindaje demo (visitante no gestiona ni resetea datos compartidos) | ✅ |
 | Multi-tenant verificado con tests | ✅ |
 | CI/CD (GitHub Actions) | ✅ |
-| 80 tests de API + 3 tests de frontend | ✅ |
+| 73 tests de API + 11 tests de frontend | ✅ |
 | App móvil | ❌ Descartada (gestión de stock web) |
 
 ---

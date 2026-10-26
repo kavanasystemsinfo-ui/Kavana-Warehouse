@@ -4,7 +4,6 @@ import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
 import { Inventario } from './pages/Inventario'
-import { Incidents } from './pages/Incidents'
 import { Centros } from './pages/Centros'
 import { Responsables } from './pages/Responsables'
 import { Supervisores } from './pages/Supervisores'
@@ -66,7 +65,6 @@ export default function App() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="inventario" element={<Inventario />} />
-        <Route path="incidents" element={<Incidents />} />
         <Route path="centros" element={<Centros />} />
         <Route path="responsables" element={<Responsables />} />
         <Route path="supervisores" element={<Supervisores />} />

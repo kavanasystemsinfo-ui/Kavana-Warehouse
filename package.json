@@ -9,7 +9,7 @@
     "prisma:generate": "npx prisma generate",
     "prisma:seed": "node prisma/seed.js",
     "demo:reset": "node prisma/reset-demo.js",
-    "demo:recargar": "node prisma/reset-demo.js --confirm && node prisma/seed.js && node prisma/seed-historico.js && node prisma/seed-incidencias.js",
+    "demo:recargar": "node prisma/reset-demo.js --confirm && node prisma/seed.js && node prisma/seed-historico.js",
     "demo:simular": "node prisma/simulate-daily.js"
   },
   "prisma": {

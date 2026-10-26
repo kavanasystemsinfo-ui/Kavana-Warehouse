@@ -1,6 +1,6 @@
 import { useState, useEffect, Fragment } from 'react'
 import { getCentros, createCentro, updateCentro, getCatalogoProductos, addProductoCentro, esVisita, type Centro, type Producto } from '../lib/api'
-import { fmtEuro } from '../lib/format'
+import { fmtEuro, nombreConUnidad } from '../lib/format'
 import { GuiaAyuda } from '../components/GuiaAyuda'
 
 export function Centros() {
@@ -229,7 +229,7 @@ export function Centros() {
                                       const merma = (fis !== null && reg > fis) ? reg - fis : null;
                                       return (
                                         <li key={i}>
-                                          {inv.producto.nombre_producto} ({inv.producto.unidad_medida})
+                                          {nombreConUnidad(inv.producto.nombre_producto, inv.producto.unidad_medida)}
                                           <span className="detalle-stock">reg. {reg}{fis !== null ? ` · fís. ${fis}` : ''}{merma !== null ? ` · 🔴 -${merma}` : ''}</span>
                                         </li>
                                       );
@@ -292,7 +292,7 @@ export function Centros() {
                 <select className="form-select" value={addProdId} onChange={(e) => setAddProdId(e.target.value)} required>
                   <option value="">Selecciona un producto...</option>
                   {catalogo.map((p) => (
-                    <option key={p.id_producto} value={p.id_producto}>{p.nombre_producto} ({p.unidad_medida})</option>
+                    <option key={p.id_producto} value={p.id_producto}>{nombreConUnidad(p.nombre_producto, p.unidad_medida)}</option>
                   ))}
                 </select>
               </div>

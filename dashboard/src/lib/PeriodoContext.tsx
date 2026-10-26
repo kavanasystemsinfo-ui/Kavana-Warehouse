@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode } from 'react'
 
 // Periodo global del panel (mismo patrón que RouteAI): el selector vive en el
-// Layout y aplica a todas las páginas con datos temporales (Dashboard, Incidencias).
+// Layout y aplica a todas las páginas con datos temporales (Dashboard).
 interface Periodo {
   rangeMode: string // mes_actual | mes_anterior | semana | todo | custom
   from: string

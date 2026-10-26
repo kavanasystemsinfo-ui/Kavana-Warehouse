@@ -11,7 +11,7 @@
 El backend de KAVANA WAREHOUSE es Node.js + Express con PostgreSQL 16. Se necesitaba
 la capa de acceso a datos para un dominio con 14 modelos (Usuario, Cliente, Centro,
 Producto, AsignacionPersonal, InventarioCentro, RefreshToken, RegistroMovimiento,
-Incidencia, ReglaNotificacion, Notificacion, PushSubscription, Categoria) y un
+Incidencia (tabla conservada, sin función desde octubre de 2026), ReglaNotificacion, Notificacion, PushSubscription, Categoria) y un
 aislamiento multi-tenant por `client_id` que obliga a incluir el filtro en cada query.
 
 Restricciones reales del proyecto: un solo desarrollador, iteración rápida, y la

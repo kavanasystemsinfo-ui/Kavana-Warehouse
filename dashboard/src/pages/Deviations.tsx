@@ -196,7 +196,7 @@ export function Deviations() {
                     }}>
                       {d.desviacion === null ? '—' : (d.desviacion > 0 ? '−' : '+') + fmtNum(Math.abs(d.desviacion))}
                     </td>
-                    <td>{d.porcentaje_desviacion === null ? '—' : `${fmtNum(d.porcentaje_desviacion)}%`}</td>
+                    <td>{d.porcentaje_desviacion === null ? '—' : `${d.porcentaje_desviacion > 0 ? '−' : d.porcentaje_desviacion < 0 ? '+' : ''}${fmtNum(Math.abs(d.porcentaje_desviacion))} %`}</td>
                     <td style={{ color: 'var(--danger)', fontWeight: 600 }}>{fmtEuro(d.coste_desviacion)} €</td>
                     <td><span className={`badge ${badgeClass(d.estado)}`}>{badgeText(d.estado)}</span></td>
                     <td>

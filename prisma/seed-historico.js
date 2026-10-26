@@ -20,7 +20,9 @@ import {
   crearRnd,
   entre,
   consumoDelDia,
-  nivelObjetivo,
+  reposicionLunes,
+  personalPorSeccion,
+  aLas,
 } from './demo-industrial-data.js';
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
@@ -78,24 +80,29 @@ async function main() {
     process.exit(1);
   }
 
-  // 2. Autores de los movimientos
-  const usuarios = await prisma.usuario.findMany({
-    where: { id_cliente: idCliente, estado: 'activo', rol: { in: ['operario', 'supervisor', 'oficina'] } },
-    select: { id_usuario: true, rol: true },
+  // 2. Autores: los consumos los firma un operario de la sección; recuentos y
+  //    reposiciones, el responsable de la sección.
+  const personal = await personalPorSeccion(prisma, idCliente);
+  const oficina = await prisma.usuario.findFirst({
+    where: { id_cliente: idCliente, estado: 'activo', rol: { in: ['oficina', 'supervisor'] } },
+    select: { id_usuario: true },
   });
-  if (usuarios.length === 0) {
+  if (!oficina) {
     console.error('  ✗ Sin usuarios del cliente demo. Ejecuta primero: node prisma/seed.js');
     process.exit(1);
   }
-  const quienCuenta = usuarios.find((u) => u.rol === 'oficina' || u.rol === 'supervisor') || usuarios[0];
   const rnd = crearRnd(42);
-  const autor = () => usuarios[Math.floor(rnd() * usuarios.length)].id_usuario;
+  const operarioDe = (idCentro) => {
+    const ops = personal.get(idCentro)?.operarios || [];
+    return ops.length ? ops[Math.floor(rnd() * ops.length)] : oficina.id_usuario;
+  };
+  const responsableDe = (idCentro) => personal.get(idCentro)?.responsable ?? oficina.id_usuario;
 
   // 3. Simulación día a día: consumo diario + reposición semanal + recuento mensual
   const ahora = Date.now();
   const hoy = new Date();
   const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-  inicio.setTime(inicio.getTime() - DIAS * DIA_MS);
+  inicio.setDate(inicio.getDate() - DIAS); // días de calendario: sin desfase por el cambio de hora
 
   const movimientos = [];
   const fecha = new Date(inicio);
@@ -104,61 +111,60 @@ async function main() {
     const esFinSemana = diaSemana === 0 || diaSemana === 6;
 
     for (const par of pares) {
-      const { consumoDia, minimo } = par.perfil;
+      const { consumoDia } = par.perfil;
 
       // Consumo diario (la planta casi para en fin de semana). No se consume lo que no hay.
       const consumo = Math.min(consumoDelDia(consumoDia, rnd, esFinSemana), par.stock);
-      const tsConsumo = fecha.getTime() + entre(rnd, 6, 20) * 60 * 60 * 1000; // 6:00-20:00
-      if (consumo > 0 && tsConsumo <= ahora) {
+      const tsConsumo = aLas(fecha, entre(rnd, 6 * 60, 20 * 60)); // 6:00-20:00
+      if (consumo > 0 && tsConsumo.getTime() <= ahora) {
         par.stock -= consumo;
         movimientos.push({
-          id_usuario: autor(),
+          id_usuario: operarioDe(par.id_centro),
           id_centro: par.id_centro,
           id_producto: par.id_producto,
           cantidad: -consumo,
           tipo: 'movimiento',
-          fecha_hora: new Date(tsConsumo),
+          fecha_hora: tsConsumo,
         });
       }
 
-      // Reposición semanal (lunes): si está en el punto de pedido, repone al nivel objetivo
+      // Reposición semanal (lunes por la mañana)
       if (diaSemana === 1) {
-        const puntoPedido = minimo + Math.ceil(consumoDia * 5);
-        if (par.stock <= puntoPedido) {
-          const repo = nivelObjetivo(minimo, consumoDia) - par.stock;
-          const tsRepo = fecha.getTime() + 8 * 60 * 60 * 1000;
-          if (repo > 0 && tsRepo <= ahora) {
-            par.stock += repo;
-            movimientos.push({
-              id_usuario: autor(),
-              id_centro: par.id_centro,
-              id_producto: par.id_producto,
-              cantidad: repo,
-              tipo: 'movimiento',
-              fecha_hora: new Date(tsRepo),
-            });
-          }
+        const repo = reposicionLunes(par.perfil, par.stock);
+        const tsRepo = aLas(fecha, entre(rnd, 7 * 60 + 30, 9 * 60)); // 7:30-9:00
+        if (repo > 0 && tsRepo.getTime() <= ahora) {
+          par.stock += repo;
+          movimientos.push({
+            id_usuario: responsableDe(par.id_centro),
+            id_centro: par.id_centro,
+            id_producto: par.id_producto,
+            cantidad: repo,
+            tipo: 'movimiento',
+            fecha_hora: tsRepo,
+          });
         }
       }
     }
 
-    // Recuento mensual (día 1): el responsable hace conteo físico
+    // Recuento mensual (día 1): el responsable de la sección hace conteo físico.
+    // Las secciones pendientes de contar (físico null, p. ej. Pintura) no tienen recuentos.
     if (fecha.getDate() === 1) {
       for (const par of pares) {
+        if (par.perfil.fisico === null) continue;
         if (rnd() < 0.3) continue; // no todo se cuenta
-        const tsRecuento = fecha.getTime() + 10 * 60 * 60 * 1000;
-        if (tsRecuento > ahora) continue;
+        const tsRecuento = aLas(fecha, entre(rnd, 9 * 60 + 30, 12 * 60 + 30)); // 9:30-12:30
+        if (tsRecuento.getTime() > ahora) continue;
         // Pequeña merma realista: de -4 % a +2 % del stock (mínimo ±1 unidad)
         const tope = Math.max(1, Math.ceil(par.stock * 0.04));
         const fisico = Math.max(0, par.stock + entre(rnd, -tope, Math.max(1, Math.ceil(par.stock * 0.02))));
         par.stock = fisico;
         movimientos.push({
-          id_usuario: quienCuenta.id_usuario,
+          id_usuario: responsableDe(par.id_centro),
           id_centro: par.id_centro,
           id_producto: par.id_producto,
           cantidad: fisico,
           tipo: 'recuento',
-          fecha_hora: new Date(tsRecuento),
+          fecha_hora: tsRecuento,
         });
       }
     }
@@ -173,8 +179,11 @@ async function main() {
   //    (merma estrella, sección sin contar, producto bajo mínimo).
   for (const par of pares) {
     const { registrado, fisico, minimo } = par.perfil;
-    const cantidad = registrado < minimo ? registrado : par.stock;
-    const stockFisico = fisico === null ? null : Math.max(0, cantidad + (fisico - registrado));
+    const diferencia = fisico === null ? 0 : fisico - registrado;
+    // Con merma (diferencia < 0) el registrado debe cubrirla, para que el físico
+    // no quede en negativo y la diferencia sea exactamente la diseñada.
+    const cantidad = registrado < minimo ? registrado : Math.max(par.stock, -diferencia);
+    const stockFisico = fisico === null ? null : cantidad + diferencia;
     await prisma.inventarioCentro.updateMany({
       where: { id_centro: par.id_centro, id_producto: par.id_producto },
       data: { cantidad_actual: cantidad, stock_fisico: stockFisico, fecha_actualizacion: new Date() },

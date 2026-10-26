@@ -54,7 +54,7 @@ Problemas detectados en Warehouse antes de este ADR:
   `POST /empleados`, `POST /inventario`, `POST /inventario/reponer` y
   `POST /demo/reset`.
 - El supervisor de visita conserva su flujo real: conteo físico
-  (`POST /inventario/:id/:producto/conteo`), recuentos, incidencias y lectura.
+  (`POST /inventario/:id/:producto/conteo`), recuentos y lectura.
 
 ## Alternativas evaluadas
 

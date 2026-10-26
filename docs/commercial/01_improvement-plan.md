@@ -2,7 +2,7 @@
 
 > **Estado:** Parcialmente implementado (actualizado 2026-08-01 con datos reales del código en producción)
 > **⚠️ Versión anterior marcaba todo como ✅ IMPLEMENTADO. Esta versión refleja lo que realmente existe.**
-> Los módulos A (Costes), B (Desviaciones), C (Incidencias backend) y D (Compras) están en producción.
+> Los módulos A (Costes), B (Desviaciones) y D (Compras) están en producción. El módulo C (Incidencias) se retiró en octubre de 2026.
 > El módulo E (Notificaciones) y las conexiones en tiempo real son planificados.
 
 ---
@@ -41,7 +41,9 @@ Permite alertar cuando se detecta material faltante (merma).
 
 ---
 
-## Módulo C: Reporte de Incidencias en la Instalación ✅ BACKEND IMPLEMENTADO / ⏳ UI COMPLETA
+## Módulo C: Reporte de Incidencias en la Instalación ❌ RETIRADO (octubre de 2026)
+
+> Se quitó del producto: no encaja en una herramienta de control de stock. Se conserva la tabla `incidencias` en la base de datos; página, endpoints y tests ya no existen. Lo de abajo describe lo que hubo.
 
 Los **supervisores o personal de control** reportan averías (fontanería, electricidad, etc.) y les dan seguimiento desde el dashboard.
 
@@ -97,8 +99,7 @@ Se intentó implementar pero la página de Notificaciones no está enrutada en e
 | Tipo | Estado | Notas |
 |------|--------|-------|
 | **Tests automatizados** (Jest) | ✅ 35 tests | Cubren auth, CRUD, scoping multi-tenant (SECURITY), escritura, supervisores demo |
-| Tests para incidencias | ❌ No cubiertos específicamente | Las rutas de incidencias existen pero sin test dedicado |
 | Tests para desviaciones | ❌ No cubiertos | El controlador existe, sin test |
 | Tests para propuestas de compra | ❌ No cubiertos | El controlador existe, sin test |
 | Tests para notificaciones | ❌ No aplica | Módulo no implementado |
-| Verificación manual | ✅ Parcial | Centros, consumos, incidencias, desviaciones verificados manualmente |
+| Verificación manual | ✅ Parcial | Centros, consumos y desviaciones verificados manualmente |

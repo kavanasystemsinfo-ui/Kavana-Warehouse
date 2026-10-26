@@ -11,10 +11,13 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 import {
   EMPRESA_DEMO,
   EMAIL_CONTACTO,
   SUPERVISOR_DEMO,
+  RESPONSABLES_SECCION,
+  emailResponsable,
   SECCIONES,
   PRODUCTOS,
   INVENTARIO,
@@ -127,7 +130,7 @@ async function main() {
   // Cuenta existentes por sección para no duplicar al reejecutar el seed
   const existentesPorCentro = {};
   for (const cn of centrosNombres) {
-    const c = await prisma.centro.findUnique({ where: { id_centro: centros[cn] }, include: { asignaciones: { where: { fecha_fin: null }, select: { id_usuario: true } } } });
+    const c = await prisma.centro.findUnique({ where: { id_centro: centros[cn] }, include: { asignaciones: { where: { fecha_fin: null, usuario: { rol: 'operario' } }, select: { id_usuario: true } } } });
     existentesPorCentro[cn] = c?.asignaciones?.length || 0;
   }
 
@@ -169,6 +172,23 @@ async function main() {
     }
   }
   console.log('  ✓ Operarios generados (5-10 por sección)');
+
+  // 5c. Responsable de cada sección (rol responsable): firma recuentos y
+  //     reposiciones. Contraseña aleatoria: no se puede entrar con su cuenta.
+  for (const [seccion, nombre] of Object.entries(RESPONSABLES_SECCION)) {
+    const email = emailResponsable(seccion);
+    let r = await prisma.usuario.findUnique({ where: { email } });
+    if (!r) {
+      r = await prisma.usuario.create({
+        data: { nombre, email, password_hash: await bcrypt.hash(randomUUID(), 10), rol: 'responsable', id_cliente: idCliente, telefono: String(++telefonoSeq) },
+      });
+    }
+    const ya = await prisma.asignacionPersonal.findFirst({ where: { id_usuario: r.id_usuario, id_centro: centros[seccion], fecha_fin: null } });
+    if (!ya) {
+      await prisma.asignacionPersonal.create({ data: { id_usuario: r.id_usuario, id_centro: centros[seccion], fecha_inicio: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000) } });
+    }
+  }
+  console.log('  ✓ Responsables de sección (uno por sección)');
 
   console.log('\n✅ Demo lista. Login: warehouse / kavana');
   console.log('   Secciones: ' + SECCIONES.map((s) => s.nombre).join(', '));
