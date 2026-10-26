@@ -69,13 +69,15 @@ sección. Tiene histórico desde el 1 de septiembre de 2026 (unos 2.500
 movimientos al recargarla el 26 de octubre) y crece cada día.
 
 ### ¿Qué escenarios enseña la demo?
-Están diseñados para que siempre se vean (`prisma/demo-industrial-data.js`):
-- **Merma estrella**: Soldadura, hilo MIG de 15 kg. Registradas 3 bobinas más de las contadas (156 € de merma).
-- **Merma en EPIs**: Perfilado, guantes anticorte. Faltan 8 pares.
-- **Sobrantes leves**: Mantenimiento, aceite hidráulico (+4 litros) y grasa (+1 cartucho).
-- **Sección sin contar**: Pintura y acabado, todo pendiente de recuento físico.
-- **Producto bajo mínimo**: Expediciones, fleje de polipropileno (4 rollos con mínimo de 6); siempre sale en la propuesta de compra.
-- **Sección que se pasa del presupuesto**: Soldadura tiene un presupuesto algo menor que su consumo.
+La demo enseña **6 escenarios**, diseñados para que siempre se vean
+(`prisma/demo-industrial-data.js`). Cuatro salen en Desviaciones, uno en la
+propuesta de compra y uno en Costes:
+1. **Merma estrella** (Desviaciones): Soldadura, hilo MIG de 15 kg. Hay 3 bobinas registradas que no aparecen al contar (156 € de merma).
+2. **Merma en EPIs** (Desviaciones): Perfilado, guantes anticorte. Faltan 8 pares.
+3. **Sobrantes leves** (Desviaciones): Mantenimiento, aceite hidráulico (+4 litros) y grasa (+1 cartucho).
+4. **Sección sin contar** (Desviaciones): Pintura y acabado, todo pendiente de recuento físico.
+5. **Producto bajo mínimo** (propuesta de compra): Expediciones, fleje de polipropileno (4 rollos con mínimo de 6).
+6. **Sección que se pasa del presupuesto** (Costes): Soldadura tiene un presupuesto algo menor que su consumo del mes.
 
 ### ¿Por qué la demo parece "viva"?
 Un cron diario a las 06:00 en un VPS ejecuta `prisma/simulate-daily.js`: genera

@@ -104,7 +104,8 @@ export const PRODUCTOS = [
 //   · Perfilado / guantes anticorte: registrado 60, físico 52 → faltan 8 pares
 //   · Pintura y acabado: todo pendiente de contar (físico null)
 //   · Expediciones / fleje: registrado 4 < mínimo 6 → entra en la propuesta de compra
-//   · Mantenimiento / aceite hidráulico: físico > registrado (sobrante leve)
+//   · Mantenimiento / aceite hidráulico y grasa: físico > registrado (sobrantes leves)
+//   · Soldadura: presupuesto por debajo de su consumo (ver SECCIONES) → se pasa en Costes
 export const INVENTARIO = [
   // Perfilado
   ['Perfilado', 'Guantes anticorte nivel C (par)', 60, 52, 20, 3],
