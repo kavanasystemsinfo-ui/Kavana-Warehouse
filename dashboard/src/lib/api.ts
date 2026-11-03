@@ -277,6 +277,22 @@ export async function login(email: string, password: string): Promise<AuthRespon
   return data
 }
 
+// Entrada de un clic a la demo: el servidor pone la sesión, el visitante no escribe nada.
+export async function demoLogin(role: 'oficina' = 'oficina'): Promise<AuthResponse> {
+  const res = await fetch(`${BASE_URL}/auth/demo-login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role }),
+  })
+  if (!res.ok) {
+    throw new Error(res.status === 404 ? 'La entrada rápida a la demo no está disponible ahora.' : 'No se pudo entrar a la demo. Inténtalo de nuevo.')
+  }
+  const data: AuthResponse = await res.json()
+  setTokens(data.token, data.refreshToken)
+  storeUser(data.usuario)
+  return data
+}
+
 export async function logout(): Promise<void> {
   const refreshToken = getRefreshToken()
   try {

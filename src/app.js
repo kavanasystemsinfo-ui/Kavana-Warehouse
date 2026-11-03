@@ -181,6 +181,46 @@ app.post('/api/v1/auth/login', validate(loginSchema), async (req, res) => {
   } catch(e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
 });
 
+// Entrada de un clic a la demo: sin usuario ni contraseña en el cliente. Solo
+// existe si DEMO_LOGIN_ENABLED === "true" (si no, 404) y solo emite la sesión
+// de la cuenta de oficina de la empresa demo (es_demo), nunca de empresas reales.
+const DEMO_LOGIN_ROLES = { oficina: 'warehouse' };
+const DEMO_LOGIN_VENTANA_MS = 60 * 1000;
+const DEMO_LOGIN_MAX = 20;
+const demoLoginIntentos = new Map();
+
+app.post('/api/v1/auth/demo-login', async (req, res) => {
+  if (process.env.DEMO_LOGIN_ENABLED !== 'true') return res.status(404).json({ error: 'No encontrado' });
+  try {
+    const ahora = Date.now();
+    const recientes = (demoLoginIntentos.get(req.ip) || []).filter((t) => ahora - t < DEMO_LOGIN_VENTANA_MS);
+    if (recientes.length >= DEMO_LOGIN_MAX) {
+      res.set('Retry-After', '60');
+      return res.status(429).json({ error: 'Demasiados intentos. Espera un momento.' });
+    }
+    recientes.push(ahora);
+    demoLoginIntentos.set(req.ip, recientes);
+
+    const rol = req.body && req.body.role;
+    if (typeof rol !== 'string' || !Object.hasOwn(DEMO_LOGIN_ROLES, rol)) {
+      return res.status(400).json({ error: 'Rol no permitido para la demo' });
+    }
+    const u = await prisma.usuario.findFirst({
+      where: {
+        username: DEMO_LOGIN_ROLES[rol],
+        rol: 'oficina',
+        is_super_admin: false,
+        session_id: null,
+        cliente: { es_demo: true },
+      },
+    });
+    if (!u || usuarioCaducado(u)) return res.status(400).json({ error: 'Usuario demo no disponible' });
+    const token = firmarAccessToken(u);
+    const refreshToken = await emitirRefreshToken(u);
+    res.json({ token, refreshToken, usuario: { id_usuario: u.id_usuario, nombre: u.nombre, email: u.email, username: u.username, rol: u.rol, is_super_admin: u.is_super_admin, session_id: u.session_id, demo: true } });
+  } catch (e) { logger.error('api', e); res.status(500).json({ error: 'Error interno' }); }
+});
+
 // Renueva la sesión. Rotación: cada refresh token sirve UNA vez; se revoca y se
 // emite uno nuevo. Reutilizar uno ya revocado se rechaza.
 app.post('/api/v1/auth/refresh', validate(refreshSchema), async (req, res) => {

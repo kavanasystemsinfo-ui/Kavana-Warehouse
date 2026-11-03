@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { login, getStoredUser } from '../lib/api'
+import { login, demoLogin, getStoredUser } from '../lib/api'
 import { AssistantWidget } from '../components/AssistantChat'
 
 interface LoginProps {
@@ -13,6 +13,7 @@ export function Login({ onLogin }: LoginProps) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [waking, setWaking] = useState(false)
 
   // Redirect if already logged in (useEffect to avoid render-time navigation)
   useEffect(() => {
@@ -28,6 +29,32 @@ export function Login({ onLogin }: LoginProps) {
       localStorage.removeItem('auth_error')
     }
   }, [navigate])
+
+  // Servidor gratuito: la primera petición puede tardar hasta un minuto en despertar.
+  const entrarDemo = async () => {
+    setError('')
+    setLoading(true)
+    const aviso = setTimeout(() => setWaking(true), 4000)
+    try {
+      await demoLogin('oficina')
+      onLogin?.()
+      navigate('/', { replace: true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo entrar a la demo')
+    } finally {
+      clearTimeout(aviso)
+      setWaking(false)
+      setLoading(false)
+    }
+  }
+
+  // Enlace directo desde la web: /login?demo=oficina entra solo.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('demo') === 'oficina' && !getStoredUser()) {
+      void entrarDemo()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,6 +87,26 @@ export function Login({ onLogin }: LoginProps) {
 
         {error && <div className="alert alert-danger">{error}</div>}
 
+        <button
+          type="button"
+          className="btn btn-primary"
+          style={{ width: '100%', padding: '0.85rem', fontSize: '1.05rem', marginBottom: '0.5rem' }}
+          disabled={loading}
+          onClick={entrarDemo}
+        >
+          {loading ? 'Entrando…' : 'Entrar a la demo'}
+        </button>
+        <p style={{ textAlign: 'center', fontSize: '0.85rem', margin: '0 0 1rem', opacity: 0.8 }}>
+          Un clic, sin usuario ni contraseña. Los datos son de ejemplo.
+        </p>
+        {waking && (
+          <div className="alert" role="status">
+            Despertando la demo… el servidor gratuito puede tardar hasta un minuto la primera vez.
+          </div>
+        )}
+
+        <details>
+          <summary style={{ cursor: 'pointer', marginBottom: '0.75rem' }}>Tengo cuenta propia</summary>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label className="form-label" htmlFor="usuario">Usuario</label>
@@ -98,6 +145,7 @@ export function Login({ onLogin }: LoginProps) {
             {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
           </button>
         </form>
+        </details>
         <p className="login-assistant-note">
           💬 ¿Quieres saber cómo funciona este proyecto? Prueba el <strong>asistente técnico</strong> (botón abajo): responde con la documentación real de Kavana Warehouse.
         </p>
