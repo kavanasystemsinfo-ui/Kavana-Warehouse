@@ -25,6 +25,35 @@ describe('GET /api/v1/health', () => {
 // ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
+describe('POST /api/v1/auth/demo-login', () => {
+  afterEach(() => { delete process.env.DEMO_LOGIN_ENABLED; });
+
+  it('desactivado responde 404', async () => {
+    delete process.env.DEMO_LOGIN_ENABLED;
+    const res = await request(app).post('/api/v1/auth/demo-login').send({ role: 'oficina' });
+    expect(res.status).toBe(404);
+  });
+
+  it('activado devuelve la sesión de oficina de la empresa demo', async () => {
+    process.env.DEMO_LOGIN_ENABLED = 'true';
+    const res = await request(app).post('/api/v1/auth/demo-login').send({ role: 'oficina' });
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBeTruthy();
+    expect(res.body.refreshToken).toBeTruthy();
+    expect(res.body.usuario.rol).toBe('oficina');
+    expect(res.body.usuario.demo).toBe(true);
+    expect(res.body.usuario.is_super_admin).toBe(false);
+  });
+
+  it('rechaza roles fuera de la lista cerrada', async () => {
+    process.env.DEMO_LOGIN_ENABLED = 'true';
+    for (const role of ['admin', 'superadmin', 'operario', 'toString', undefined]) {
+      const res = await request(app).post('/api/v1/auth/demo-login').send({ role });
+      expect(res.status).toBe(400);
+    }
+  });
+});
+
 describe('POST /api/v1/auth/login', () => {
   it('rejects invalid credentials', async () => {
     const res = await request(app)

@@ -10,6 +10,7 @@ import * as api from '../lib/api'
 
 vi.mock('../lib/api', () => ({
   login: vi.fn(),
+  demoLogin: vi.fn(),
   getStoredUser: vi.fn(() => null),
 }))
 
@@ -25,6 +26,14 @@ describe('Login', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()
+  })
+
+  it('el botón de la demo entra sin pedir usuario ni contraseña', async () => {
+    vi.mocked(api.demoLogin).mockResolvedValue({ token: 't', refreshToken: 'r', usuario: { rol: 'oficina' } } as never)
+    renderLogin()
+    fireEvent.click(screen.getByRole('button', { name: /entrar a la demo/i }))
+    await waitFor(() => expect(api.demoLogin).toHaveBeenCalledWith('oficina'))
+    expect(api.login).not.toHaveBeenCalled()
   })
 
   it('renderiza el formulario de acceso', () => {
