@@ -1,13 +1,34 @@
 import { useState, useEffect } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { getStoredUser, logout, clearTokens } from '../lib/api'
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { esVisita, getStoredUser, logout, clearTokens } from '../lib/api'
 import { PeriodoProvider, PeriodoSelector } from '../lib/PeriodoContext'
+import { CLAVE_TOUR_VISTO, useTour } from './useTour'
+import { CLAVE_POR_RUTA, crearTours } from '../lib/tours'
 
 export function Layout() {
   const user = getStoredUser()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [contactoOpen, setContactoOpen] = useState(false)
+  const location = useLocation()
+
+  // Tour guiado: un recorrido por pantalla, encadenados. Se abre solo la primera vez que
+  // entra un visitante de la demo, y se repite con el botón del menú.
+  const tour = useTour(crearTours({ ir: (ruta) => navigate(ruta), menu: setSidebarOpen }))
+  const claveTourActual = CLAVE_POR_RUTA[location.pathname] ?? 'dashboard'
+  useEffect(() => {
+    if (!esVisita()) return
+    let visto = false
+    try {
+      visto = localStorage.getItem(CLAVE_TOUR_VISTO) === 'true'
+    } catch {
+      /* sin almacenamiento: se abre */
+    }
+    if (visto) return
+    const aviso = setTimeout(() => tour.start('dashboard'), 1200)
+    return () => clearTimeout(aviso)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Cerrar sidebar automáticamente al navegar (en móvil)
   const closeOnNav = () => {
@@ -129,6 +150,18 @@ export function Layout() {
               <span className="badge" style={{ marginTop: '0.25rem', background: 'var(--primary)', color: '#fff' }}>🌱 Demo: crea y caduca en 24h</span>
             )}
           </div>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            style={{ color: 'white', borderColor: '#4b5563', width: '100%', marginTop: '0.5rem' }}
+            onClick={() => {
+              setSidebarOpen(false)
+              tour.start(claveTourActual)
+            }}
+            title="Tour guiado de esta pantalla"
+          >
+            🧭 Tour guiado
+          </button>
           <button className="btn btn-outline btn-sm" style={{ color: 'white', borderColor: '#4b5563', width: '100%', marginTop: '0.5rem' }} onClick={handleLogout}>
             Cerrar sesión
           </button>
@@ -140,6 +173,7 @@ export function Layout() {
           <Outlet />
         </PeriodoProvider>
       </main>
+      <tour.TourComponent {...tour.tourProps} />
     </div>
   )
 }
